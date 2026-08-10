@@ -1,0 +1,34 @@
+# Local development infrastructure (docs/18). Not used in production — see the
+# infrastructure README for the native (Homebrew) alternative when Docker is
+# unavailable. Never point application code at these from a real environment.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: singha_v2_postgres
+    environment:
+      POSTGRES_USER: singha
+      POSTGRES_PASSWORD: singha
+      POSTGRES_DB: singha_v2
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U singha -d singha_v2']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: singha_v2_redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

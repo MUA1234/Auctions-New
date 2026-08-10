@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: singha
+          POSTGRES_PASSWORD: singha
+          POSTGRES_DB: singha_v2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U singha -d singha_v2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://singha:singha@localhost:5432/singha_v2?schema=public
+      # No Redis service: the worker idles gracefully without REDIS_URL (Phase 0).
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client + apply migrations
+        run: |
+          pnpm db:generate
+          pnpm db:migrate:deploy
+
+      - name: Format check
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test (unit + integration)
+        run: pnpm run test

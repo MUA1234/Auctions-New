@@ -1,0 +1,19 @@
+{
+  "name": "@singha/live-console",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Auctioneer / clerk / producer consoles for Singha Live (docs/08). Placeholder until Phase 11.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@singha/observability": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}
