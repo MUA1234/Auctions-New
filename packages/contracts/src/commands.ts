@@ -97,3 +97,36 @@ export const devTokenSchema = z.object({
   roles: z.array(z.enum(ALL_ROLES)).default([]),
 });
 export type DevTokenInput = z.infer<typeof devTokenSchema>;
+
+// --- Auction engine (docs/07) ---------------------------------------------
+export const bidSourceValues = [
+  'online',
+  'floor',
+  'phone',
+  'absentee',
+  'proxy',
+  'auctioneer',
+] as const;
+
+export const createAuctionSchema = z.object({
+  listingId: z.string().min(1),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime(),
+  currency: z.string().length(3).default('LKR'),
+  openingBidMinor: z.number().int().positive(),
+  reserveMinor: z.number().int().positive().nullable().default(null),
+  reserveVisible: z.boolean().default(false),
+  incrementMinor: z.number().int().positive(),
+  softCloseTriggerSec: z.number().int().positive().default(10),
+  softCloseExtendSec: z.number().int().positive().default(20),
+  buyerPremiumPct: z.number().min(0).default(0),
+});
+export type CreateAuctionInput = z.infer<typeof createAuctionSchema>;
+
+export const placeBidSchema = z.object({
+  /** The bidder's PRIVATE maximum (proxy). Never exposed to other bidders. */
+  maxAmountMinor: z.number().int().positive(),
+  source: z.enum(bidSourceValues).default('online'),
+  idempotencyKey: z.string().min(1).max(200).optional(),
+});
+export type PlaceBidInput = z.infer<typeof placeBidSchema>;
