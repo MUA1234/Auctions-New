@@ -370,15 +370,15 @@ model Auction {
   currency            String        @default("LKR")
   startsAt            DateTime      @map("starts_at")
   endsAt              DateTime      @map("ends_at")
-  openingBidMinor     Int           @map("opening_bid_minor")
-  reserveMinor        Int?          @map("reserve_minor")
+  openingBidMinor     BigInt        @map("opening_bid_minor")
+  reserveMinor        BigInt?       @map("reserve_minor")
   reserveVisible      Boolean       @default(false) @map("reserve_visible")
-  incrementMinor      Int           @map("increment_minor")
+  incrementMinor      BigInt        @map("increment_minor")
   softCloseTriggerSec Int           @default(10) @map("soft_close_trigger_sec")
   softCloseExtendSec  Int           @default(20) @map("soft_close_extend_sec")
   buyerPremiumPct     Float         @default(0) @map("buyer_premium_pct")
   // Denormalized realtime projection (rebuildable from the ledger).
-  currentBidMinor     Int?          @map("current_bid_minor")
+  currentBidMinor     BigInt?       @map("current_bid_minor")
   highBidderId        String?       @map("high_bidder_id")
   highBidId           String?       @map("high_bid_id")
   extendedCount       Int           @default(0) @map("extended_count")
@@ -402,7 +402,7 @@ model Bid {
   auctionId      String    @map("auction_id")
   sequence       Int
   bidderId       String    @map("bidder_id")
-  amountMinor    Int       @map("amount_minor")
+  amountMinor    BigInt    @map("amount_minor")
   source         BidSource @default(online)
   status         BidStatus @default(accepted)
   idempotencyKey String?   @map("idempotency_key")
@@ -420,7 +420,7 @@ model BidderMax {
   id        String   @id
   auctionId String   @map("auction_id")
   bidderId  String   @map("bidder_id")
-  maxMinor  Int      @map("max_minor")
+  maxMinor  BigInt   @map("max_minor")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   auction Auction @relation(fields: [auctionId], references: [id])

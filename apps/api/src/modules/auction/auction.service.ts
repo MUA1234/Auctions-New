@@ -25,10 +25,11 @@ import { toActor } from '../../shared/auth/actor';
 import { type Principal } from '../../shared/auth/principal';
 
 /**
- * Timed auction engine orchestration (docs/07). The server is authoritative:
- * every bid is processed inside a transaction that ROW-LOCKS the auction
- * (`SELECT … FOR UPDATE`), so near-simultaneous bids are serialized and the
- * append-only ledger stays consistent. Proxy maxima are private.
+ * Timed auction engine orchestration (docs/07). Server-authoritative: every bid
+ * runs in a transaction that ROW-LOCKS the auction (`SELECT … FOR UPDATE`), so
+ * near-simultaneous bids serialize. Money is stored as BigInt (minor units) and
+ * converted to JS number at this boundary (safe: amounts are well under 2^53).
+ * Proxy maxima are private.
  */
 @Injectable()
 export class AuctionService {
@@ -56,10 +57,10 @@ export class AuctionService {
           currency: input.currency,
           startsAt: new Date(input.startsAt),
           endsAt: new Date(input.endsAt),
-          openingBidMinor: input.openingBidMinor,
-          reserveMinor: input.reserveMinor ?? undefined,
+          openingBidMinor: BigInt(input.openingBidMinor),
+          reserveMinor: input.reserveMinor == null ? undefined : BigInt(input.reserveMinor),
           reserveVisible: input.reserveVisible,
-          incrementMinor: input.incrementMinor,
+          incrementMinor: BigInt(input.incrementMinor),
           softCloseTriggerSec: input.softCloseTriggerSec,
           softCloseExtendSec: input.softCloseExtendSec,
           buyerPremiumPct: input.buyerPremiumPct,
@@ -71,7 +72,7 @@ export class AuctionService {
         targetId: id,
         after: { listingId: input.listingId },
       });
-      return auction;
+      return this.publicAuction(auction);
     });
   }
 
@@ -88,7 +89,7 @@ export class AuctionService {
         payload: { auctionId: id },
       });
       ctx.audit({ action: 'AUCTION_OPENED', targetType: 'Auction', targetId: id });
-      return updated;
+      return this.publicAuction(updated);
     });
   }
 
@@ -100,7 +101,6 @@ export class AuctionService {
     return this.uow.execute(
       actor,
       async (ctx) => {
-        // Serialize concurrent bids on this auction (docs/07: never trust arrival order).
         await ctx.tx.$queryRawUnsafe('SELECT id FROM auction WHERE id = $1 FOR UPDATE', auctionId);
 
         const auction = await ctx.tx.auction.findUnique({ where: { id: auctionId } });
@@ -110,7 +110,6 @@ export class AuctionService {
         if (auction.status !== 'open') throw new ConflictException('Auction is not open');
         if (now >= auction.endsAt) throw new ConflictException('Auction has ended');
 
-        // Idempotent retry: return current state without a second bid.
         if (input.idempotencyKey) {
           const dupe = await ctx.tx.bid.findFirst({
             where: { auctionId, idempotencyKey: input.idempotencyKey },
@@ -118,42 +117,41 @@ export class AuctionService {
           if (dupe) return this.bidderView(auction, bidderId, false);
         }
 
+        const currentBid = auction.currentBidMinor == null ? null : Number(auction.currentBidMinor);
         const config: AuctionConfig = {
-          openingBidMinor: auction.openingBidMinor,
-          incrementMinor: auction.incrementMinor,
-          reserveMinor: auction.reserveMinor,
+          openingBidMinor: Number(auction.openingBidMinor),
+          incrementMinor: Number(auction.incrementMinor),
+          reserveMinor: auction.reserveMinor == null ? null : Number(auction.reserveMinor),
           softCloseTriggerSec: auction.softCloseTriggerSec,
           softCloseExtendSec: auction.softCloseExtendSec,
           endsAt: auction.endsAt,
         };
 
-        const minimum = minimumAcceptableMax(config, auction.currentBidMinor);
+        const minimum = minimumAcceptableMax(config, currentBid);
         if (input.maxAmountMinor < minimum) {
           throw new BadRequestException(`Maximum must be at least ${minimum} (minor units)`);
         }
 
-        // Raise this bidder's private proxy maximum.
         const existingMax = await ctx.tx.bidderMax.findUnique({
           where: { auctionId_bidderId: { auctionId, bidderId } },
         });
-        const newMax = Math.max(existingMax?.maxMinor ?? 0, input.maxAmountMinor);
+        const newMax = Math.max(Number(existingMax?.maxMinor ?? 0), input.maxAmountMinor);
         await ctx.tx.bidderMax.upsert({
           where: { auctionId_bidderId: { auctionId, bidderId } },
-          update: { maxMinor: newMax },
-          create: { id: newId(), auctionId, bidderId, maxMinor: newMax },
+          update: { maxMinor: BigInt(newMax) },
+          create: { id: newId(), auctionId, bidderId, maxMinor: BigInt(newMax) },
         });
 
         const maxRows = await ctx.tx.bidderMax.findMany({ where: { auctionId } });
         const maxes: BidderMaxEntry[] = maxRows.map((m) => ({
           bidderId: m.bidderId,
-          maxMinor: m.maxMinor,
+          maxMinor: Number(m.maxMinor),
           updatedAt: m.updatedAt,
         }));
         const state = computeAuctionState(config, maxes);
 
-        const prevPrice = auction.currentBidMinor;
         const prevLeader = auction.highBidderId;
-        const priceChanged = prevPrice == null || state.currentBidMinor > prevPrice;
+        const priceChanged = currentBid == null || state.currentBidMinor > currentBid;
         const leaderChanged = state.highBidderId !== prevLeader;
 
         let highBidId = auction.highBidId;
@@ -165,8 +163,7 @@ export class AuctionService {
               auctionId,
               sequence,
               bidderId: state.highBidderId,
-              amountMinor: state.currentBidMinor,
-              // A price the engine set on the leader's behalf is a proxy bid.
+              amountMinor: BigInt(state.currentBidMinor),
               source: state.highBidderId === bidderId ? input.source : 'proxy',
               status: 'accepted',
               idempotencyKey: input.idempotencyKey,
@@ -180,7 +177,7 @@ export class AuctionService {
         const updated = await ctx.tx.auction.update({
           where: { id: auctionId },
           data: {
-            currentBidMinor: state.currentBidMinor,
+            currentBidMinor: BigInt(state.currentBidMinor),
             highBidderId: state.highBidderId,
             highBidId,
             endsAt: soft.endsAt,
@@ -226,15 +223,16 @@ export class AuctionService {
 
   async close(principal: Principal, id: string) {
     const auction = await this.requireAuction(id);
-    if (auction.status === 'closed') return auction;
+    if (auction.status === 'closed') return this.publicAuction(auction);
     if (auction.status !== 'open') throw new ConflictException('Auction is not open');
 
     const actor = toActor(principal);
     return this.uow.execute(actor, async (ctx) => {
+      const hammer = auction.currentBidMinor == null ? null : Number(auction.currentBidMinor);
       const sold =
-        auction.currentBidMinor != null &&
+        hammer != null &&
         auction.highBidderId != null &&
-        reserveMet(auction.reserveMinor, auction.currentBidMinor);
+        reserveMet(auction.reserveMinor == null ? null : Number(auction.reserveMinor), hammer);
       const winner = sold ? auction.highBidderId : null;
 
       const updated = await ctx.tx.auction.update({
@@ -254,7 +252,7 @@ export class AuctionService {
           auctionId: id,
           sold,
           winnerCustomerId: winner,
-          hammerMinor: sold ? auction.currentBidMinor : null,
+          hammerMinor: sold ? hammer : null,
         },
       });
       if (sold) {
@@ -266,7 +264,7 @@ export class AuctionService {
             auctionId: id,
             listingId: auction.listingId,
             buyerCustomerId: winner,
-            hammerMinor: auction.currentBidMinor,
+            hammerMinor: hammer,
           },
         });
       }
@@ -276,7 +274,7 @@ export class AuctionService {
         targetId: id,
         after: { sold, winner },
       });
-      return updated;
+      return this.publicAuction(updated);
     });
   }
 
@@ -290,35 +288,67 @@ export class AuctionService {
       listingId: a.listingId,
       status: a.status,
       currency: a.currency,
-      openingBidMinor: a.openingBidMinor,
-      incrementMinor: a.incrementMinor,
-      currentBidMinor: a.currentBidMinor,
+      openingBidMinor: Number(a.openingBidMinor),
+      incrementMinor: Number(a.incrementMinor),
+      currentBidMinor: a.currentBidMinor == null ? null : Number(a.currentBidMinor),
       startsAt: a.startsAt,
       endsAt: a.endsAt,
       extendedCount: a.extendedCount,
       bidCount,
       reserveMet: a.reserveVisible
-        ? reserveMet(a.reserveMinor, a.currentBidMinor ?? a.openingBidMinor)
+        ? reserveMet(
+            a.reserveMinor == null ? null : Number(a.reserveMinor),
+            Number(a.currentBidMinor ?? a.openingBidMinor),
+          )
         : undefined,
     };
   }
 
   private bidderView(
     auction: {
-      currentBidMinor: number | null;
+      currentBidMinor: bigint | null;
       highBidderId: string | null;
       endsAt: Date;
-      openingBidMinor: number;
+      openingBidMinor: bigint;
     },
     bidderId: string,
     extended: boolean,
   ) {
     return {
       accepted: true,
-      currentBidMinor: auction.currentBidMinor ?? auction.openingBidMinor,
+      currentBidMinor: Number(auction.currentBidMinor ?? auction.openingBidMinor),
       youLead: auction.highBidderId === bidderId,
       endsAt: auction.endsAt.toISOString(),
       extended,
+    };
+  }
+
+  /** Staff-facing auction view with money coerced to number (no BigInt in JSON). */
+  private publicAuction(a: {
+    id: string;
+    listingId: string;
+    status: string;
+    currency: string;
+    openingBidMinor: bigint;
+    incrementMinor: bigint;
+    currentBidMinor: bigint | null;
+    startsAt: Date;
+    endsAt: Date;
+    winnerCustomerId: string | null;
+    extendedCount: number;
+  }) {
+    return {
+      id: a.id,
+      listingId: a.listingId,
+      status: a.status,
+      currency: a.currency,
+      openingBidMinor: Number(a.openingBidMinor),
+      incrementMinor: Number(a.incrementMinor),
+      currentBidMinor: a.currentBidMinor == null ? null : Number(a.currentBidMinor),
+      startsAt: a.startsAt,
+      endsAt: a.endsAt,
+      winnerCustomerId: a.winnerCustomerId,
+      extendedCount: a.extendedCount,
     };
   }
 
