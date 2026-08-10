@@ -2,6 +2,7 @@ import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SharedModule } from './shared/shared.module';
+import { StorageModule } from './shared/storage/storage.module';
 import { HealthModule } from './health/health.module';
 import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { IdentityModule } from './modules/identity/identity.module';
@@ -23,6 +24,7 @@ import { PrincipalMiddleware } from './shared/auth/principal.middleware';
     AppConfigModule,
     PrismaModule,
     SharedModule,
+    StorageModule,
     HealthModule,
     FeatureFlagsModule,
     IdentityModule,

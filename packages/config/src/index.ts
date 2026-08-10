@@ -24,6 +24,16 @@ export interface ProviderConfig {
 }
 
 /** Fully-resolved, typed application configuration used by server processes. */
+export interface SupabaseConfig {
+  url: string;
+  /** Server-only key (secret/service_role). Never exposed to the browser. */
+  serviceKey: string;
+  anonKey: string;
+  publishableKey: string;
+  storageBucket: string;
+  configured: boolean;
+}
+
 export interface AppConfig {
   nodeEnv: RawEnv['NODE_ENV'];
   isProduction: boolean;
@@ -36,13 +46,14 @@ export interface AppConfig {
     siteUrl: string;
     apiUrl: string;
   };
-  db: { url: string };
+  db: { url: string; directUrl: string };
   redis: { url: string; enabled: boolean };
   security: { jwtSecret: string; sessionSecret: string };
   locale: { defaultCurrency: string; defaultLocale: string };
   business: BusinessConfig;
   features: FeatureFlags;
   providers: ProviderConfig;
+  supabase: SupabaseConfig;
 }
 
 const configured = (value: string): ProviderStatus => ({ configured: value.trim().length > 0 });
@@ -50,6 +61,9 @@ const configured = (value: string): ProviderStatus => ({ configured: value.trim(
 /** Build a typed AppConfig from an environment record (pure; no side effects). */
 export function loadConfig(source?: NodeJS.ProcessEnv | Record<string, unknown>): AppConfig {
   const env = parseEnv(source);
+  const supabaseServerKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseConfigured =
+    env.SUPABASE_URL.trim().length > 0 && supabaseServerKey.trim().length > 0;
   return {
     nodeEnv: env.NODE_ENV,
     isProduction: env.NODE_ENV === 'production',
@@ -62,7 +76,7 @@ export function loadConfig(source?: NodeJS.ProcessEnv | Record<string, unknown>)
       siteUrl: env.NEXT_PUBLIC_SITE_URL,
       apiUrl: env.NEXT_PUBLIC_API_URL,
     },
-    db: { url: env.DATABASE_URL },
+    db: { url: env.DATABASE_URL, directUrl: env.DIRECT_URL || env.DATABASE_URL },
     redis: { url: env.REDIS_URL, enabled: env.REDIS_URL.trim().length > 0 },
     security: { jwtSecret: env.JWT_SECRET, sessionSecret: env.SESSION_SECRET },
     locale: { defaultCurrency: env.DEFAULT_CURRENCY, defaultLocale: env.DEFAULT_LOCALE },
@@ -87,7 +101,7 @@ export function loadConfig(source?: NodeJS.ProcessEnv | Record<string, unknown>)
       whatsappBidIntent: env.FEATURE_WHATSAPP_BID_INTENT,
     },
     providers: {
-      storage: configured(env.STORAGE_ENDPOINT),
+      storage: { configured: supabaseConfigured || env.STORAGE_ENDPOINT.trim().length > 0 },
       aiText: configured(env.AI_TEXT_API_KEY),
       aiVision: configured(env.AI_VISION_API_KEY),
       messagingMeta: configured(env.META_APP_SECRET),
@@ -97,6 +111,14 @@ export function loadConfig(source?: NodeJS.ProcessEnv | Record<string, unknown>)
       live: configured(env.LIVE_PROVIDER_KEY),
       youtube: configured(env.YOUTUBE_API_KEY),
       payment: configured(env.PAYMENT_PROVIDER_KEY),
+    },
+    supabase: {
+      url: env.SUPABASE_URL,
+      serviceKey: supabaseServerKey,
+      anonKey: env.SUPABASE_ANON_KEY,
+      publishableKey: env.SUPABASE_PUBLISHABLE_KEY,
+      storageBucket: env.SUPABASE_STORAGE_BUCKET,
+      configured: supabaseConfigured,
     },
   };
 }

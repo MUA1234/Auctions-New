@@ -24,6 +24,8 @@ export const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
 
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  // Direct (non-pooled) DB connection used for Prisma migrations (Supabase).
+  DIRECT_URL: z.string().default(''),
   REDIS_URL: z.string().default(''),
 
   JWT_SECRET: z.string().min(1).default('dev-only-insecure-change-me'),
@@ -63,6 +65,14 @@ export const envSchema = z.object({
   LIVE_PROVIDER_KEY: z.string().default(''),
   YOUTUBE_API_KEY: z.string().default(''),
   PAYMENT_PROVIDER_KEY: z.string().default(''),
+
+  // Supabase (Postgres + Storage). Server keys are never exposed to the browser.
+  SUPABASE_URL: z.string().default(''),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().default(''),
+  SUPABASE_SECRET_KEY: z.string().default(''),
+  SUPABASE_ANON_KEY: z.string().default(''),
+  SUPABASE_PUBLISHABLE_KEY: z.string().default(''),
+  SUPABASE_STORAGE_BUCKET: z.string().default('singha-media'),
 });
 
 export type RawEnv = z.infer<typeof envSchema>;

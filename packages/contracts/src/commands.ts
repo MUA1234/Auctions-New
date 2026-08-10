@@ -92,6 +92,12 @@ export const addDerivativeSchema = z.object({
 });
 export type AddDerivativeInput = z.infer<typeof addDerivativeSchema>;
 
+export const createUploadUrlSchema = z.object({
+  filename: z.string().min(1).max(200),
+  kind: z.enum(mediaKindValues).default('image'),
+});
+export type CreateUploadUrlInput = z.infer<typeof createUploadUrlSchema>;
+
 export const devTokenSchema = z.object({
   customerId: z.string().optional(),
   roles: z.array(z.enum(ALL_ROLES)).default([]),

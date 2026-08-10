@@ -1,9 +1,11 @@
 import { Body, Controller, Param, Post } from '@nestjs/common';
 import {
   type AddDerivativeInput,
+  type CreateUploadUrlInput,
   Permission,
   type RegisterMediaInput,
   addDerivativeSchema,
+  createUploadUrlSchema,
   registerMediaSchema,
 } from '@singha/contracts';
 import { MediaService } from './media.service';
@@ -15,6 +17,16 @@ import { ZodBody } from '../../shared/validation/zod.pipe';
 @Controller()
 export class MediaController {
   constructor(private readonly media: MediaService) {}
+
+  /** Direct-to-Supabase upload grant for large media (docs/06 upload pipeline). */
+  @Post('assets/:assetId/media/upload-url')
+  @RequirePermissions(Permission.MediaManage)
+  uploadUrl(
+    @Param('assetId') assetId: string,
+    @Body(new ZodBody(createUploadUrlSchema)) input: CreateUploadUrlInput,
+  ) {
+    return this.media.createUploadUrl(assetId, input);
+  }
 
   @Post('assets/:assetId/media')
   @RequirePermissions(Permission.MediaManage)
