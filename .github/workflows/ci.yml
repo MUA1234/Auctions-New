@@ -67,3 +67,6 @@ jobs:
 
       - name: E2E (data core — permissions, outbox, audit)
         run: node scripts/e2e-data-core.mjs
+
+      - name: E2E (auction — concurrency, soft-close, winner)
+        run: node scripts/e2e-auction.mjs

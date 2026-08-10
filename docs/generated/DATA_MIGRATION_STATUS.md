@@ -10,6 +10,8 @@ expand-migrate-verify-contract discipline (docs/04).
 | `init`              | Identity, inventory, media (+ provenance), audit, outbox, platform config tables + enums + indexes | Generated & applied in verification |
 | `audit_append_only` | Trigger rejecting UPDATE/DELETE on `audit_event`                                                   | Generated & applied in verification |
 | `asset_attributes`  | Additive nullable `asset.attributes` (JSON) for versioned category attributes                      | Generated & applied in verification |
+| `auction_engine`    | Auction/Bid/BidderMax tables + enums (integer minor units; private proxy maxima)                   | Generated & applied in verification |
+| `bid_append_only`   | Trigger rejecting UPDATE/DELETE on the `bid` ledger                                                | Generated & applied in verification |
 
 Regenerate/apply locally:
 

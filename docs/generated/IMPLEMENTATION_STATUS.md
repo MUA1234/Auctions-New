@@ -1,6 +1,7 @@
 # IMPLEMENTATION STATUS
 
-_Phase 1 — Stable Data Core: COMPLETE._ (Phase 0 foundations also complete.)
+_Phases 0–2 COMPLETE and verified._ (Phase 0 foundations, Phase 1 data core,
+Phase 2 timed auction engine.)
 
 ## Phase 0 checklist
 
@@ -21,6 +22,18 @@ _Phase 1 — Stable Data Core: COMPLETE._ (Phase 0 foundations also complete.)
 - [x] **Migration tests** — additive `asset.attributes`, upgrade-safety, trigger intact
 - [x] E2E — full seller→staff flow proving permission 403s + outbox/audit
 
+## Phase 2 checklist (gate: concurrency + soft-close E2E)
+
+- [x] Auction config — configure/open/close from a listing (staff)
+- [x] **Append-only bid ledger** — DB trigger rejects UPDATE/DELETE
+- [x] Increments + reserve (+ visibility) + opening bid
+- [x] **Proxy / max bidding** — private maxima; deterministic visible price
+- [x] **Concurrency** — row-locked bids (`SELECT…FOR UPDATE`) serialize
+- [x] **Soft close** — bids in the trigger window extend the end time
+- [x] Realtime projection — privacy-safe poll endpoint (SSE/WS adapter later)
+- [x] Close + winner — reserve-met sale vs passed-in, events emitted
+- [x] E2E — concurrency (exactly-one-accepted burst), proxy, soft-close, winner
+
 ## API surface (all under `/api/v1`)
 
 | Command               | Route                                     | AuthZ                          |
@@ -39,18 +52,23 @@ _Phase 1 — Stable Data Core: COMPLETE._ (Phase 0 foundations also complete.)
 | publishListing        | `POST /listings/:id/publish`              | `listing:publish`              |
 | registerMedia         | `POST /assets/:id/media`                  | `media:manage`                 |
 | addDerivative         | `POST /media/:id/derivatives`             | `media:manage`                 |
+| configureAuction      | `POST /auctions`                          | `auction:configure`            |
+| openAuction           | `POST /auctions/:id/open`                 | `auction:operate`              |
+| placeBid              | `POST /auctions/:id/bids`                 | `bid:place`                    |
+| closeAuction          | `POST /auctions/:id/close`                | `auction:operate`              |
+| auctionState          | `GET /auctions/:id/state`                 | public (privacy-safe)          |
 | devToken (non-prod)   | `POST /dev/token`                         | dev only                       |
 
 ## Not started (later phases)
 
-Auction engine (Phase 2), EOI/Exchange (3), public site + AuctionFlow Cube (4),
+EOI/Exchange (3), public site + AuctionFlow Cube (4),
 seller/admin UI (5), commerce/settlement (6), Singha Connect (7), AI Core (8),
 Social Publisher (9), Asset Intelligence (10), Singha Live (11), hardening +
 V1 migration + launch (12).
 
 ## Gate status
 
-Phase 1 gate **passed** via `pnpm run check` (format, lint, typecheck, build,
-unit), `pnpm run test:db` (migrations and integration) and `pnpm run test:e2e`
-(permission enforcement, outbox and append-only audit end-to-end). Ready for
-Phase 2 (Timed Auction Engine).
+Phases 1 and 2 gates **passed** via `pnpm run check` (format, lint, typecheck,
+build, unit), `pnpm run test:db` (migrations and integration), `pnpm run test:e2e`
+(data-core permissions + outbox/audit) and `pnpm run test:auction` (concurrency,
+proxy, soft-close, winner). Ready for Phase 3 (EOI + Exchange).
