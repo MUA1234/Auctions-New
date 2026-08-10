@@ -13,6 +13,8 @@
     "@singha/auctionflow": "workspace:*",
     "@singha/contracts": "workspace:*",
     "@singha/ui": "workspace:*",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
     "next": "14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

@@ -9,7 +9,9 @@
     "allowJs": true,
     "incremental": true,
     "types": ["node", "react", "react-dom"],
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["next-env.d.ts", "src", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
