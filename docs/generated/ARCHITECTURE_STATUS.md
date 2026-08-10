@@ -56,7 +56,16 @@ later-phase adapter (WebSocket/SSE).
 
 ## Status
 
-Phase 0 foundations in place: monorepo, tooling, CI, observability baseline,
-domain-boundary scaffold, stable data-core schema (identity/inventory/media/
-audit/outbox/platform) with an append-only audit guarantee, and the ported
-design system. Not production-ready; feature phases (1–12) not started.
+Phase 0 (foundations) and Phase 1 (stable data core) complete. Phase 1 added
+the identity/seller/inventory/marketplace/media domain modules on the API,
+server-side RBAC (JWT principal + global permission guard + ownership checks), a
+transactional unit-of-work writing business change + outbox event + audit
+atomically, versioned category schemas, and migration/upgrade-safety tests. Not
+production-ready; Phase 2 (Timed Auction Engine) is next.
+
+## API module structure (apps/api)
+
+`shared/` (auth: principal middleware, JWT, permissions guard, `@RequirePermissions`,
+`@CurrentActor`; persistence: `UnitOfWork`; validation: `ZodBody`; http: domain
+exception filter) + `modules/` (identity, seller, inventory, marketplace, media,
+dev). Domain rules and the boundary graph live in `@singha/domain`.

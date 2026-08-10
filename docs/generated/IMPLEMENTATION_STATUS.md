@@ -1,46 +1,56 @@
 # IMPLEMENTATION STATUS
 
-_Phase 0 — Foundations._ Do not begin Phase 1 until Phase 0 checks pass (docs/23).
+_Phase 1 — Stable Data Core: COMPLETE._ (Phase 0 foundations also complete.)
 
 ## Phase 0 checklist
 
-- [x] Monorepo initialized (pnpm + Turborepo) with strict TS config
-- [x] Format / lint / typecheck / build / unit-test commands
-- [x] Local PostgreSQL + Redis dev config (docker-compose + native notes)
-- [x] Observability baseline (pino redaction, correlation, metrics registry)
-- [x] Generated project docs (this folder)
-- [x] Domain-module boundaries scaffolded (acyclic manifest graph + test)
-- [x] Stable data-core migrations: identity, inventory, media provenance, audit
-      (append-only), transactional outbox, platform config
-- [x] Migration + domain tests
-- [x] CI pipeline (GitHub Actions with Postgres service)
-- [x] Design system ported from V1 (`@singha/ui`) and applied to the web homepage
+- [x] Monorepo, tooling, CI, observability baseline, generated docs
+- [x] Domain-boundary scaffold; stable data-core schema; migrations; design system
 
-## What exists
+## Phase 1 checklist (gate: permissions + migration tests)
 
-| Area                                                         | Package/App             | State                        |
-| ------------------------------------------------------------ | ----------------------- | ---------------------------- |
-| Contracts (ids, events, API)                                 | `@singha/contracts`     | Implemented                  |
-| Config (env/flags/business)                                  | `@singha/config`        | Implemented                  |
-| Observability                                                | `@singha/observability` | Implemented                  |
-| Domain kernel + boundaries + identity/inventory/audit/outbox | `@singha/domain`        | Phase 0 subset               |
-| Data core (Prisma)                                           | `@singha/database`      | Implemented (Phase 0 tables) |
-| Design system                                                | `@singha/ui`            | Implemented (ported)         |
-| Catalogue view model                                         | `@singha/auctionflow`   | Placeholder (Phase 4)        |
-| Test helpers                                                 | `@singha/test-utils`    | Implemented                  |
-| API (health, feature-flags, config, prisma)                  | `apps/api`              | Foundations                  |
-| Web (editorial homepage)                                     | `apps/web`              | Foundations                  |
-| Worker (outbox dispatcher)                                   | `apps/worker`           | Foundations (idle w/o Redis) |
-| Live consoles                                                | `apps/live-console`     | Placeholder (Phase 11)       |
+- [x] Identity/customer — register, read (self/permission), external identities, KYC
+- [x] Organizations/sellers — create org (owner member), add members (ownership-authorized)
+- [x] Assets — create/update with **versioned category-schema validation**
+- [x] Listings — create + guarded lifecycle (submit → review → publish)
+- [x] Category schemas — vehicles/machinery/gems/property/bulk/general (v1)
+- [x] Media/docs — register immutable original + derivative provenance
+- [x] Audit — every consequential command writes an append-only audit entry
+- [x] Outbox — domain events written **atomically** with state (unit of work)
+- [x] **Server-side RBAC** — JWT principal + permissions guard + ownership checks
+- [x] **Migration tests** — additive `asset.attributes`, upgrade-safety, trigger intact
+- [x] E2E — full seller→staff flow proving permission 403s + outbox/audit
+
+## API surface (all under `/api/v1`)
+
+| Command               | Route                                     | AuthZ                          |
+| --------------------- | ----------------------------------------- | ------------------------------ |
+| registerCustomer      | `POST /customers`                         | public                         |
+| getCustomer           | `GET /customers/:id`                      | self or `customer:read`        |
+| linkExternalIdentity  | `POST /customers/:id/external-identities` | self or `customer:manage`      |
+| setKyc                | `POST /customers/:id/kyc`                 | `kyc:manage`                   |
+| createOrganization    | `POST /organizations`                     | `organization:create`          |
+| addOrganizationMember | `POST /organizations/:id/members`         | owner or `organization:manage` |
+| createAsset           | `POST /assets`                            | `asset:create`                 |
+| updateAssetAttributes | `PATCH /assets/:id/attributes`            | owner or `asset:manage`        |
+| createListing         | `POST /listings`                          | `listing:create`               |
+| submitListing         | `POST /listings/:id/submit`               | `listing:submit`               |
+| reviewListing         | `POST /listings/:id/review`               | `listing:review`               |
+| publishListing        | `POST /listings/:id/publish`              | `listing:publish`              |
+| registerMedia         | `POST /assets/:id/media`                  | `media:manage`                 |
+| addDerivative         | `POST /media/:id/derivatives`             | `media:manage`                 |
+| devToken (non-prod)   | `POST /dev/token`                         | dev only                       |
 
 ## Not started (later phases)
 
 Auction engine (Phase 2), EOI/Exchange (3), public site + AuctionFlow Cube (4),
-seller/admin (5), commerce/settlement (6), Singha Connect (7), AI Core (8),
+seller/admin UI (5), commerce/settlement (6), Singha Connect (7), AI Core (8),
 Social Publisher (9), Asset Intelligence (10), Singha Live (11), hardening +
 V1 migration + launch (12).
 
-## Gate
+## Gate status
 
-Phase 0 gate = all checks pass (`pnpm run check`) + DB integration
-(`pnpm run test:db`). See TEST_MATRIX.md for the current run status.
+Phase 1 gate **passed** via `pnpm run check` (format, lint, typecheck, build,
+unit), `pnpm run test:db` (migrations and integration) and `pnpm run test:e2e`
+(permission enforcement, outbox and append-only audit end-to-end). Ready for
+Phase 2 (Timed Auction Engine).

@@ -23,6 +23,11 @@ infra (Class D) decisions are NOT made here.
 | D-0015 | A     | `live-console` scaffolded as a minimal placeholder (not a second Next build)                                  | Keeps Phase 0 lean; full build in Phase 11                                    | High                           |
 | D-0016 | B     | Local DB via docker-compose OR native Homebrew; ephemeral throwaway cluster for verification                  | Docker not assumed present                                                    | High                           |
 | D-0017 | A     | Design system ported from V1 "Auction-House Luxe" (coal/bone/red/gold + HUD) as `@singha/ui` preset           | Follow the requested design/colours from a single source of truth             | Medium                         |
+| D-0018 | A     | Server-side RBAC: roles→permissions in contracts + a global Nest guard; ownership checks in services          | Least privilege, testable matrix (docs/15)                                    | Medium                         |
+| D-0019 | A     | Auth principal via signed JWT (jose HS256); dev-only `/dev/token` mints test tokens                           | Real enforcement now; login/session issuance is a later security phase        | Medium                         |
+| D-0020 | A     | Transactional UnitOfWork writes business change + outbox event + audit in ONE tx                              | docs/16 atomic outbox; docs/04 append-only audit                              | Low (foundational)             |
+| D-0021 | B     | Versioned category attribute schemas live in `@singha/contracts` (Zod)                                        | docs/06 category schema versioning; shared by API + tests                     | Medium                         |
+| D-0022 | A     | Data-core E2E is an out-of-process driver (real API + ephemeral DB)                                           | Highest fidelity; avoids SWC-in-Vitest for Nest decorators                    | High                           |
 
 ## Open items awaiting inputs
 
