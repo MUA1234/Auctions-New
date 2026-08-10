@@ -183,6 +183,9 @@ model Asset {
   id              String         @id
   category        String
   schemaVersion   Int            @default(1) @map("schema_version")
+  // Category-specific attributes, validated against the versioned category
+  // schema (docs/06). Nullable + additive so pre-existing assets stay valid.
+  attributes      Json?
   lifecycle       AssetLifecycle @default(draft)
   ownerCustomerId String?        @map("owner_customer_id")
   createdAt       DateTime       @default(now()) @map("created_at")
