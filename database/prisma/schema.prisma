@@ -210,7 +210,8 @@ model Listing {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  asset Asset @relation(fields: [assetId], references: [id])
+  asset   Asset    @relation(fields: [assetId], references: [id])
+  auction Auction?
 
   @@index([assetId])
   @@index([status])
@@ -328,4 +329,101 @@ model BusinessConfig {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("business_config")
+}
+
+// ---------------------------------------------------------------------------
+// Auction engine (docs/07) — server-authoritative. UI is never the source of
+// truth. The Bid ledger is append-only (a DB trigger rejects UPDATE/DELETE);
+// corrections are new reversal rows. Proxy maximums are PRIVATE and never
+// exposed. Money is integer minor units.
+// ---------------------------------------------------------------------------
+
+enum AuctionStatus {
+  scheduled
+  open
+  paused
+  closed
+  cancelled
+}
+
+enum BidSource {
+  online
+  floor
+  phone
+  absentee
+  proxy
+  auctioneer
+}
+
+enum BidStatus {
+  accepted
+  rejected
+  reversed
+}
+
+model Auction {
+  id                  String        @id
+  listingId           String        @unique @map("listing_id")
+  status              AuctionStatus @default(scheduled)
+  currency            String        @default("LKR")
+  startsAt            DateTime      @map("starts_at")
+  endsAt              DateTime      @map("ends_at")
+  openingBidMinor     Int           @map("opening_bid_minor")
+  reserveMinor        Int?          @map("reserve_minor")
+  reserveVisible      Boolean       @default(false) @map("reserve_visible")
+  incrementMinor      Int           @map("increment_minor")
+  softCloseTriggerSec Int           @default(10) @map("soft_close_trigger_sec")
+  softCloseExtendSec  Int           @default(20) @map("soft_close_extend_sec")
+  buyerPremiumPct     Float         @default(0) @map("buyer_premium_pct")
+  // Denormalized realtime projection (rebuildable from the ledger).
+  currentBidMinor     Int?          @map("current_bid_minor")
+  highBidderId        String?       @map("high_bidder_id")
+  highBidId           String?       @map("high_bid_id")
+  extendedCount       Int           @default(0) @map("extended_count")
+  version             Int           @default(0)
+  winnerCustomerId    String?       @map("winner_customer_id")
+  soldAt              DateTime?     @map("sold_at")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  listing Listing     @relation(fields: [listingId], references: [id])
+  bids    Bid[]
+  maxes   BidderMax[]
+
+  @@index([status, endsAt])
+  @@map("auction")
+}
+
+// Append-only bid ledger (docs/04). Each visible price the engine sets is a row.
+model Bid {
+  id             String    @id
+  auctionId      String    @map("auction_id")
+  sequence       Int
+  bidderId       String    @map("bidder_id")
+  amountMinor    Int       @map("amount_minor")
+  source         BidSource @default(online)
+  status         BidStatus @default(accepted)
+  idempotencyKey String?   @map("idempotency_key")
+  placedAt       DateTime  @default(now()) @map("placed_at")
+
+  auction Auction @relation(fields: [auctionId], references: [id])
+
+  @@unique([auctionId, sequence])
+  @@index([auctionId])
+  @@map("bid")
+}
+
+// Private per-bidder proxy maximum (never exposed to other bidders / analytics).
+model BidderMax {
+  id        String   @id
+  auctionId String   @map("auction_id")
+  bidderId  String   @map("bidder_id")
+  maxMinor  Int      @map("max_minor")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auction Auction @relation(fields: [auctionId], references: [id])
+
+  @@unique([auctionId, bidderId])
+  @@index([auctionId])
+  @@map("bidder_max")
 }
