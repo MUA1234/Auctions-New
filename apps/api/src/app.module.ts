@@ -8,6 +8,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { SellerModule } from './modules/seller/seller.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { AuctionModule } from './modules/auction/auction.module';
 import { MediaModule } from './modules/media/media.module';
 import { DevModule } from './modules/dev/dev.module';
 import { PrincipalMiddleware } from './shared/auth/principal.middleware';
@@ -28,6 +29,7 @@ import { PrincipalMiddleware } from './shared/auth/principal.middleware';
     SellerModule,
     InventoryModule,
     MarketplaceModule,
+    AuctionModule,
     MediaModule,
     DevModule,
   ],

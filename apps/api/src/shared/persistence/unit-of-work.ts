@@ -36,69 +36,73 @@ export class UnitOfWork {
   async execute<T>(
     actor: Actor,
     work: (ctx: UowContext) => Promise<T>,
-    correlationId: string = newCorrelationId(),
+    opts: { correlationId?: string; timeout?: number; maxWait?: number } = {},
   ): Promise<T> {
+    const correlationId = opts.correlationId ?? newCorrelationId();
     const events: ReturnType<typeof createEnvelope>[] = [];
     const audits: ReturnType<typeof recordAudit>[] = [];
 
-    return this.prisma.$transaction(async (tx) => {
-      const ctx: UowContext = {
-        tx,
-        correlationId,
-        emit: (input) => {
-          events.push(createEnvelope({ ...input, actor, correlationId }));
-        },
-        audit: (input) => {
-          audits.push(
-            recordAudit({
-              ...input,
-              actorType: input.actorType ?? actor.type,
-              actorId: input.actorId ?? actor.id,
-              correlationId,
-            }),
-          );
-        },
-      };
-
-      const result = await work(ctx);
-
-      for (const event of events) {
-        await tx.outboxEvent.create({
-          data: {
-            id: event.eventId,
-            eventId: event.eventId,
-            name: event.name,
-            aggregateType: event.aggregateType,
-            aggregateId: event.aggregateId,
-            correlationId: event.correlationId,
-            causationId: event.causationId ?? undefined,
-            payload: event.payload as unknown as Prisma.InputJsonValue,
-            payloadVersion: event.payloadVersion,
-            occurredAt: new Date(event.occurredAt),
+    return this.prisma.$transaction(
+      async (tx) => {
+        const ctx: UowContext = {
+          tx,
+          correlationId,
+          emit: (input) => {
+            events.push(createEnvelope({ ...input, actor, correlationId }));
           },
-        });
-      }
-
-      for (const entry of audits) {
-        await tx.auditEvent.create({
-          data: {
-            id: entry.id,
-            actorType: entry.actorType,
-            actorId: entry.actorId ?? undefined,
-            action: entry.action,
-            targetType: entry.targetType,
-            targetId: entry.targetId,
-            correlationId: entry.correlationId,
-            reason: entry.reason ?? undefined,
-            before:
-              entry.before === undefined ? undefined : (entry.before as Prisma.InputJsonValue),
-            after: entry.after === undefined ? undefined : (entry.after as Prisma.InputJsonValue),
-            occurredAt: new Date(entry.occurredAt),
+          audit: (input) => {
+            audits.push(
+              recordAudit({
+                ...input,
+                actorType: input.actorType ?? actor.type,
+                actorId: input.actorId ?? actor.id,
+                correlationId,
+              }),
+            );
           },
-        });
-      }
+        };
 
-      return result;
-    });
+        const result = await work(ctx);
+
+        for (const event of events) {
+          await tx.outboxEvent.create({
+            data: {
+              id: event.eventId,
+              eventId: event.eventId,
+              name: event.name,
+              aggregateType: event.aggregateType,
+              aggregateId: event.aggregateId,
+              correlationId: event.correlationId,
+              causationId: event.causationId ?? undefined,
+              payload: event.payload as unknown as Prisma.InputJsonValue,
+              payloadVersion: event.payloadVersion,
+              occurredAt: new Date(event.occurredAt),
+            },
+          });
+        }
+
+        for (const entry of audits) {
+          await tx.auditEvent.create({
+            data: {
+              id: entry.id,
+              actorType: entry.actorType,
+              actorId: entry.actorId ?? undefined,
+              action: entry.action,
+              targetType: entry.targetType,
+              targetId: entry.targetId,
+              correlationId: entry.correlationId,
+              reason: entry.reason ?? undefined,
+              before:
+                entry.before === undefined ? undefined : (entry.before as Prisma.InputJsonValue),
+              after: entry.after === undefined ? undefined : (entry.after as Prisma.InputJsonValue),
+              occurredAt: new Date(entry.occurredAt),
+            },
+          });
+        }
+
+        return result;
+      },
+      { timeout: opts.timeout ?? 10000, maxWait: opts.maxWait ?? 10000 },
+    );
   }
 }
