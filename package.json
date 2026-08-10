@@ -1,0 +1,44 @@
+{
+  "name": "singha-auctions-v2",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Singha Auctions V2 — production-grade auction, asset exchange, live-auction, omnichannel communications and asset-intelligence platform.",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:db": "node scripts/with-ephemeral-db.mjs bash -c \"pnpm db:migrate:deploy && pnpm --filter @singha/database run test\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,json,md,css,yml,yaml}\"",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test",
+    "clean": "turbo run clean",
+    "db:generate": "pnpm --filter @singha/database run generate",
+    "db:migrate": "pnpm --filter @singha/database run migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @singha/database run migrate:deploy",
+    "db:studio": "pnpm --filter @singha/database run studio",
+    "db:seed": "pnpm --filter @singha/database run seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8"
+  }
+}
