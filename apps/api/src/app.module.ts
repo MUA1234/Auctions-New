@@ -10,6 +10,8 @@ import { SellerModule } from './modules/seller/seller.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { AuctionModule } from './modules/auction/auction.module';
+import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { MediaModule } from './modules/media/media.module';
 import { DevModule } from './modules/dev/dev.module';
 import { PrincipalMiddleware } from './shared/auth/principal.middleware';
@@ -32,6 +34,8 @@ import { PrincipalMiddleware } from './shared/auth/principal.middleware';
     InventoryModule,
     MarketplaceModule,
     AuctionModule,
+    CatalogueModule,
+    AuthModule,
     MediaModule,
     DevModule,
   ],

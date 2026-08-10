@@ -45,7 +45,9 @@ export interface AppConfig {
     workerMetricsPort: number;
     siteUrl: string;
     apiUrl: string;
+    corsOrigins: string[];
   };
+  demo: { authEnabled: boolean };
   db: { url: string; directUrl: string };
   redis: { url: string; enabled: boolean };
   security: { jwtSecret: string; sessionSecret: string };
@@ -75,7 +77,11 @@ export function loadConfig(source?: NodeJS.ProcessEnv | Record<string, unknown>)
       workerMetricsPort: env.WORKER_METRICS_PORT,
       siteUrl: env.NEXT_PUBLIC_SITE_URL,
       apiUrl: env.NEXT_PUBLIC_API_URL,
+      corsOrigins: env.CORS_ORIGINS.split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
     },
+    demo: { authEnabled: env.DEMO_AUTH_ENABLED },
     db: { url: env.DATABASE_URL, directUrl: env.DIRECT_URL || env.DATABASE_URL },
     redis: { url: env.REDIS_URL, enabled: env.REDIS_URL.trim().length > 0 },
     security: { jwtSecret: env.JWT_SECRET, sessionSecret: env.SESSION_SECRET },

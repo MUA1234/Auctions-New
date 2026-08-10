@@ -23,6 +23,11 @@ export const envSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().default('http://localhost:3000'),
   NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
 
+  // Comma-separated allowed CORS origins ('*' = reflect any). Set to your web URL.
+  CORS_ORIGINS: z.string().default('*'),
+  // Passwordless demo login (email → bidder token). Disable for real production.
+  DEMO_AUTH_ENABLED: boolFromEnv.default(true),
+
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   // Direct (non-pooled) DB connection used for Prisma migrations (Supabase).
   DIRECT_URL: z.string().default(''),

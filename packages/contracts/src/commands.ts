@@ -98,6 +98,13 @@ export const createUploadUrlSchema = z.object({
 });
 export type CreateUploadUrlInput = z.infer<typeof createUploadUrlSchema>;
 
+// Passwordless demo login (email → bidder token). Not for real production auth.
+export const demoLoginSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1).max(200).optional(),
+});
+export type DemoLoginInput = z.infer<typeof demoLoginSchema>;
+
 export const devTokenSchema = z.object({
   customerId: z.string().optional(),
   roles: z.array(z.enum(ALL_ROLES)).default([]),

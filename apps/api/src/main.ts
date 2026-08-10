@@ -18,10 +18,14 @@ async function bootstrap(): Promise<void> {
   });
   app.enableShutdownHooks();
 
-  await app.listen(config.http.apiPort);
-  new Logger('bootstrap').log(
-    `Singha API listening on :${config.http.apiPort} (prefix /api/${API_VERSION})`,
-  );
+  // CORS so the Vercel-hosted web can call the API (bearer tokens, no cookies).
+  const origins = config.http.corsOrigins;
+  app.enableCors({ origin: origins.includes('*') ? true : origins });
+
+  // Respect the platform's PORT (Railway/Render/etc.); bind all interfaces.
+  const port = Number(process.env.PORT) || config.http.apiPort;
+  await app.listen(port, '0.0.0.0');
+  new Logger('bootstrap').log(`Singha API listening on :${port} (prefix /api/${API_VERSION})`);
 }
 
 void bootstrap();
