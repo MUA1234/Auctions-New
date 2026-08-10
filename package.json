@@ -29,7 +29,8 @@
     "db:studio": "pnpm --filter @singha/database run studio",
     "db:seed": "pnpm --filter @singha/database run seed",
     "supabase:deploy": "dotenv -e .env -- pnpm --filter @singha/database exec prisma migrate deploy",
-    "supabase:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed"
+    "supabase:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed",
+    "demo:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed:demo"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

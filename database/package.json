@@ -24,6 +24,7 @@
     "migrate:reset": "prisma migrate reset --force",
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed-demo.ts",
     "clean": "rimraf dist"
   },
   "prisma": {

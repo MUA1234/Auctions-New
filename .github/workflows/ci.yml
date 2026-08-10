@@ -30,6 +30,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://singha:singha@localhost:5432/singha_v2?schema=public
+      DIRECT_URL: postgresql://singha:singha@localhost:5432/singha_v2?schema=public
       # No Redis service: the worker idles gracefully without REDIS_URL (Phase 0).
 
     steps:

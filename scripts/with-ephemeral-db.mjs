@@ -67,7 +67,8 @@ try {
   const databaseUrl = `postgresql://${user}@127.0.0.1:${port}/${dbName}?schema=public`;
   console.log(`[ephemeral-db] running: ${command.join(' ')}`);
   exitCode = run(command[0], command.slice(1), {
-    env: { ...process.env, DATABASE_URL: databaseUrl },
+    // DIRECT_URL mirrors DATABASE_URL — Prisma's schema requires it (Supabase).
+    env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
     shell: false,
   });
 } catch (error) {
