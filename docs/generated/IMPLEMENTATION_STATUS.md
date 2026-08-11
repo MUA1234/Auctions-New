@@ -84,23 +84,41 @@ Verified: `next build` green (9/9 pages) and a runtime smoke (`next start`) —
       `NEXT_PUBLIC_DEMO_AUTH_ENABLED=false` to remove it in production (doc 09
       "dev/demo auth disabled in production").
 
-**Backend follow-up for P8** (separate repo): the API must verify Supabase JWTs
-and map the IdP subject → Singha Customer/User (never use the IdP id as the
-business key), add privileged-staff MFA, and disable `/auth/demo` +
-`/dev/token` in production. Until then, real Supabase sessions authenticate the
-frontend while the backend still accepts its own tokens; the demo path keeps
-local dev working.
+## Product Alignment — auth loop, realtime, real uploads (both repos)
 
-**Remaining alignment (open):**
+- [x] **Auth loop CLOSED** (backend alignment #5): `PrincipalMiddleware` now
+      verifies **real Supabase session JWTs** against the project JWKS (ES256)
+      and JIT-provisions a Singha Customer via `ExternalIdentity` (IdP subject is
+      never the business key; same verified email links to the existing
+      customer). Roles derive from persistent org membership, never the token.
+      Singha's own HS256 tokens still work for dev/demo.
+- [x] **Realtime bidding over SSE** (backend alignment #6 + web): `GET
+    /auctions/:id/stream` pushes the auction projection on change; `BidPanel`
+      consumes it via `EventSource` (3s poll fallback). Proven by `e2e-auction`
+      (first frame carries live state).
+- [x] **Real media uploads** (web): the Listing Studio uploads photos through
+      the signed pipeline (`/assets/:id/media/upload-url` → `uploadToSignedUrl`
+      → register real storage key), so Studio-created lots get real catalogue
+      photos. Falls back to best-effort registration if the File is gone / upload
+      fails.
+- [x] **Endpoint alignment**: AI draft → `/ai/listing-draft`; content PATCH uses
+      the real flat field names + guide/close time; buy-now via
+      `/listings/:id/buy-now-price`.
 
-- Backend repo (`Auctions-Backend`, not this repo): the authoritative
-  `/api/v2/me/dashboard` projection + persistent watchlist authority,
-  AuctionEvent/EventLot, richer lot-detail DTO with media, `/ai/listing/draft`,
-  `/listings/:id/content` + `/sale-config`, `/social/campaigns`, signed media
-  upload pipeline. The frontend already calls all of these and degrades cleanly
-  until they exist.
-- P1 cross-repo: generated typed client from the canonical backend (frontend
-  currently has zero runtime import of the co-located stale `apps/api`).
+**Still open (mostly escalations needing real credentials):**
+
+- **P8 remainder**: privileged-staff **MFA**; disable `/auth/demo` in production
+  (`/dev/token` is already gated by `isProduction`).
+- **No realtime for the dashboard** yet (auction bidding is realtime; the buyer
+  command centre still refetches).
+- **Escalations** (mock adapters await real creds): P9 real AI provider + Buyer
+  Twin + recommendations, P10 Connect channels (WhatsApp/Meta/email/SMS), P11
+  Social publishing (Meta), P12 Asset Intelligence source-backed data, P13
+  Singha Live real video/YouTube.
+- **P14 launch hardening**: load, formal security review, backup/restore drills,
+  V1→V2 data migration, production observability, real pilot + cutover.
+- **P1 cross-repo**: generated typed client (frontend has zero runtime import of
+  the co-located stale `apps/api`, so it is runtime-clean already).
 
 ## Phase 0 checklist
 
