@@ -3,6 +3,7 @@ import { Button, Logo } from '@singha/ui';
 
 const NAV = [
   { href: '/catalogue', label: 'Catalogue' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/live', label: 'Live' },
   { href: '/how-it-works', label: 'How it works' },
 ];

@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
+import { apiGet, type MarketPulse } from '../lib/api';
+import { formatMoney } from '../lib/format';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Homepage — editorial and lightweight (docs/13): hero + featured items +
@@ -66,7 +70,14 @@ const PULSE = [
   { tag: 'Upcoming', text: 'Gem & jewellery live auction scheduled — registration opening soon.' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let pulse: MarketPulse | null = null;
+  try {
+    pulse = await apiGet<MarketPulse>('/intelligence/market-pulse');
+  } catch {
+    pulse = null;
+  }
+
   return (
     <>
       {/* Hero */}
@@ -181,19 +192,63 @@ export default function HomePage() {
           <h2 className="font-serif text-2xl font-bold text-bone">Market Pulse</h2>
           <Chip tone="gold">Editorial</Chip>
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {PULSE.map((entry) => (
-            <Card key={entry.tag} className="flex flex-col gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
-                {entry.tag}
-              </span>
-              <p className="text-sm text-bone-300">{entry.text}</p>
-            </Card>
-          ))}
-        </div>
-        <p className="mt-4 text-xs text-bone-600">
-          Market Pulse publishes only source-backed, reviewed content (docs/12). Sample copy shown.
-        </p>
+        {pulse && pulse.salesCount > 0 ? (
+          <>
+            <div className="grid gap-5 md:grid-cols-3">
+              <Card className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                  Sold ({pulse.windowDays}d)
+                </span>
+                <span className="tabular font-display text-2xl font-bold text-bone">
+                  {pulse.salesCount} lots
+                </span>
+              </Card>
+              <Card className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                  Total value
+                </span>
+                <span className="tabular font-display text-2xl font-bold text-bone">
+                  {formatMoney(pulse.totalMinor)}
+                </span>
+              </Card>
+              <Card className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                  Top category
+                </span>
+                <span className="font-display text-2xl font-bold capitalize text-bone">
+                  {pulse.categories[0]?.category ?? '—'}
+                </span>
+              </Card>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {pulse.categories.slice(0, 4).map((c) => (
+                <Card key={c.category} className="flex items-center justify-between">
+                  <span className="text-sm capitalize text-bone-300">{c.category}</span>
+                  <span className="tabular text-sm font-semibold text-gold-400">
+                    {formatMoney(c.avgMinor)} avg
+                  </span>
+                </Card>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid gap-5 md:grid-cols-3">
+              {PULSE.map((entry) => (
+                <Card key={entry.tag} className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                    {entry.tag}
+                  </span>
+                  <p className="text-sm text-bone-300">{entry.text}</p>
+                </Card>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-bone-600">
+              Market Pulse publishes only source-backed, reviewed content (docs/12). Sample copy
+              shown until live results are available.
+            </p>
+          </>
+        )}
       </section>
 
       {/* Sell with Singha */}

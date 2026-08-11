@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card, Chip } from '@singha/ui';
 import { apiGet, type LotDetail } from '../../../lib/api';
 import { BidPanel } from '../../../components/BidPanel';
+import { WatchButton } from '../../../components/WatchButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,9 @@ export default async function LotPage({ params }: { params: { id: string } }) {
               <p className="text-bone-400">This lot is not open for bidding.</p>
             </Card>
           )}
+          <div className="mt-4">
+            <WatchButton lotId={lot.id} />
+          </div>
         </div>
       </div>
     </div>

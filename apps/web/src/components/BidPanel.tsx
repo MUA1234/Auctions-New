@@ -57,9 +57,11 @@ export function BidPanel({ auctionId, initial }: { auctionId: string; initial: A
     setBusy(true);
     setMessage(null);
     try {
-      const r = await apiPost<{ youLead: boolean }>(`/auctions/${auctionId}/bids`, {
-        maxAmountMinor: Math.round(Number(amount) * 100),
-      });
+      const r = await apiPost<{ youLead: boolean }>(
+        `/auctions/${auctionId}/bids`,
+        { maxAmountMinor: Math.round(Number(amount) * 100) },
+        token ?? undefined,
+      );
       setLead(r.youLead);
       setMessage(
         r.youLead ? 'You are the highest bidder.' : 'Bid placed — a proxy max is still ahead.',
