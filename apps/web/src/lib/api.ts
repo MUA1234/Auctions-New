@@ -61,7 +61,7 @@ export async function requestAiListingDraft(
   token?: string,
 ): Promise<AiListingDraft | null> {
   try {
-    return await apiPost<AiListingDraft>('/ai/listing/draft', body, token);
+    return await apiPost<AiListingDraft>('/ai/listing-draft', body, token);
   } catch {
     return null;
   }

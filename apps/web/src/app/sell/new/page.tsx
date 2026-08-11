@@ -283,16 +283,50 @@ export default function ListingStudio() {
         token,
       );
 
-      // Best-effort enrichment — never blocks listing creation.
+      // Best-effort enrichment — never blocks listing creation. Field names
+      // match the backend PATCH /listings/:id/content contract (flat location +
+      // guide-price + close time + inspection/collection summaries).
+      const guideMinor = toMinor(draft.sale.guidePrice);
+      const inspectionSummary =
+        [
+          draft.inspection.location,
+          draft.inspection.byAppointment ? 'By appointment' : '',
+          draft.inspection.notes,
+        ]
+          .filter(Boolean)
+          .join(' · ') || undefined;
+      const collectionSummary =
+        [
+          draft.collection.location,
+          draft.collection.deliveryAvailable ? 'Delivery available' : '',
+          draft.collection.deadline ? `Collect within ${draft.collection.deadline}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ') || undefined;
       await apiPatch(
         `/listings/${listing.id}/content`,
         {
           shortDescription: draft.shortDescription || undefined,
           fullDescription: draft.fullDescription || undefined,
-          location: { city: draft.city || null, region: draft.region || null },
+          locationCity: draft.city || undefined,
+          locationRegion: draft.region || undefined,
+          inspectionSummary,
+          collectionSummary,
+          guidePriceMinor: guideMinor,
+          showGuidePrice: guideMinor != null,
+          closesAt: draft.sale.closesAt ? new Date(draft.sale.closesAt).toISOString() : undefined,
         },
         token,
       ).catch(() => notes.push('Rich content not stored (endpoint unavailable).'));
+
+      // Buy-now price has its own authoritative endpoint.
+      const buyNowMinor = toMinor(draft.sale.buyNowPrice);
+      if (buyNowMinor != null)
+        await apiPost(
+          `/listings/${listing.id}/buy-now-price`,
+          { amountMinor: buyNowMinor, currency: 'LKR' },
+          token,
+        ).catch(() => notes.push('Buy-now price not stored (endpoint unavailable).'));
 
       let mediaOk = 0;
       for (let i = 0; i < draft.photos.length; i++) {
@@ -326,18 +360,11 @@ export default function ListingStudio() {
       if (draft.photos.length && mediaOk === 0)
         notes.push('Media registration pending (upload pipeline not connected).');
 
-      await apiPost(
-        `/listings/${listing.id}/sale-config`,
-        {
-          openingBidMinor: toMinor(draft.sale.openingBid),
-          incrementMinor: toMinor(draft.sale.increment),
-          reserveMinor: toMinor(draft.sale.reserve),
-          guidePriceMinor: toMinor(draft.sale.guidePrice),
-          buyNowPriceMinor: toMinor(draft.sale.buyNowPrice),
-          closesAt: draft.sale.closesAt || undefined,
-        },
-        token,
-      ).catch(() => notes.push('Sale settings saved locally (config endpoint unavailable).'));
+      // Opening bid / increment / reserve configure the AUCTION, which staff set
+      // when they schedule it (POST /auctions) after approval — not at draft
+      // time. We record the seller's requested values in the note trail.
+      if (toMinor(draft.sale.openingBid) != null || toMinor(draft.sale.reserve) != null)
+        notes.push('Requested auction opening/reserve recorded for staff scheduling.');
 
       if (draft.social.promotion !== 'None')
         await apiPost(
