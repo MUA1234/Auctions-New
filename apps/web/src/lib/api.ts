@@ -348,13 +348,43 @@ export async function fetchDashboard(token: string): Promise<DashboardProjection
 
 /**
  * SSE stream for the buyer command centre (pack doc 05 "realtime transitions",
- * doc 17). `EventSource` cannot set an Authorization header, so the bearer token
- * rides as a query param — the backend authenticates the stream from it. When
- * the endpoint isn't shipped the connection errors and callers fall back to a
- * poll, mirroring the auction `BidPanel`.
+ * doc 17). Pack FIX-11: the main bearer token is NEVER placed in the URL (it
+ * would leak via logs, referrers and browser history). Instead we open the
+ * stream with `fetch()` and send the token in the `Authorization` header, then
+ * read the SSE body incrementally. `onFrame` is called with each parsed data
+ * frame; the returned promise resolves when the stream ends or is aborted. On
+ * any error the caller falls back to a poll, mirroring the auction `BidPanel`.
  */
-export function dashboardStreamUrl(token: string): string {
-  return `${apiV2}/me/dashboard/stream?access_token=${encodeURIComponent(token)}`;
+export async function streamDashboard(
+  token: string,
+  onFrame: (data: string) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  const res = await fetch(`${apiV2}/me/dashboard/stream`, {
+    headers: { authorization: `Bearer ${token}`, accept: 'text/event-stream' },
+    signal,
+  });
+  if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE events are separated by a blank line; a data payload is `data: ...`.
+    let sep: number;
+    while ((sep = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      const data = rawEvent
+        .split('\n')
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => l.slice(5).trim())
+        .join('\n');
+      if (data) onFrame(data);
+    }
+  }
 }
 
 export async function addWatch(listingId: string, token: string) {

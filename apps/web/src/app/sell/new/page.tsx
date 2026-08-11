@@ -357,41 +357,41 @@ export default function ListingStudio() {
         ).catch(() => notes.push('Buy-now price not stored (endpoint unavailable).'));
 
       // Photos: upload the immutable original through the signed pipeline and
-      // register it with the REAL storage key (cover first). If the File handle
-      // is gone (draft restored after a reload) or upload fails, fall back to a
-      // best-effort registration so submit still succeeds.
+      // register it with the REAL, backend-issued storage key (cover first).
+      // Pack FIX-05: NEVER register a filename as media. If the File handle is
+      // gone (draft restored after a reload) or the upload fails, the photo is
+      // left un-registered and flagged for re-upload — no fake READY row.
       const ordered = [...draft.photos].sort((a, b) => Number(b.cover) - Number(a.cover));
       let uploaded = 0;
+      let firstUpload = true;
       for (const p of ordered) {
         const file = filesRef.current.get(p.id);
-        let storageKey = p.name;
-        if (file) {
-          try {
-            storageKey = await uploadPhoto(asset.id, file, token);
-            uploaded++;
-          } catch {
-            notes.push(`Photo "${p.name}" could not be uploaded — registered by name only.`);
-          }
+        if (!file) {
+          notes.push(`Photo "${p.name}" needs re-uploading — re-attach it before publishing.`);
+          continue;
         }
-        await apiPost(`/assets/${asset.id}/media`, { kind: 'image', storageKey }, token).catch(
-          () => {},
-        );
+        try {
+          const storageKey = await uploadPhoto(asset.id, file, token);
+          await apiPost(
+            `/assets/${asset.id}/media`,
+            { kind: 'image', storageKey, isCover: firstUpload },
+            token,
+          );
+          uploaded++;
+          firstUpload = false;
+        } catch {
+          notes.push(`Photo "${p.name}" could not be uploaded — re-attach and retry.`);
+        }
       }
       if (draft.photos.length > 0 && uploaded === 0)
-        notes.push('Photos registered without upload (storage not reachable from this session).');
+        notes.push('No photos were uploaded (storage not reachable from this session).');
 
+      // Documents/video require the real signed-upload pipeline before they can be
+      // registered (pack FIX-06/07). We do NOT register them by name/URL here.
+      if (draft.documents.length > 0)
+        notes.push('Documents pending secure upload — attach files through the upload pipeline.');
       if (draft.videoUrl)
-        await apiPost(
-          `/assets/${asset.id}/media`,
-          { kind: 'video', storageKey: draft.videoUrl },
-          token,
-        ).catch(() => {});
-      for (const doc of draft.documents)
-        await apiPost(
-          `/assets/${asset.id}/media`,
-          { kind: 'document', storageKey: doc.name },
-          token,
-        ).catch(() => {});
+        notes.push('Video pending secure upload — direct video upload is required.');
 
       // Opening bid / increment / reserve configure the AUCTION, which staff set
       // when they schedule it (POST /auctions) after approval — not at draft

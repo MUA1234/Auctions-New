@@ -6,7 +6,7 @@ import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import { Button, Card, Chip } from '@singha/ui';
 import {
   apiGetAuthed,
-  dashboardStreamUrl,
+  streamDashboard,
   fetchDashboard,
   fetchMyWatch,
   type DashboardGroup,
@@ -70,35 +70,36 @@ export default function DashboardPage() {
   // without a manual reload — matching the auction BidPanel's resilient pattern.
   useEffect(() => {
     if (!token) return;
-    let es: EventSource | null = null;
+    // Pack FIX-11: authenticated fetch-stream (Authorization header) — the bearer
+    // token never appears in a URL. Falls back to a 20s quiet poll if the stream
+    // endpoint isn't shipped or the connection drops.
+    const controller = new AbortController();
     let poll: ReturnType<typeof setInterval> | null = null;
     const startPoll = () => {
       if (poll) return;
       poll = setInterval(() => void load(token, true), 20000);
     };
-    try {
-      es = new EventSource(dashboardStreamUrl(token));
-      es.onopen = () => setLive(true);
-      es.onmessage = (e) => {
+    streamDashboard(
+      token,
+      (data) => {
+        setLive(true);
         try {
-          setProjection(JSON.parse(e.data) as DashboardProjection);
+          setProjection(JSON.parse(data) as DashboardProjection);
         } catch {
           // A ping/keep-alive frame — treat as a nudge to refresh.
           void load(token, true);
         }
-      };
-      es.onerror = () => {
+      },
+      controller.signal,
+    ).catch(() => {
+      if (!controller.signal.aborted) {
         setLive(false);
-        es?.close();
-        es = null;
         startPoll();
-      };
-    } catch {
-      startPoll();
-    }
+      }
+    });
     return () => {
       setLive(false);
-      es?.close();
+      controller.abort();
       if (poll) clearInterval(poll);
     };
   }, [token, load]);
