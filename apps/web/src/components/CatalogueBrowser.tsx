@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card, Chip } from '@singha/ui';
 import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
-import { fetchCatalogueV2, type CatalogueCardV2, type CatalogueResponse } from '../lib/api';
+import {
+  fetchCatalogueRow,
+  fetchCatalogueV2,
+  type CatalogueCardV2,
+  type CatalogueResponse,
+} from '../lib/api';
 import { SaleCard } from './SaleCard';
 
 type ViewMode = 'rubik' | 'grid' | 'list';
@@ -75,7 +80,13 @@ export function CatalogueBrowser({
   // Reset to page 1 whenever filters change.
   useEffect(() => setPage(1), [debounced, category, saleMethod, sort]);
 
-  const bands = useMemo(() => groupByCategory(data?.items ?? []), [data]);
+  // Rubik bands are driven by the category facet (all categories), each loading
+  // its own cursor slice — not the first global page. A selected category filter
+  // narrows to that single band.
+  const rubikCategories = useMemo(() => {
+    if (category) return [category];
+    return (data?.facets.category ?? []).map((f) => f.value);
+  }, [category, data]);
 
   return (
     <div className="mt-8">
@@ -158,7 +169,12 @@ export function CatalogueBrowser({
           <p className="text-bone-400">No lots match your filters.</p>
         </Card>
       ) : view === 'rubik' ? (
-        <RubikBands bands={bands} />
+        <RubikBands
+          categories={rubikCategories}
+          search={debounced}
+          saleMethod={saleMethod}
+          sort={sort}
+        />
       ) : view === 'grid' ? (
         <>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -186,19 +202,27 @@ export function CatalogueBrowser({
  * never resets a row. Horizontal drag/arrow/keys rotate a row; vertical intent
  * still scrolls the page normally (direction lock lives in the package).
  */
-function RubikBands({ bands }: { bands: { category: string; items: CatalogueCardV2[] }[] }) {
+function RubikBands({
+  categories,
+  search,
+  saleMethod,
+  sort,
+}: {
+  categories: string[];
+  search: string;
+  saleMethod: string;
+  sort: string;
+}) {
   return (
     <AuctionFlowViewport>
       <div className="mt-6 text-bone">
-        {bands.map((band) => (
-          <CubeRow<CatalogueCardV2>
-            key={band.category}
-            rowId={band.category}
-            title={band.category}
-            subtitle={bandSubtitle(band.items)}
-            items={band.items}
-            itemKey={(lot) => lot.id}
-            renderItem={(lot) => <SaleCard lot={lot} compact />}
+        {categories.map((category) => (
+          <CategoryBand
+            key={category}
+            category={category}
+            search={search}
+            saleMethod={saleMethod}
+            sort={sort}
           />
         ))}
       </div>
@@ -206,8 +230,91 @@ function RubikBands({ bands }: { bands: { category: string; items: CatalogueCard
   );
 }
 
+/**
+ * One Rubik row that owns its OWN cursor (pack 01 doc 05). It fetches its first
+ * slice on mount / filter change, appends the next slice when the user rotates
+ * near the last face (`onNearEnd`), and stops at `exhausted`. Appending never
+ * resets the visible face because CubeRow keys position by rowId. This is what
+ * makes every category item reachable instead of only the first global page.
+ */
+function CategoryBand({
+  category,
+  search,
+  saleMethod,
+  sort,
+}: {
+  category: string;
+  search: string;
+  saleMethod: string;
+  sort: string;
+}) {
+  const [items, setItems] = useState<CatalogueCardV2[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [exhausted, setExhausted] = useState(false);
+  const loadingRef = useRef(false);
+  // Bumped whenever the filters change, so a late in-flight response for a stale
+  // filter set is ignored instead of polluting the current row.
+  const genRef = useRef(0);
+
+  const params = useMemo(
+    () => ({ category, search, saleMethod, sort, limit: 12 }),
+    [category, search, saleMethod, sort],
+  );
+
+  // Reset + load the first slice on mount and whenever the filters change.
+  useEffect(() => {
+    const gen = ++genRef.current;
+    setItems([]);
+    setCursor(null);
+    setExhausted(false);
+    loadingRef.current = true;
+    fetchCatalogueRow(params)
+      .then((r) => {
+        if (gen !== genRef.current) return;
+        setItems(r.items);
+        setCursor(r.nextCursor);
+        setExhausted(r.exhausted);
+      })
+      .catch(() => genRef.current === gen && setExhausted(true))
+      .finally(() => {
+        if (gen === genRef.current) loadingRef.current = false;
+      });
+  }, [params]);
+
+  const loadMore = useCallback(() => {
+    if (loadingRef.current || exhausted || !cursor) return;
+    const gen = genRef.current;
+    loadingRef.current = true;
+    fetchCatalogueRow({ ...params, cursor })
+      .then((r) => {
+        if (gen !== genRef.current) return;
+        setItems((prev) => [...prev, ...r.items]);
+        setCursor(r.nextCursor);
+        setExhausted(r.exhausted);
+      })
+      .catch(() => genRef.current === gen && setExhausted(true))
+      .finally(() => {
+        if (gen === genRef.current) loadingRef.current = false;
+      });
+  }, [params, cursor, exhausted]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <CubeRow<CatalogueCardV2>
+      rowId={category}
+      title={category}
+      subtitle={bandSubtitle(items, exhausted)}
+      items={items}
+      itemKey={(lot) => lot.id}
+      renderItem={(lot) => <SaleCard lot={lot} compact />}
+      onNearEnd={loadMore}
+    />
+  );
+}
+
 /** "Live 8 · Ending soon 2 · 14 lots" style row summary (doc 04 catalogue mock). */
-function bandSubtitle(items: CatalogueCardV2[]): string {
+function bandSubtitle(items: CatalogueCardV2[], exhausted: boolean): string {
   const live = items.filter(
     (l) => l.commercial.kind === 'auction' && l.status.toLowerCase() === 'live',
   ).length;
@@ -217,7 +324,8 @@ function bandSubtitle(items: CatalogueCardV2[]): string {
       l.commercial.endsAt != null &&
       new Date(l.commercial.endsAt).getTime() - Date.now() < 24 * 3_600_000,
   ).length;
-  const parts = [`${items.length} lots`];
+  // A trailing "+" signals more slices are loadable via the row cursor.
+  const parts = [`${items.length}${exhausted ? '' : '+'} lots`];
   if (live > 0) parts.unshift(`Live ${live}`);
   if (endingSoon > 0) parts.push(`Ending soon ${endingSoon}`);
   return parts.join(' · ');
@@ -308,18 +416,4 @@ function FilterChip({
       {children}
     </button>
   );
-}
-
-function groupByCategory(
-  items: CatalogueCardV2[],
-): { category: string; items: CatalogueCardV2[] }[] {
-  const map = new Map<string, CatalogueCardV2[]>();
-  for (const item of items) {
-    const arr = map.get(item.category) ?? [];
-    arr.push(item);
-    map.set(item.category, arr);
-  }
-  return [...map.entries()]
-    .map(([category, list]) => ({ category, items: list }))
-    .sort((a, b) => b.items.length - a.items.length);
 }

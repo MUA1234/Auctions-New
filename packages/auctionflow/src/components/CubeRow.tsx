@@ -21,6 +21,12 @@ export interface CubeRowProps<T> {
   renderItem: (item: T) => ReactNode;
   /** Optional cap on faces-per-page (defaults to the responsive 1–4). */
   maxPerFace?: number;
+  /**
+   * Fired when the visible face reaches the last loaded page — the row's cue to
+   * fetch its next cursor slice (pack 01 doc 05: prefetch near the last face).
+   * The handler must be idempotent; the row may call it repeatedly at the edge.
+   */
+  onNearEnd?: () => void;
 }
 
 function facesForWidth(w: number, max: number): number {
@@ -44,6 +50,7 @@ export function CubeRow<T>({
   itemKey,
   renderItem,
   maxPerFace = 4,
+  onNearEnd,
 }: CubeRowProps<T>) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -62,6 +69,13 @@ export function CubeRow<T>({
   const perFace = facesForWidth(width || 1024, maxPerFace);
   const total = pageCount(items.length, perFace);
   const { page, setPage } = useCubePosition(rowId, total);
+
+  // Prefetch cue: when the visible face reaches the last loaded page, ask the
+  // parent for the next cursor slice. Idempotent — the parent guards on
+  // loading/exhausted (pack 01 doc 05).
+  useEffect(() => {
+    if (onNearEnd && total > 0 && page >= total - 1) onNearEnd();
+  }, [onNearEnd, page, total]);
 
   // Rotation animation: `anim.dir` is the in-flight direction; `snap` disables
   // the transition for one frame after we commit the page so the new front face

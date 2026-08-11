@@ -289,6 +289,29 @@ export async function fetchCatalogueV2(
   return res.json() as Promise<CatalogueResponse>;
 }
 
+/** One AuctionFlow/Rubik category row: independent cursor slice (pack 01 doc 05). */
+export interface CatalogueRowResponse {
+  category: string;
+  items: CatalogueCardV2[];
+  nextCursor: string | null;
+  exhausted: boolean;
+}
+
+/**
+ * Fetch a single category's Rubik row with its own cursor. Each band pages
+ * independently, so every category item is reachable — not just the first
+ * global catalogue page. Pass the previous `nextCursor` to load the next slice.
+ */
+export async function fetchCatalogueRow(
+  params: Record<string, string | number | boolean | undefined>,
+): Promise<CatalogueRowResponse> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v != null && v !== '') qs.set(k, String(v));
+  const res = await fetch(`${apiV2}/catalogue/row?${qs.toString()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GET /api/v2/catalogue/row -> ${res.status}`);
+  return res.json() as Promise<CatalogueRowResponse>;
+}
+
 // --- Buyer command-centre projection (pack doc 05) -------------------------
 export interface DashboardLot {
   listingId: string;
