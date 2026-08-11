@@ -2,6 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import { Button, Card, Chip } from '@singha/ui';
 import {
   apiGetAuthed,
@@ -109,13 +110,17 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+      {/* Top action strip (doc 05): urgent counts, never hidden behind rotation. */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Watching" value={watchlist.length} />
-        <Stat label="Expressions of interest" value={eois.length} />
-        <Stat label="Offers" value={offers.length} />
+        <Stat label="Active EOIs" value={eois.filter((e) => e.status !== 'WITHDRAWN').length} />
+        <Stat label="Active offers" value={offers.filter((o) => o.status === 'ACTIVE').length} />
+        <Stat label="Total offers" value={offers.length} />
       </div>
 
-      <Section title="Watchlist">
+      {/* Watchlist as a Rubik status row — the SAME CubeRow primitive as the
+          catalogue (doc 05 "Use the same CubeRow primitive as catalogue"). */}
+      <Section title="Watching">
         {watchlist.length === 0 ? (
           <Empty>
             No saved lots yet. Open a lot and tap “Watch”, then it appears here.{' '}
@@ -124,21 +129,18 @@ export default function DashboardPage() {
             </Link>
           </Empty>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {watchlist.map((lot) => (
-              <Link key={lot.listingId} href={`/lot/${lot.listingId}`}>
-                <Card className="flex flex-col gap-2 transition-colors hover:border-red-500/30">
-                  <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-                  <h3 className="font-display text-sm font-semibold text-bone">{lot.title}</h3>
-                  <span className="tabular font-display text-base font-bold text-gold-400">
-                    {lot.currentBidMinor != null
-                      ? formatMoney(lot.currentBidMinor, lot.currency)
-                      : lot.status}
-                  </span>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          <AuctionFlowViewport>
+            <div className="text-bone">
+              <CubeRow<WatchedLot>
+                rowId="watching"
+                title="Watching"
+                subtitle={`${watchlist.length} saved lots`}
+                items={watchlist}
+                itemKey={(lot) => lot.listingId}
+                renderItem={(lot) => <WatchCard lot={lot} />}
+              />
+            </div>
+          </AuctionFlowViewport>
         )}
       </Section>
 
@@ -178,6 +180,23 @@ export default function DashboardPage() {
 
       {error && <p className="mt-6 text-sm text-outbid">{error}</p>}
     </div>
+  );
+}
+
+function WatchCard({ lot }: { lot: WatchedLot }) {
+  return (
+    <Link href={`/lot/${lot.listingId}`} className="block h-full">
+      <Card className="flex h-full flex-col gap-2 transition-colors hover:border-red-500/30">
+        <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
+        <h3 className="font-display text-sm font-semibold text-bone">{lot.title}</h3>
+        <p className="text-xs capitalize text-bone-500">{lot.category}</p>
+        <span className="tabular mt-auto font-display text-base font-bold text-gold-400">
+          {lot.currentBidMinor != null
+            ? formatMoney(lot.currentBidMinor, lot.currency)
+            : lot.status.replace(/_/g, ' ')}
+        </span>
+      </Card>
+    </Link>
   );
 }
 

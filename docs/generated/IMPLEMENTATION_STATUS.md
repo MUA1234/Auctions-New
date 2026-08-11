@@ -3,6 +3,40 @@
 _Phases 0–2 COMPLETE and verified._ (Phase 0 foundations, Phase 1 data core,
 Phase 2 timed auction engine.)
 
+_Product Alignment (consolidated pack) in progress in this FRONTEND repo._
+
+## Product Alignment — P4 Correct AuctionFlow (frontend)
+
+The consolidated pack (doc 24) inserts a Product Alignment stage before launch
+hardening. This repo owns the frontend slices. **P4 Correct AuctionFlow is
+built:**
+
+- [x] Reusable Rubik primitives extracted into `@singha/auctionflow` (no longer
+      private in `CatalogueBrowser.tsx`): `AuctionFlowViewport`, `CubeRow`,
+      `CubeFace`, `CubeControls`, `CubeProgress`, hooks `useCubeGesture`,
+      `useCubePosition`/`CubePositionProvider`, `useReducedMotion`,
+      `useFaceCount`, and pure paging maths (`pageCount`/`stepPage`/`faceItems`/
+      `adjacentPages`/`resolveAxis`/`swipeDelta`).
+- [x] Catalogue "Rubik" view = a stack of **independent** 3D-rotating category
+      rows (not a literal six-sided cube, not one rail rotating all categories).
+- [x] Each row pages through **all** its lots (backend pagination), reachable via
+      swipe / drag / arrows / keyboard / dot indicator.
+- [x] Direction lock — horizontal intent rotates the row, vertical intent scrolls
+      the page (`touch-action: pan-y`).
+- [x] Realtime-safe — per-row face position keyed by stable row id in a viewport
+      store; a bid update never resets a row; survives Grid⇄Rubik toggle.
+- [x] `prefers-reduced-motion` → non-rotating paged rail; offscreen faces are
+      `inert` + `aria-hidden` (not keyboard-focusable).
+- [x] Buyer command centre watchlist rendered with the **same** `CubeRow`
+      primitive (doc 05) + top action strip of urgent counts.
+
+Verified by `@singha/auctionflow` unit + jsdom component tests (all lots
+reachable, offscreen faces inert, rows rotate independently) and a green
+`next build`. Backend `GET /api/v2/me/dashboard` projection + persistent
+watchlist authority remain **backend** work (separate repo).
+
+Remaining frontend alignment: P6 public visual redesign, P7 full Listing Studio.
+
 ## Phase 0 checklist
 
 - [x] Monorepo, tooling, CI, observability baseline, generated docs

@@ -1,18 +1,18 @@
 import type { ListingId } from '@singha/contracts';
 
 /**
- * AuctionFlow — the Rubik-inspired Cube / Grid / List catalogue and buyer
- * command-centre (docs/13). Phase 0 defines the shared VIEW MODEL and pure
- * helpers; the 3D Cube (DOM/CSS transforms, no required WebGL) and the buyer
- * dashboard are built in Phase 4. Selection persists and search/filter state is
- * preserved across mode switches.
+ * AuctionFlow — the Rubik-inspired catalogue and buyer command-centre (pack
+ * doc 04). The Rubik is NOT one literal six-sided cube: it is a stack of
+ * independent horizontal category/status rows, each an independent 3D-rotating
+ * slice. This package holds the reusable primitives so the mechanics are never
+ * private inside `CatalogueBrowser.tsx`.
  */
 export const VIEW_MODES = ['cube', 'grid', 'list'] as const;
 export type ViewMode = (typeof VIEW_MODES)[number];
 
 export const DEFAULT_VIEW_MODE: ViewMode = 'grid';
 
-/** Sale-mode-aware summary a catalogue card renders (docs/13 "Cards"). */
+/** Sale-mode-aware summary a catalogue card renders (doc 04 "Sale-aware cards"). */
 export interface CatalogueCard {
   listingId: ListingId;
   reference: string;
@@ -34,3 +34,31 @@ export function cycleViewMode(current: ViewMode): ViewMode {
 export function isViewMode(value: string): value is ViewMode {
   return (VIEW_MODES as readonly string[]).includes(value);
 }
+
+// --- Pure paging / gesture maths (unit-tested, no React/DOM) ---------------
+export {
+  pageCount,
+  clampPage,
+  stepPage,
+  faceItems,
+  adjacentPages,
+  resolveAxis,
+  swipeDelta,
+  type GestureAxis,
+} from './paging';
+
+// --- Hooks -----------------------------------------------------------------
+export { useReducedMotion } from './hooks/useReducedMotion';
+export { useFaceCount } from './hooks/useFaceCount';
+export { useCubeGesture, type CubeGesture, type CubeGestureHandlers } from './hooks/useCubeGesture';
+export {
+  CubePositionProvider,
+  useCubePosition,
+  type CubePositionState,
+} from './hooks/useCubePosition';
+
+// --- Components (the Rubik primitives) -------------------------------------
+export { AuctionFlowViewport } from './components/AuctionFlowViewport';
+export { CubeRow, type CubeRowProps } from './components/CubeRow';
+export { CubeFace } from './components/CubeFace';
+export { CubeControls, CubeProgress } from './components/CubeControls';
