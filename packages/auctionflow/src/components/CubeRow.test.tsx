@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { AuctionFlowViewport } from './AuctionFlowViewport';
 import { CubeRow } from './CubeRow';
 

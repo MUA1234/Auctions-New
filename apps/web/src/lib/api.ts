@@ -29,6 +29,44 @@ export async function apiGetAuthed<T>(path: string, token: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiPatch<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const res = await fetch(`${apiBase}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.message ?? detail?.title ?? `PATCH ${path} -> ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+/** AI Listing Assistant draft (pack doc 08/10). Derived content — never facts. */
+export interface AiListingDraft {
+  title?: string;
+  shortDescription?: string;
+  fullDescription?: string;
+  keywords?: string[];
+  missing?: string[];
+  socialCopy?: string;
+}
+
+/** Best-effort AI draft. Resolves null when no AI provider is configured. */
+export async function requestAiListingDraft(
+  body: { category: string; attributes: Record<string, unknown>; notes?: string },
+  token?: string,
+): Promise<AiListingDraft | null> {
+  try {
+    return await apiPost<AiListingDraft>('/ai/listing/draft', body, token);
+  } catch {
+    return null;
+  }
+}
+
 export async function apiPost<T>(path: string, body: unknown, token?: string): Promise<T> {
   const res = await fetch(`${apiBase}${path}`, {
     method: 'POST',
@@ -73,6 +111,23 @@ export interface AuctionState {
 export interface LotDetail extends CatalogueLot {
   attributes: Record<string, unknown> | null;
   auction: AuctionState | null;
+  shortDescription?: string;
+  fullDescription?: string;
+  location?: { city: string | null; region: string | null };
+  media?: PublicMedia[];
+}
+
+/**
+ * Public lot detail (pack doc 07). Prefers the enriched v2 detail (media,
+ * descriptions, location); falls back to the v1 catalogue detail so the page
+ * still renders against an older backend.
+ */
+export async function fetchLotDetail(id: string): Promise<LotDetail> {
+  const v2 = await fetch(`${apiV2}/catalogue/${id}`, { cache: 'no-store' }).catch(() => null);
+  if (v2?.ok) return v2.json() as Promise<LotDetail>;
+  const res = await fetch(`${apiBase}/catalogue/${id}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GET /catalogue/${id} -> ${res.status}`);
+  return res.json() as Promise<LotDetail>;
 }
 
 export interface MarketPulseCategory {
@@ -211,6 +266,63 @@ export async function fetchCatalogueV2(
   const res = await fetch(`${apiV2}/catalogue?${qs.toString()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`GET /api/v2/catalogue -> ${res.status}`);
   return res.json() as Promise<CatalogueResponse>;
+}
+
+// --- Buyer command-centre projection (pack doc 05) -------------------------
+export interface DashboardLot {
+  listingId: string;
+  reference: string;
+  title: string;
+  category: string;
+  saleMethod: string;
+  status: string;
+  currency: string;
+  amountMinor?: number | null;
+  currentBidMinor?: number | null;
+  endsAt?: string | null;
+  deadlineAt?: string | null;
+  note?: string;
+}
+
+export interface DashboardGroup {
+  key: string;
+  label: string;
+  items: DashboardLot[];
+}
+
+export interface DashboardStrip {
+  activeBids: number;
+  winning: number;
+  outbid: number;
+  paymentDueMinor: number;
+  readyForPickup: number;
+  currency: string;
+  bidLimitMinor?: number | null;
+  depositBalanceMinor?: number | null;
+}
+
+export interface DashboardProjection {
+  strip: DashboardStrip;
+  groups: DashboardGroup[];
+}
+
+/**
+ * Server command-centre projection (doc 05 `GET /api/v2/me/dashboard`). This is
+ * a rebuildable read model, not customer truth. Resolves null when the backend
+ * has not shipped the projection yet, so the dashboard can fall back to the
+ * per-endpoint data it already has.
+ */
+export async function fetchDashboard(token: string): Promise<DashboardProjection | null> {
+  try {
+    const res = await fetch(`${apiV2}/me/dashboard`, {
+      cache: 'no-store',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as DashboardProjection;
+  } catch {
+    return null;
+  }
 }
 
 export async function addWatch(listingId: string, token: string) {

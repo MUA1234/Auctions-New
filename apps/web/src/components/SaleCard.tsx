@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { Card, Chip } from '@singha/ui';
 import type { CatalogueCardV2 } from '../lib/api';
+import { coverUrl } from '../lib/media';
 import { formatMoney, timeLeft } from '../lib/format';
+import { LotImage } from './LotImage';
 
 /**
  * Sale-aware catalogue card (consolidated pack docs 04/07). It renders a
@@ -21,10 +23,8 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
             {lot.watchers > 0 && <span>♥ {lot.watchers}</span>}
           </div>
         </div>
-        <div
-          className="hud-cut-sm relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-coal-700/60 to-coal-900/80"
-          aria-hidden
-        >
+        <div className="hud-cut-sm relative overflow-hidden rounded-md">
+          <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-[4/3]" />
           {lot.media.videoAvailable && (
             <span className="absolute bottom-2 right-2 rounded bg-coal-950/80 px-1.5 py-0.5 text-[10px] text-bone-300">
               ▶ Video

@@ -7,28 +7,35 @@ import { Button, Card, Chip } from '@singha/ui';
 import {
   apiGetAuthed,
   apiPost,
+  fetchDashboard,
   fetchMyWatch,
+  type DashboardGroup,
+  type DashboardLot,
+  type DashboardProjection,
+  type DashboardStrip,
   type MyEoi,
   type MyOffer,
   type WatchedLot,
 } from '../../lib/api';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, timeLeft } from '../../lib/format';
 
 const TOKEN_KEY = 'singha_demo_token';
 
 /**
- * Buyer command-centre (docs/13 "Buyer dashboard"): watchlist + the buyer's own
- * EOIs and offers, behind the demo login. Personal data is fetched client-side
- * with the bearer token — the server enforces that you only see your own.
+ * Buyer command centre (pack doc 05). Prefers the server projection
+ * `GET /api/v2/me/dashboard` — a top action strip of urgent counts plus status
+ * groups (Watching / Bidding / Winning / Outbid / Payment Due / Ready for Pickup
+ * / EOI / Offers / Tenders) rendered as Rubik status bands with the SAME CubeRow
+ * primitive as the catalogue. When the projection isn't available it degrades to
+ * a projection derived from the watchlist, EOIs and offers this client can fetch
+ * directly, so the dashboard is always useful.
  */
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [eois, setEois] = useState<MyEoi[]>([]);
-  const [offers, setOffers] = useState<MyOffer[]>([]);
-  const [watchlist, setWatchlist] = useState<WatchedLot[]>([]);
+  const [projection, setProjection] = useState<DashboardProjection | null>(null);
 
   useEffect(() => {
     setToken(localStorage.getItem(TOKEN_KEY));
@@ -37,14 +44,18 @@ export default function DashboardPage() {
   const load = useCallback(async (t: string) => {
     setError(null);
     try {
-      const [e, o, w] = await Promise.all([
+      const server = await fetchDashboard(t);
+      if (server) {
+        setProjection(server);
+        return;
+      }
+      // Fallback: build a projection from the data we can fetch directly.
+      const [eois, offers, watch] = await Promise.all([
         apiGetAuthed<MyEoi[]>('/eoi/mine', t).catch(() => []),
         apiGetAuthed<MyOffer[]>('/exchange/offers/mine', t).catch(() => []),
         fetchMyWatch(t).catch(() => []),
       ]);
-      setEois(e);
-      setOffers(o);
-      setWatchlist(w);
+      setProjection(deriveProjection(watch, eois, offers));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -72,14 +83,13 @@ export default function DashboardPage() {
   function signOut() {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
-    setEois([]);
-    setOffers([]);
+    setProjection(null);
   }
 
   if (!token) {
     return (
       <div className="container-page py-16">
-        <h1 className="font-serif text-4xl font-bold text-bone">Buyer dashboard</h1>
+        <h1 className="font-serif text-4xl font-bold text-bone">Buyer command centre</h1>
         <Card className="mt-8 max-w-md">
           <form onSubmit={login} className="flex flex-col gap-3">
             <p className="text-sm text-bone-400">Sign in with your email (demo login).</p>
@@ -101,6 +111,9 @@ export default function DashboardPage() {
     );
   }
 
+  const strip = projection?.strip;
+  const groups = (projection?.groups ?? []).filter((g) => g.items.length > 0);
+
   return (
     <div className="container-page py-14">
       <div className="flex items-center justify-between">
@@ -110,132 +123,175 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Top action strip (doc 05): urgent counts, never hidden behind rotation. */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Watching" value={watchlist.length} />
-        <Stat label="Active EOIs" value={eois.filter((e) => e.status !== 'WITHDRAWN').length} />
-        <Stat label="Active offers" value={offers.filter((o) => o.status === 'ACTIVE').length} />
-        <Stat label="Total offers" value={offers.length} />
-      </div>
+      {/* Top action strip — urgent counts, never behind rotation (doc 05). */}
+      {strip && (
+        <div className="mt-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <Stat label="Active bids" value={String(strip.activeBids)} />
+          <Stat label="Winning" value={String(strip.winning)} tone="good" />
+          <Stat label="Outbid" value={String(strip.outbid)} tone="bad" />
+          <Stat
+            label="Payment due"
+            value={
+              strip.paymentDueMinor > 0 ? formatMoney(strip.paymentDueMinor, strip.currency) : '—'
+            }
+            tone={strip.paymentDueMinor > 0 ? 'bad' : undefined}
+          />
+          <Stat label="Ready for pickup" value={String(strip.readyForPickup)} />
+        </div>
+      )}
 
-      {/* Watchlist as a Rubik status row — the SAME CubeRow primitive as the
-          catalogue (doc 05 "Use the same CubeRow primitive as catalogue"). */}
-      <Section title="Watching">
-        {watchlist.length === 0 ? (
-          <Empty>
-            No saved lots yet. Open a lot and tap “Watch”, then it appears here.{' '}
+      {groups.length === 0 ? (
+        <Card className="mt-10">
+          <p className="text-sm text-bone-400">
+            Nothing here yet. Open a lot and tap “Watch”, place a bid, or submit an EOI — it appears
+            here.{' '}
             <Link href="/catalogue" className="text-gold-400">
               Browse the catalogue →
             </Link>
-          </Empty>
-        ) : (
+          </p>
+        </Card>
+      ) : (
+        <div className="mt-10">
           <AuctionFlowViewport>
             <div className="text-bone">
-              <CubeRow<WatchedLot>
-                rowId="watching"
-                title="Watching"
-                subtitle={`${watchlist.length} saved lots`}
-                items={watchlist}
-                itemKey={(lot) => lot.listingId}
-                renderItem={(lot) => <WatchCard lot={lot} />}
-              />
+              {groups.map((group) => (
+                <CubeRow<DashboardLot>
+                  key={group.key}
+                  rowId={group.key}
+                  title={group.label}
+                  subtitle={`${group.items.length}`}
+                  items={group.items}
+                  itemKey={(lot) => lot.listingId}
+                  renderItem={(lot) => <StatusCard lot={lot} groupKey={group.key} />}
+                />
+              ))}
             </div>
           </AuctionFlowViewport>
-        )}
-      </Section>
-
-      <Section title="Your expressions of interest">
-        {eois.length === 0 ? (
-          <Empty>No EOIs submitted.</Empty>
-        ) : (
-          <Rows>
-            {eois.map((e) => (
-              <RowLine
-                key={e.id}
-                left={`Listing ${e.listingId.slice(-6)}`}
-                mid={formatMoney(e.amountMinor, e.currency)}
-                status={e.status}
-              />
-            ))}
-          </Rows>
-        )}
-      </Section>
-
-      <Section title="Your offers">
-        {offers.length === 0 ? (
-          <Empty>No offers made.</Empty>
-        ) : (
-          <Rows>
-            {offers.map((o) => (
-              <RowLine
-                key={o.id}
-                left={`Listing ${o.listingId.slice(-6)}`}
-                mid={formatMoney(o.amountMinor, o.currency)}
-                status={o.status}
-              />
-            ))}
-          </Rows>
-        )}
-      </Section>
+        </div>
+      )}
 
       {error && <p className="mt-6 text-sm text-outbid">{error}</p>}
     </div>
   );
 }
 
-function WatchCard({ lot }: { lot: WatchedLot }) {
+/** Build a dashboard projection from the per-endpoint data (fallback path). */
+function deriveProjection(
+  watch: WatchedLot[],
+  eois: MyEoi[],
+  offers: MyOffer[],
+): DashboardProjection {
+  const strip: DashboardStrip = {
+    activeBids: 0,
+    winning: 0,
+    outbid: 0,
+    paymentDueMinor: 0,
+    readyForPickup: 0,
+    currency: watch[0]?.currency ?? offers[0]?.currency ?? 'LKR',
+  };
+
+  const groups: DashboardGroup[] = [
+    {
+      key: 'WATCHING',
+      label: 'Watching',
+      items: watch.map((w) => ({
+        listingId: w.listingId,
+        reference: w.reference,
+        title: w.title,
+        category: w.category,
+        saleMethod: w.saleMethod,
+        status: w.status,
+        currency: w.currency,
+        currentBidMinor: w.currentBidMinor,
+        endsAt: w.endsAt,
+      })),
+    },
+    {
+      key: 'EOI_SUBMITTED',
+      label: 'Expressions of interest',
+      items: eois.map((e) => ({
+        listingId: e.listingId,
+        reference: e.listingId.slice(-6),
+        title: `Listing ${e.listingId.slice(-6)}`,
+        category: '',
+        saleMethod: 'EXPRESSION_OF_INTEREST',
+        status: e.status,
+        currency: e.currency,
+        amountMinor: e.amountMinor,
+      })),
+    },
+    {
+      key: 'OFFERS_ACTIVE',
+      label: 'Offers',
+      items: offers.map((o) => ({
+        listingId: o.listingId,
+        reference: o.listingId.slice(-6),
+        title: `Listing ${o.listingId.slice(-6)}`,
+        category: '',
+        saleMethod: 'MAKE_OFFER',
+        status: o.status,
+        currency: o.currency,
+        amountMinor: o.amountMinor,
+      })),
+    },
+  ];
+
+  return { strip, groups };
+}
+
+function StatusCard({ lot, groupKey }: { lot: DashboardLot; groupKey: string }) {
+  const money =
+    lot.currentBidMinor != null
+      ? formatMoney(lot.currentBidMinor, lot.currency)
+      : lot.amountMinor != null
+        ? formatMoney(lot.amountMinor, lot.currency)
+        : null;
+  const deadline = lot.deadlineAt ?? lot.endsAt;
+
   return (
     <Link href={`/lot/${lot.listingId}`} className="block h-full">
       <Card className="flex h-full flex-col gap-2 transition-colors hover:border-red-500/30">
-        <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
+        <div className="flex items-center justify-between">
+          <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
+          <StatusPill groupKey={groupKey} status={lot.status} />
+        </div>
         <h3 className="font-display text-sm font-semibold text-bone">{lot.title}</h3>
-        <p className="text-xs capitalize text-bone-500">{lot.category}</p>
-        <span className="tabular mt-auto font-display text-base font-bold text-gold-400">
-          {lot.currentBidMinor != null
-            ? formatMoney(lot.currentBidMinor, lot.currency)
-            : lot.status.replace(/_/g, ' ')}
-        </span>
+        {lot.category && <p className="text-xs capitalize text-bone-500">{lot.category}</p>}
+        <div className="mt-auto flex items-end justify-between">
+          <span className="tabular font-display text-base font-bold text-gold-400">
+            {money ?? lot.status.replace(/_/g, ' ')}
+          </span>
+          {deadline && <span className="text-xs text-bone-400">{timeLeft(deadline)}</span>}
+        </div>
+        {lot.note && <p className="text-[11px] text-bone-500">{lot.note}</p>}
       </Card>
     </Link>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+const GROUP_TONE: Record<string, string> = {
+  WINNING: 'text-[#5fd0a3]',
+  WON: 'text-[#5fd0a3]',
+  OUTBID: 'text-outbid',
+  LOST: 'text-outbid',
+  PAYMENT_DUE: 'text-outbid',
+};
+
+function StatusPill({ groupKey, status }: { groupKey: string; status: string }) {
+  const tone = GROUP_TONE[groupKey] ?? 'text-bone-500';
+  return (
+    <span className={`text-[11px] capitalize ${tone}`}>
+      {status.replace(/_/g, ' ').toLowerCase()}
+    </span>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
+  const color = tone === 'good' ? 'text-[#5fd0a3]' : tone === 'bad' ? 'text-outbid' : 'text-bone';
   return (
     <Card className="flex flex-col gap-1">
-      <span className="tabular font-display text-3xl font-bold text-bone">{value}</span>
+      <span className={`tabular font-display text-2xl font-bold ${color}`}>{value}</span>
       <span className="text-xs uppercase tracking-wide text-bone-500">{label}</span>
     </Card>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-10">
-      <h2 className="mb-4 font-serif text-xl font-bold text-bone">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return (
-    <Card>
-      <p className="text-sm text-bone-400">{children}</p>
-    </Card>
-  );
-}
-
-function Rows({ children }: { children: React.ReactNode }) {
-  return <div className="overflow-hidden rounded-lg border border-white/10">{children}</div>;
-}
-
-function RowLine({ left, mid, status }: { left: string; mid: string; status: string }) {
-  return (
-    <div className="flex items-center justify-between border-b border-white/8 px-4 py-3 last:border-0">
-      <span className="text-sm text-bone-200">{left}</span>
-      <span className="tabular text-sm text-gold-400">{mid}</span>
-      <Chip>{status.replace(/_/g, ' ')}</Chip>
-    </div>
   );
 }

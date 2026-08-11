@@ -1,64 +1,45 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
-import { apiGet, type MarketPulse } from '../lib/api';
+import { apiGet, fetchCatalogueV2, type CatalogueCardV2, type MarketPulse } from '../lib/api';
 import { formatMoney } from '../lib/format';
+import { SaleCard } from '../components/SaleCard';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata: Metadata = {
+  title: 'Singha Auctions — Sri Lanka’s trusted asset exchange',
+  description:
+    'Vehicles, machinery, gems, property and business assets — discovered, inspected and won through transparent, server-authoritative auctions.',
+  openGraph: {
+    title: 'Singha Auctions — Sri Lanka’s trusted asset exchange',
+    description:
+      'Transparent timed, live and sealed auctions for vehicles, machinery, gems and property.',
+    type: 'website',
+  },
+};
+
 /**
- * Homepage — editorial and lightweight (docs/13): hero + featured items +
- * featured event + categories + Market Pulse + trust + seller CTA. NO full
- * catalogue here. All data below is PLACEHOLDER; Phase 4 wires the real featured
- * placements, editorial controls and live pricing.
+ * Homepage — editorial and lightweight (pack doc 15). Hero → featured items →
+ * featured event → categories → Market Pulse → trust → Sell CTA. It never
+ * renders the full catalogue and never downloads all inventory: only 8 featured
+ * cards + the Market Pulse summary. Visual language is deliberately restrained —
+ * premium dark base, sparing red/gold accents, generous space — not the gaming
+ * HUD used on operator surfaces.
  */
 
-const FEATURED = [
-  {
-    ref: 'VH-2043',
-    title: '2019 Toyota Land Cruiser Prado',
-    location: 'Colombo',
-    method: 'Timed',
-    price: 'LKR 24,500,000',
-    time: 'Closes in 2d 04h',
-  },
-  {
-    ref: 'GM-0071',
-    title: 'Ceylon Blue Sapphire, 4.2ct',
-    location: 'Ratnapura',
-    method: 'Sealed Tender',
-    price: 'Guide LKR 3,800,000',
-    time: 'Closes in 5d',
-  },
-  {
-    ref: 'MC-1188',
-    title: 'CAT 320D Hydraulic Excavator',
-    location: 'Gampaha',
-    method: 'EOI',
-    price: 'Expressions open',
-    time: 'Ongoing',
-  },
-  {
-    ref: 'PR-0459',
-    title: 'Commercial Land · 42 perches',
-    location: 'Kandy',
-    method: 'Make Offer',
-    price: 'Guide LKR 96,000,000',
-    time: 'Ongoing',
-  },
-];
-
 const CATEGORIES = [
-  'Vehicles',
-  'Machinery & Equipment',
-  'Gems & Jewellery',
-  'Property',
-  'Business Assets',
-  'Stock & Bulk',
-  'Agriculture',
-  'General Assets',
+  { label: 'Vehicles', slug: 'vehicles' },
+  { label: 'Machinery & Equipment', slug: 'machinery' },
+  { label: 'Gems & Jewellery', slug: 'gems' },
+  { label: 'Property', slug: 'property' },
+  { label: 'Business Assets', slug: 'business' },
+  { label: 'Stock & Bulk', slug: 'bulk' },
+  { label: 'Agriculture', slug: 'agriculture' },
+  { label: 'General Assets', slug: 'general' },
 ];
 
-const PULSE = [
+const PULSE_FALLBACK = [
   {
     tag: 'Market movement',
     text: 'Used commercial vehicle demand up across the Western Province this quarter.',
@@ -70,33 +51,46 @@ const PULSE = [
   { tag: 'Upcoming', text: 'Gem & jewellery live auction scheduled — registration opening soon.' },
 ];
 
+const TRUST = [
+  {
+    title: 'Server-authoritative bidding',
+    text: 'The auction engine is the single source of truth. Every bid is validated, sequenced and recorded — the screen is never the record.',
+  },
+  {
+    title: 'Append-only evidence trail',
+    text: 'Bids, payments and settlement are immutable ledgers. Nothing in the financial history can be quietly edited or deleted.',
+  },
+  {
+    title: 'Verified sellers & inspection',
+    text: 'Banks, corporates and government sellers with documented ownership, condition and viewing arrangements before you commit.',
+  },
+];
+
 export default async function HomePage() {
-  let pulse: MarketPulse | null = null;
-  try {
-    pulse = await apiGet<MarketPulse>('/intelligence/market-pulse');
-  } catch {
-    pulse = null;
-  }
+  const [featured, pulse] = await Promise.all([
+    fetchCatalogueV2({ featured: true, limit: 8, sort: 'ending' })
+      .then((r) => r.items)
+      .catch(() => [] as CatalogueCardV2[]),
+    apiGet<MarketPulse>('/intelligence/market-pulse').catch(() => null),
+  ]);
 
   return (
     <>
-      {/* Hero */}
+      {/* Hero — restrained, premium, minimal HUD */}
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="hud-grid absolute inset-0 opacity-40" aria-hidden />
-        <div className="absolute inset-0 bg-red-glow-radial" aria-hidden />
-        <div className="container-page relative py-24 sm:py-32">
-          <Chip tone="live" className="animate-float-in">
+        <div className="hud-grid absolute inset-0 opacity-[0.06]" aria-hidden />
+        <div className="container-page relative py-24 sm:py-36">
+          <Chip tone="live">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Live &amp; timed auctions
           </Chip>
-          <h1 className="mt-6 max-w-3xl font-serif text-5xl font-extrabold leading-[1.05] tracking-tight text-bone sm:text-6xl">
-            Sri Lanka’s trusted
-            <span className="text-glow-red text-red-500"> asset exchange</span>.
+          <h1 className="mt-7 max-w-4xl font-serif text-5xl font-extrabold leading-[1.03] tracking-tight text-bone sm:text-7xl">
+            Sri Lanka’s trusted <span className="text-red-500">asset exchange</span>.
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-bone-400">
+          <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-400">
             Vehicles, machinery, gems, property and business assets — discovered, inspected and won
             through transparent, real-time auctions.
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-4">
+          <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link href="/catalogue">
               <Button variant="primary">Explore catalogue</Button>
             </Link>
@@ -104,58 +98,53 @@ export default async function HomePage() {
               <Button variant="outline">Watch live</Button>
             </Link>
           </div>
-          <p className="mt-6 text-sm text-bone-500">
+          <p className="mt-7 text-sm text-bone-500">
             Institutional transparency · Verified sellers · Server-authoritative bidding
           </p>
         </div>
       </section>
 
-      {/* Featured items */}
-      <section className="container-page py-16">
-        <div className="mb-8 flex items-end justify-between">
-          <h2 className="font-serif text-2xl font-bold text-bone">Featured items</h2>
+      {/* Featured items — real media, sale-aware cards */}
+      <section className="container-page py-20">
+        <div className="mb-9 flex items-end justify-between">
+          <div>
+            <h2 className="font-serif text-3xl font-bold text-bone">Featured items</h2>
+            <p className="mt-1 text-sm text-bone-500">Curated lots open right now.</p>
+          </div>
           <Link href="/catalogue" className="text-sm font-medium text-gold-400 hover:text-gold-300">
             View all →
           </Link>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURED.map((item) => (
-            <Card key={item.ref} className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <Chip>{item.method}</Chip>
-                <span className="text-xs text-bone-500">{item.ref}</span>
-              </div>
-              <div
-                className="aspect-[4/3] w-full bg-gradient-to-br from-coal-700/60 to-coal-900/80 hud-cut-sm"
-                aria-hidden
-              />
-              <div>
-                <h3 className="font-display text-base font-semibold text-bone">{item.title}</h3>
-                <p className="text-xs text-bone-500">{item.location}</p>
-              </div>
-              <div className="mt-auto flex items-end justify-between">
-                <span className="tabular font-display text-lg font-bold text-gold-400">
-                  {item.price}
-                </span>
-                <span className="text-xs text-bone-400">{item.time}</span>
-              </div>
-            </Card>
-          ))}
-        </div>
+        {featured.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {featured.map((lot) => (
+              <SaleCard key={lot.id} lot={lot} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <p className="text-bone-400">
+              Featured lots are being curated. {''}
+              <Link href="/catalogue" className="text-gold-400">
+                Browse the full catalogue →
+              </Link>
+            </p>
+          </Card>
+        )}
       </section>
 
       {/* Featured event */}
-      <section className="container-page pb-16">
-        <Card className="relative overflow-hidden border-red-500/20 p-8 sm:p-10">
-          <div className="absolute inset-0 bg-red-glow-radial opacity-70" aria-hidden />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="container-page pb-20">
+        <Card className="relative overflow-hidden p-8 sm:p-12">
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Chip tone="live">Singha Live</Chip>
-              <h2 className="mt-3 font-serif text-3xl font-bold text-bone">
+              <h2 className="mt-4 font-serif text-3xl font-bold text-bone">
                 Featured live auction
               </h2>
-              <p className="mt-2 max-w-lg text-bone-400">
-                Multi-camera broadcast with online, floor and phone bidding in one unified ledger.
+              <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
+                Multi-camera broadcast with online, floor and phone bidding reconciled into one
+                unified, auditable ledger.
               </p>
             </div>
             <Link href="/live">
@@ -167,16 +156,18 @@ export default async function HomePage() {
 
       {/* Explore categories */}
       <section className="border-y border-white/10 bg-coal-950/40">
-        <div className="container-page py-16">
-          <h2 className="mb-8 font-serif text-2xl font-bold text-bone">Explore categories</h2>
+        <div className="container-page py-20">
+          <h2 className="mb-9 font-serif text-3xl font-bold text-bone">Explore categories</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {CATEGORIES.map((category) => (
               <Link
-                key={category}
-                href="/catalogue"
-                className="card group flex items-center justify-between p-4 transition-colors hover:border-red-500/30"
+                key={category.slug}
+                href={`/catalogue?category=${category.slug}`}
+                className="card group flex items-center justify-between p-5 transition-colors hover:border-gold-500/40"
               >
-                <span className="font-display text-sm font-semibold text-bone-200">{category}</span>
+                <span className="font-display text-sm font-semibold text-bone-200">
+                  {category.label}
+                </span>
                 <span className="text-gold-500 transition-transform group-hover:translate-x-1">
                   →
                 </span>
@@ -187,14 +178,14 @@ export default async function HomePage() {
       </section>
 
       {/* Market Pulse */}
-      <section className="container-page py-16">
-        <div className="mb-8 flex items-center gap-3">
-          <h2 className="font-serif text-2xl font-bold text-bone">Market Pulse</h2>
+      <section className="container-page py-20">
+        <div className="mb-9 flex items-center gap-3">
+          <h2 className="font-serif text-3xl font-bold text-bone">Market Pulse</h2>
           <Chip tone="gold">Editorial</Chip>
         </div>
         {pulse && pulse.salesCount > 0 ? (
           <>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-3">
               <Card className="flex flex-col gap-1">
                 <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
                   Sold ({pulse.windowDays}d)
@@ -220,7 +211,7 @@ export default async function HomePage() {
                 </span>
               </Card>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {pulse.categories.slice(0, 4).map((c) => (
                 <Card key={c.category} className="flex items-center justify-between">
                   <span className="text-sm capitalize text-bone-300">{c.category}</span>
@@ -233,30 +224,47 @@ export default async function HomePage() {
           </>
         ) : (
           <>
-            <div className="grid gap-5 md:grid-cols-3">
-              {PULSE.map((entry) => (
+            <div className="grid gap-6 md:grid-cols-3">
+              {PULSE_FALLBACK.map((entry) => (
                 <Card key={entry.tag} className="flex flex-col gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
                     {entry.tag}
                   </span>
-                  <p className="text-sm text-bone-300">{entry.text}</p>
+                  <p className="text-sm leading-relaxed text-bone-300">{entry.text}</p>
                 </Card>
               ))}
             </div>
             <p className="mt-4 text-xs text-bone-600">
-              Market Pulse publishes only source-backed, reviewed content (docs/12). Sample copy
+              Market Pulse publishes only source-backed, reviewed content (pack doc 13). Sample copy
               shown until live results are available.
             </p>
           </>
         )}
       </section>
 
+      {/* Trust & transparency */}
+      <section className="border-t border-white/10 bg-coal-950/40">
+        <div className="container-page py-20">
+          <h2 className="mb-9 font-serif text-3xl font-bold text-bone">
+            Built for institutional trust
+          </h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {TRUST.map((t) => (
+              <Card key={t.title} className="flex flex-col gap-3">
+                <h3 className="font-display text-base font-semibold text-bone">{t.title}</h3>
+                <p className="text-sm leading-relaxed text-bone-400">{t.text}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Sell with Singha */}
       <section className="border-t border-white/10">
-        <div className="container-page flex flex-col items-start gap-6 py-16 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-page flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-serif text-3xl font-bold text-bone">Sell with Singha</h2>
-            <p className="mt-2 max-w-lg text-bone-400">
+            <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
               Banks, corporates, government and private sellers — disposal with an institutional
               evidence trail from listing to settlement.
             </p>

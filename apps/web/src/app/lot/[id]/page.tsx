@@ -1,21 +1,23 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, Chip } from '@singha/ui';
-import { apiGet, type LotDetail } from '../../../lib/api';
+import { fetchLotDetail, type LotDetail } from '../../../lib/api';
 import { BidPanel } from '../../../components/BidPanel';
 import { WatchButton } from '../../../components/WatchButton';
+import { LotGallery } from '../../../components/LotGallery';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LotPage({ params }: { params: { id: string } }) {
   let lot: LotDetail;
   try {
-    lot = await apiGet<LotDetail>(`/catalogue/${params.id}`);
+    lot = await fetchLotDetail(params.id);
   } catch {
     notFound();
   }
 
   const attrs = lot.attributes ?? {};
+  const place = [lot.location?.city, lot.location?.region].filter(Boolean).join(', ');
 
   return (
     <div className="container-page py-12">
@@ -25,16 +27,23 @@ export default async function LotPage({ params }: { params: { id: string } }) {
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <div
-            className="hud-cut aspect-[16/10] w-full bg-gradient-to-br from-coal-700/60 to-coal-900/80"
-            aria-hidden
-          />
+          <LotGallery media={lot.media ?? []} title={lot.title} />
           <div className="mt-6 flex items-center gap-3">
             <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
             <span className="text-xs text-bone-500">{lot.reference}</span>
           </div>
           <h1 className="mt-3 font-serif text-3xl font-bold text-bone">{lot.title}</h1>
-          <p className="mt-1 capitalize text-bone-500">{lot.category}</p>
+          <p className="mt-1 capitalize text-bone-500">
+            {lot.category}
+            {place ? ` · ${place}` : ''}
+          </p>
+
+          {lot.fullDescription && (
+            <p className="mt-4 whitespace-pre-line text-bone-300">{lot.fullDescription}</p>
+          )}
+          {!lot.fullDescription && lot.shortDescription && (
+            <p className="mt-4 text-bone-300">{lot.shortDescription}</p>
+          )}
 
           {Object.keys(attrs).length > 0 && (
             <Card className="mt-6">

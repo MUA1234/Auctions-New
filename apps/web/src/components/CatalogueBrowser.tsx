@@ -27,12 +27,18 @@ const SORTS = [
  * download all inventory and filter in React. Filter/search state persists
  * across view switches.
  */
-export function CatalogueBrowser() {
+export function CatalogueBrowser({
+  initialCategory = '',
+  initialSaleMethod = '',
+}: {
+  initialCategory?: string;
+  initialSaleMethod?: string;
+} = {}) {
   const [view, setView] = useState<ViewMode>('rubik');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [category, setCategory] = useState<string>('');
-  const [saleMethod, setSaleMethod] = useState<string>('');
+  const [category, setCategory] = useState<string>(initialCategory);
+  const [saleMethod, setSaleMethod] = useState<string>(initialSaleMethod);
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CatalogueResponse | null>(null);

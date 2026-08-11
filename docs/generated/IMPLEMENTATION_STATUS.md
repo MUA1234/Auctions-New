@@ -32,10 +32,51 @@ built:**
 
 Verified by `@singha/auctionflow` unit + jsdom component tests (all lots
 reachable, offscreen faces inert, rows rotate independently) and a green
-`next build`. Backend `GET /api/v2/me/dashboard` projection + persistent
-watchlist authority remain **backend** work (separate repo).
+`next build`.
 
-Remaining frontend alignment: P6 public visual redesign, P7 full Listing Studio.
+## Product Alignment — P5/P6/P7 + real media (frontend)
+
+**Also built (this alignment pass):**
+
+- [x] **Real asset media** (docs 07/15): `lib/media.ts` resolves a `storageKey`
+      to a Supabase public-object URL; `LotImage` renders real photography with a
+      graceful placeholder; `LotGallery` gives lot pages a cover + thumbnail
+      strip. Wired into `SaleCard`, the lot page and homepage featured cards.
+      Placeholder gradients only appear when a lot genuinely has no media.
+- [x] **P6 premium homepage**: real featured lots from
+      `/api/v2/catalogue?featured` (falls back gracefully), softened HUD (hero
+      grid at 6% opacity, red-glow removed), restrained accents, larger type +
+      generous spacing, added Trust & Transparency section, SEO/OG metadata, and
+      alt text. Categories deep-link to `/catalogue?category=…` (honoured by
+      `CatalogueBrowser`). Homepage still fetches only 8 cards + Market Pulse.
+- [x] **P5 buyer command centre**: consumes `GET /api/v2/me/dashboard`
+      projection (top action strip: active bids / winning / outbid / payment due
+      / ready-for-pickup, plus status groups) rendered as **Rubik status bands**
+      via the shared `CubeRow`; degrades to a projection derived from
+      watchlist/EOI/offers when the endpoint isn't shipped yet.
+- [x] **P7 full Listing Studio**: `sell/new` is now the complete 15-stage flow —
+      source, sale method, category, core details, specifications, photos
+      (cover/caption/remove), video, documents, AI Assistant (best-effort
+      `/ai/listing/draft`, derived-not-invented), sale settings, inspection,
+      collection, fees/terms, social promotion (manual-approval default),
+      preview, submit. **Draft autosaves at every stage** (localStorage); rich
+      content / media / sale-config / social are best-effort calls so listing
+      creation always succeeds against an older backend.
+
+Verified: `next build` green (9/9 pages) and a runtime smoke (`next start`) —
+`/`, `/catalogue`, `/sell/new`, `/dashboard` all 200, unknown lot 404s.
+
+**Remaining alignment (open):**
+
+- Frontend: P8 production auth UI (still demo login).
+- Backend repo (`Auctions-Backend`, not this repo): the authoritative
+  `/api/v2/me/dashboard` projection + persistent watchlist authority,
+  AuctionEvent/EventLot, richer lot-detail DTO with media, `/ai/listing/draft`,
+  `/listings/:id/content` + `/sale-config`, `/social/campaigns`, signed media
+  upload pipeline. The frontend already calls all of these and degrades cleanly
+  until they exist.
+- P1 cross-repo: generated typed client from the canonical backend (frontend
+  currently has zero runtime import of the co-located stale `apps/api`).
 
 ## Phase 0 checklist
 
