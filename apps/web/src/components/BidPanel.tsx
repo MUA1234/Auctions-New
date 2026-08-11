@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
-import { apiGet, apiPost, type AuctionState } from '../lib/api';
+import { apiBase, apiGet, apiPost, type AuctionState } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { formatMoney, timeLeft } from '../lib/format';
 
@@ -23,15 +23,42 @@ export function BidPanel({
   const [lead, setLead] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Realtime auction state over SSE (pack doc 17): one push connection instead
+  // of client polling. Falls back to a 3s poll if the stream can't be opened.
   useEffect(() => {
-    const timer = setInterval(async () => {
-      try {
-        setState(await apiGet<AuctionState>(`/auctions/${auctionId}/state`));
-      } catch {
-        /* transient */
-      }
-    }, 3000);
-    return () => clearInterval(timer);
+    let es: EventSource | null = null;
+    let poll: ReturnType<typeof setInterval> | null = null;
+    const startPoll = () => {
+      if (poll) return;
+      poll = setInterval(async () => {
+        try {
+          setState(await apiGet<AuctionState>(`/auctions/${auctionId}/state`));
+        } catch {
+          /* transient */
+        }
+      }, 3000);
+    };
+    try {
+      es = new EventSource(`${apiBase}/auctions/${auctionId}/stream`);
+      es.onmessage = (e) => {
+        try {
+          setState(JSON.parse(e.data) as AuctionState);
+        } catch {
+          /* ignore malformed frame */
+        }
+      };
+      es.onerror = () => {
+        es?.close();
+        es = null;
+        startPoll();
+      };
+    } catch {
+      startPoll();
+    }
+    return () => {
+      es?.close();
+      if (poll) clearInterval(poll);
+    };
   }, [auctionId]);
 
   const current = state.currentBidMinor ?? state.openingBidMinor;

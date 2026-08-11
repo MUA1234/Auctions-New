@@ -45,6 +45,27 @@ export async function apiPatch<T>(path: string, body: unknown, token?: string): 
   return res.json() as Promise<T>;
 }
 
+/** Direct-to-storage upload grant (pack doc 08 upload pipeline). */
+export interface UploadGrant {
+  path: string;
+  signedUrl: string;
+  token: string;
+  kind: string;
+}
+
+/** Ask the API for a signed direct-to-Supabase upload URL for an asset's media. */
+export async function createUploadUrl(
+  assetId: string,
+  filename: string,
+  token?: string,
+): Promise<UploadGrant> {
+  return apiPost<UploadGrant>(
+    `/assets/${assetId}/media/upload-url`,
+    { filename, kind: 'image' },
+    token,
+  );
+}
+
 /** AI Listing Assistant draft (pack doc 08/10). Derived content — never facts. */
 export interface AiListingDraft {
   title?: string;

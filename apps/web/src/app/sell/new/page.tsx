@@ -3,10 +3,32 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
-import { apiPatch, apiPost, requestAiListingDraft, type AiListingDraft } from '../../../lib/api';
+import {
+  apiPatch,
+  apiPost,
+  createUploadUrl,
+  requestAiListingDraft,
+  type AiListingDraft,
+} from '../../../lib/api';
 import { getAccessToken } from '../../../lib/auth';
+import { createClient } from '../../../utils/supabase/client';
 
 const DRAFT_KEY = 'singha_listing_draft_v1';
+const MEDIA_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_MEDIA_BUCKET ?? 'singha-media';
+
+/**
+ * Upload a photo through the real pipeline (pack doc 08): API issues a signed
+ * direct-to-Supabase grant, the browser uploads the immutable original to object
+ * storage, and the returned storage path becomes the media's storageKey.
+ */
+async function uploadPhoto(assetId: string, file: File, token?: string): Promise<string> {
+  const grant = await createUploadUrl(assetId, file.name, token);
+  const { error } = await createClient()
+    .storage.from(MEDIA_BUCKET)
+    .uploadToSignedUrl(grant.path, grant.token, file);
+  if (error) throw error;
+  return grant.path;
+}
 
 // Category specification fields mirror the backend versioned schemas (pack
 // doc 06). Numbers are coerced before submit; the server re-validates.
@@ -180,6 +202,8 @@ export default function ListingStudio() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState<AiListingDraft | null>(null);
   const [aiUnavailable, setAiUnavailable] = useState(false);
+  // In-session File handles keyed by photo id (blobs can't live in localStorage).
+  const filesRef = useRef<Map<string, File>>(new Map());
 
   // Load a saved draft once on mount.
   useEffect(() => {
@@ -216,13 +240,17 @@ export default function ListingStudio() {
 
   function onPickPhotos(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    const added: PhotoDraft[] = files.map((f, i) => ({
-      id: rid(),
-      name: f.name,
-      url: URL.createObjectURL(f),
-      caption: '',
-      cover: draft.photos.length === 0 && i === 0,
-    }));
+    const added: PhotoDraft[] = files.map((f, i) => {
+      const id = rid();
+      filesRef.current.set(id, f);
+      return {
+        id,
+        name: f.name,
+        url: URL.createObjectURL(f),
+        caption: '',
+        cover: draft.photos.length === 0 && i === 0,
+      };
+    });
     set('photos', [...draft.photos, ...added]);
     e.target.value = '';
   }
@@ -328,23 +356,30 @@ export default function ListingStudio() {
           token,
         ).catch(() => notes.push('Buy-now price not stored (endpoint unavailable).'));
 
-      let mediaOk = 0;
-      for (let i = 0; i < draft.photos.length; i++) {
-        const p = draft.photos[i]!;
-        await apiPost(
-          `/assets/${asset.id}/media`,
-          {
-            kind: 'image',
-            storageKey: p.name,
-            caption: p.caption || undefined,
-            order: i,
-            cover: p.cover,
-          },
-          token,
-        )
-          .then(() => mediaOk++)
-          .catch(() => {});
+      // Photos: upload the immutable original through the signed pipeline and
+      // register it with the REAL storage key (cover first). If the File handle
+      // is gone (draft restored after a reload) or upload fails, fall back to a
+      // best-effort registration so submit still succeeds.
+      const ordered = [...draft.photos].sort((a, b) => Number(b.cover) - Number(a.cover));
+      let uploaded = 0;
+      for (const p of ordered) {
+        const file = filesRef.current.get(p.id);
+        let storageKey = p.name;
+        if (file) {
+          try {
+            storageKey = await uploadPhoto(asset.id, file, token);
+            uploaded++;
+          } catch {
+            notes.push(`Photo "${p.name}" could not be uploaded — registered by name only.`);
+          }
+        }
+        await apiPost(`/assets/${asset.id}/media`, { kind: 'image', storageKey }, token).catch(
+          () => {},
+        );
       }
+      if (draft.photos.length > 0 && uploaded === 0)
+        notes.push('Photos registered without upload (storage not reachable from this session).');
+
       if (draft.videoUrl)
         await apiPost(
           `/assets/${asset.id}/media`,
@@ -354,11 +389,9 @@ export default function ListingStudio() {
       for (const doc of draft.documents)
         await apiPost(
           `/assets/${asset.id}/media`,
-          { kind: 'document', storageKey: doc.name, caption: doc.docType },
+          { kind: 'document', storageKey: doc.name },
           token,
         ).catch(() => {});
-      if (draft.photos.length && mediaOk === 0)
-        notes.push('Media registration pending (upload pipeline not connected).');
 
       // Opening bid / increment / reserve configure the AUCTION, which staff set
       // when they schedule it (POST /auctions) after approval — not at draft
