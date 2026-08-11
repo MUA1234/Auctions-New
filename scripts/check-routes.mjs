@@ -48,7 +48,9 @@ for (const rel of navFiles) {
   const file = join(root, rel);
   if (!existsSync(file)) continue;
   const src = readFileSync(file, 'utf8');
-  const hrefs = [...src.matchAll(/href=["'](\/[^"'{}]*)["']/g)].map((m) => m[1]);
+  // Match both JSX `href="/x"` and nav-config object-literal `href: '/x'` forms
+  // (the nav items live in an array of { href, label } objects).
+  const hrefs = [...src.matchAll(/href(?:=|:\s*)["'](\/[^"'{}]*)["']/g)].map((m) => m[1]);
   for (const href of [...new Set(hrefs)]) {
     if (matches(href)) {
       console.log(`  ✓ ${rel}  ${href}`);
