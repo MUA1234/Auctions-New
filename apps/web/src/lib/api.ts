@@ -120,6 +120,7 @@ export interface CatalogueLot {
 
 export interface AuctionState {
   id: string;
+  listingId: string;
   status: string;
   currency: string;
   openingBidMinor: number;
@@ -127,6 +128,11 @@ export interface AuctionState {
   currentBidMinor: number | null;
   startsAt: string;
   endsAt: string;
+  extendedCount: number;
+  bidCount: number;
+  // Monotonic sequence from the engine (pack 01 doc 07) for realtime ordering.
+  version: number;
+  reserveMet?: boolean;
 }
 
 export interface LotDetail extends CatalogueLot {

@@ -47,3 +47,9 @@ jobs:
 
       - name: Internal route/link check (no dead primary nav)
         run: node scripts/check-routes.mjs
+
+      # Contract conformance (pack 01 doc 08): the frontend DTOs must cover every
+      # field the canonical backend returns (contracts/public-api.contract.json),
+      # so backend changes can't silently drift from the frontend.
+      - name: Contract conformance (no silent drift from canonical backend)
+        run: node scripts/check-contracts.mjs
