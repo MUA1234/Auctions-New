@@ -9,6 +9,13 @@ The authoritative product specification is the AI Development Pack in
 domain they govern. Autonomous decisions are logged in
 [`docs/generated/DECISIONS.md`](./docs/generated/DECISIONS.md).
 
+> ⚠️ **Canonical backend has moved.** This repository is the **frontend/product**
+> (`@singha/web`, deployed to Vercel). The single source of truth for the API and
+> worker is the separate repo **`Auctions-Backend`** (deployed to Railway). The
+> `apps/api` and `apps/worker` directories here are a **frozen pre-split copy** —
+> see their `DEPRECATED.md`. Do not add features or fixes to them; they are not a
+> second source of truth and Vercel builds only `@singha/web`.
+
 > **Status: Phase 0 (Foundations).** Monorepo, tooling, CI, observability,
 > domain-boundary scaffold, stable data core (identity/inventory/media/audit/
 > outbox) and the ported design system. Not production-ready.

@@ -9,6 +9,14 @@ The human developer must not be required to translate the product owner's ideas 
 
 Read all files in `/docs` before implementing a domain they govern.
 
+## Repository topology (READ FIRST)
+This repo (`Auctions New`) is the **frontend/product** — `@singha/web`, deployed to
+Vercel. The **canonical API + worker are a separate repo, `Auctions-Backend`**
+(deployed to Railway); that is the single source of truth for all backend/auction/
+security work. The `apps/api` and `apps/worker` directories here are a **frozen
+pre-split copy** (see their `DEPRECATED.md`) — never add features or fixes to them.
+Do backend changes in `Auctions-Backend`, frontend changes here.
+
 ## Product modules
 - **Singha Exchange** — timed auctions, EOI, Buy Now, Make Offer, sealed tender, live/hybrid.
 - **AuctionFlow** — Rubik-inspired Cube/Grid/List catalogue and buyer command-centre dashboard.
