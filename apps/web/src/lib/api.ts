@@ -93,3 +93,13 @@ export interface MyOffer {
   amountMinor: number;
   currency: string;
 }
+
+export interface SellerListing {
+  id: string;
+  publicRef: string;
+  title: string | null;
+  saleMethod: string;
+  status: string;
+  category: string;
+  createdAt: string;
+}
