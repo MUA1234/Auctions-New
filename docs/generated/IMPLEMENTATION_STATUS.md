@@ -66,9 +66,33 @@ reachable, offscreen faces inert, rows rotate independently) and a green
 Verified: `next build` green (9/9 pages) and a runtime smoke (`next start`) —
 `/`, `/catalogue`, `/sell/new`, `/dashboard` all 200, unknown lot 404s.
 
+## Product Alignment — P8 Production authentication (frontend)
+
+- [x] **Real auth on Supabase Auth** (doc 09): `/login` supports email+password,
+      passwordless magic link, sign-up and password reset (account recovery);
+      `/auth/callback` exchanges the one-time code for a **secure cookie
+      session** (refreshed by the existing SSR middleware — no tokens in
+      localStorage on the real path).
+- [x] **Central `lib/auth.ts`**: `getAccessToken()` returns the Supabase session
+      JWT (falls back to the demo token only when
+      `NEXT_PUBLIC_DEMO_AUTH_ENABLED !== 'false'`); `useAuth()` reacts to auth
+      changes; `signOut()` clears both. Every authed surface (dashboard, seller,
+      admin, Listing Studio, `WatchButton`, `BidPanel`) now goes through it —
+      **no component reads `singha_demo_token` directly** any more.
+- [x] Session-aware header (`AuthNav`): Sign in ⇄ account email + Sign out.
+- [x] Demo login is **gated** and clearly labelled "Dev"; set
+      `NEXT_PUBLIC_DEMO_AUTH_ENABLED=false` to remove it in production (doc 09
+      "dev/demo auth disabled in production").
+
+**Backend follow-up for P8** (separate repo): the API must verify Supabase JWTs
+and map the IdP subject → Singha Customer/User (never use the IdP id as the
+business key), add privileged-staff MFA, and disable `/auth/demo` +
+`/dev/token` in production. Until then, real Supabase sessions authenticate the
+frontend while the backend still accepts its own tokens; the demo path keeps
+local dev working.
+
 **Remaining alignment (open):**
 
-- Frontend: P8 production auth UI (still demo login).
 - Backend repo (`Auctions-Backend`, not this repo): the authoritative
   `/api/v2/me/dashboard` projection + persistent watchlist authority,
   AuctionEvent/EventLot, richer lot-detail DTO with media, `/ai/listing/draft`,

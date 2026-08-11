@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Button, Logo } from '@singha/ui';
+import { Logo } from '@singha/ui';
+import { AuthNav, SellCta } from './AuthNav';
 
 const NAV = [
   { href: '/catalogue', label: 'Catalogue' },
@@ -23,15 +24,8 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-bone-300 hover:text-bone sm:block"
-          >
-            Sign in
-          </Link>
-          <Link href="/sell">
-            <Button variant="gold">Sell with Singha</Button>
-          </Link>
+          <AuthNav />
+          <SellCta />
         </div>
       </div>
     </header>

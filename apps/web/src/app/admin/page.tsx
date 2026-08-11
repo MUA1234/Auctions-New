@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, apiPost, type SellerListing } from '../../lib/api';
-
-const TOKEN_KEY = 'singha_demo_token';
+import { useAuth } from '../../lib/auth';
 
 /**
  * Staff approvals queue (docs/05/06, Phase 5): listings awaiting review/publish.
@@ -12,14 +11,10 @@ const TOKEN_KEY = 'singha_demo_token';
  * without the role gets a 403, surfaced inline.
  */
 export default function AdminApprovals() {
-  const [token, setToken] = useState<string | null>(null);
+  const { token } = useAuth();
   const [queue, setQueue] = useState<SellerListing[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-
-  useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_KEY));
-  }, []);
 
   const load = useCallback(async (t: string) => {
     try {

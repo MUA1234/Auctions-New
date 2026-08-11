@@ -1,12 +1,11 @@
 'use client';
 
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import { Button, Card, Chip } from '@singha/ui';
 import {
   apiGetAuthed,
-  apiPost,
   fetchDashboard,
   fetchMyWatch,
   type DashboardGroup,
@@ -17,9 +16,8 @@ import {
   type MyOffer,
   type WatchedLot,
 } from '../../lib/api';
+import { signOut, useAuth } from '../../lib/auth';
 import { formatMoney, timeLeft } from '../../lib/format';
-
-const TOKEN_KEY = 'singha_demo_token';
 
 /**
  * Buyer command centre (pack doc 05). Prefers the server projection
@@ -31,15 +29,9 @@ const TOKEN_KEY = 'singha_demo_token';
  * directly, so the dashboard is always useful.
  */
 export default function DashboardPage() {
-  const [token, setToken] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
+  const { token, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [projection, setProjection] = useState<DashboardProjection | null>(null);
-
-  useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_KEY));
-  }, []);
 
   const load = useCallback(async (t: string) => {
     setError(null);
@@ -63,49 +55,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (token) void load(token);
+    else setProjection(null);
   }, [token, load]);
-
-  async function login(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const r = await apiPost<{ token: string }>('/auth/demo', { email });
-      localStorage.setItem(TOKEN_KEY, r.token);
-      setToken(r.token);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function signOut() {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setProjection(null);
-  }
 
   if (!token) {
     return (
       <div className="container-page py-16">
         <h1 className="font-serif text-4xl font-bold text-bone">Buyer command centre</h1>
         <Card className="mt-8 max-w-md">
-          <form onSubmit={login} className="flex flex-col gap-3">
-            <p className="text-sm text-bone-400">Sign in with your email (demo login).</p>
-            <input
-              className="field"
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={email}
-              onChange={(ev) => setEmail(ev.target.value)}
-            />
-            <Button type="submit" variant="gold" disabled={busy}>
-              Continue
-            </Button>
-            {error && <p className="text-sm text-outbid">{error}</p>}
-          </form>
+          <p className="text-sm text-bone-400">
+            {loading ? 'Checking your session…' : 'Sign in to see your watchlist, bids and offers.'}
+          </p>
+          {!loading && (
+            <Link href="/login?next=/dashboard" className="mt-4 inline-block">
+              <Button variant="gold">Sign in</Button>
+            </Link>
+          )}
         </Card>
       </div>
     );

@@ -62,7 +62,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
 
         <div>
           {lot.auction ? (
-            <BidPanel auctionId={lot.auction.id} initial={lot.auction} />
+            <BidPanel auctionId={lot.auction.id} initial={lot.auction} lotId={lot.id} />
           ) : (
             <Card>
               <p className="text-bone-400">This lot is not open for bidding.</p>

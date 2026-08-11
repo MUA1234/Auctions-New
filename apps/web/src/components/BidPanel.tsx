@@ -1,24 +1,27 @@
 'use client';
 
 import { type FormEvent, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
 import { apiGet, apiPost, type AuctionState } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { formatMoney, timeLeft } from '../lib/format';
 
-const TOKEN_KEY = 'singha_demo_token';
-
-export function BidPanel({ auctionId, initial }: { auctionId: string; initial: AuctionState }) {
+export function BidPanel({
+  auctionId,
+  initial,
+  lotId,
+}: {
+  auctionId: string;
+  initial: AuctionState;
+  lotId?: string;
+}) {
   const [state, setState] = useState<AuctionState>(initial);
-  const [token, setToken] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
+  const { token } = useAuth();
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [lead, setLead] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_KEY));
-  }, []);
 
   useEffect(() => {
     const timer = setInterval(async () => {
@@ -36,21 +39,6 @@ export function BidPanel({ auctionId, initial }: { auctionId: string; initial: A
     state.currentBidMinor == null ? state.openingBidMinor : current + state.incrementMinor;
 
   const errText = (err: unknown) => (err instanceof Error ? err.message : String(err));
-
-  async function login(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setMessage(null);
-    try {
-      const r = await apiPost<{ token: string }>('/auth/demo', { email });
-      localStorage.setItem(TOKEN_KEY, r.token);
-      setToken(r.token);
-    } catch (err) {
-      setMessage(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function bid(e: FormEvent) {
     e.preventDefault();
@@ -95,20 +83,14 @@ export function BidPanel({ auctionId, initial }: { auctionId: string; initial: A
       {state.status !== 'open' ? (
         <p className="text-sm text-bone-400">Bidding is closed for this lot.</p>
       ) : !token ? (
-        <form onSubmit={login} className="flex flex-col gap-3">
-          <p className="text-sm text-bone-400">Enter your email to bid (demo login).</p>
-          <input
-            className="field"
-            type="email"
-            required
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button type="submit" variant="gold" disabled={busy}>
-            Continue to bid
-          </Button>
-        </form>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-bone-400">Sign in to place a proxy bid on this lot.</p>
+          <Link href={`/login?next=${encodeURIComponent(lotId ? `/lot/${lotId}` : '/dashboard')}`}>
+            <Button variant="gold" className="w-full">
+              Sign in to bid
+            </Button>
+          </Link>
+        </div>
       ) : (
         <form onSubmit={bid} className="flex flex-col gap-3">
           <label className="text-sm text-bone-400">Your maximum bid ({state.currency})</label>

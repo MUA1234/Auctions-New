@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@singha/ui';
 import { addWatch, fetchMyWatch, removeWatch } from '../lib/api';
-
-const TOKEN_KEY = 'singha_demo_token';
+import { useAuth } from '../lib/auth';
 
 /**
  * Watch toggle backed by the AUTHORITATIVE server watchlist (/watch). Falls back
@@ -12,22 +11,20 @@ const TOKEN_KEY = 'singha_demo_token';
  * behaviour (consolidated pack doc 06).
  */
 export function WatchButton({ lotId }: { lotId: string }) {
-  const [token, setToken] = useState<string | null>(null);
+  const { token } = useAuth();
   const [watching, setWatching] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const t = localStorage.getItem(TOKEN_KEY);
-    setToken(t);
-    if (t)
-      fetchMyWatch(t)
+    if (token)
+      fetchMyWatch(token)
         .then((rows) => setWatching(rows.some((r) => r.listingId === lotId)))
         .catch(() => undefined);
-  }, [lotId]);
+  }, [lotId, token]);
 
   async function toggle() {
     if (!token) {
-      window.location.href = '/dashboard';
+      window.location.href = `/login?next=/lot/${lotId}`;
       return;
     }
     setBusy(true);

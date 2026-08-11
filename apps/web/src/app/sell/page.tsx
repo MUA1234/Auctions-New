@@ -4,18 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, type SellerListing } from '../../lib/api';
-
-const TOKEN_KEY = 'singha_demo_token';
+import { useAuth } from '../../lib/auth';
 
 /** Seller dashboard (docs/05, Phase 5): the seller's own listings + wizard CTA. */
 export default function SellerDashboard() {
-  const [token, setToken] = useState<string | null>(null);
+  const { token } = useAuth();
   const [listings, setListings] = useState<SellerListing[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_KEY));
-  }, []);
 
   const load = useCallback(async (t: string) => {
     try {
@@ -44,9 +39,8 @@ export default function SellerDashboard() {
       {!token ? (
         <Card className="mt-8">
           <p className="text-sm text-bone-400">
-            Sign in from the{' '}
-            <Link href="/dashboard" className="text-gold-400">
-              dashboard
+            <Link href="/login?next=/sell" className="text-gold-400">
+              Sign in
             </Link>{' '}
             with a seller account to see your listings.
           </p>

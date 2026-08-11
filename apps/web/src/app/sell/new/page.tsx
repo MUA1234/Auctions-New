@@ -4,8 +4,8 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiPatch, apiPost, requestAiListingDraft, type AiListingDraft } from '../../../lib/api';
+import { getAccessToken } from '../../../lib/auth';
 
-const TOKEN_KEY = 'singha_demo_token';
 const DRAFT_KEY = 'singha_listing_draft_v1';
 
 // Category specification fields mirror the backend versioned schemas (pack
@@ -239,7 +239,7 @@ export default function ListingStudio() {
   async function runAi() {
     setAiBusy(true);
     setAiUnavailable(false);
-    const token = localStorage.getItem(TOKEN_KEY) ?? undefined;
+    const token = (await getAccessToken()) ?? undefined;
     const res = await requestAiListingDraft(
       { category: draft.category, attributes, notes: draft.shortDescription },
       token,
@@ -265,7 +265,7 @@ export default function ListingStudio() {
     setBusy(true);
     setError(null);
     const notes: string[] = [];
-    const token = localStorage.getItem(TOKEN_KEY) ?? undefined;
+    const token = (await getAccessToken()) ?? undefined;
     try {
       const asset = await apiPost<{ id: string }>(
         '/assets',
