@@ -12,3 +12,6 @@ database/prisma/migrations
 # Canonical AI development pack — kept verbatim as split from the source pack.
 CLAUDE.md
 docs/*.md
+# Generated status artifacts (not hand-maintained; prettier is non-idempotent
+# on their nested list continuation lines).
+docs/generated
