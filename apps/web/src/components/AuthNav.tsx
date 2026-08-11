@@ -34,6 +34,13 @@ export function AuthNav() {
       >
         {user?.email ?? 'My account'}
       </Link>
+      <Link
+        href="/account/security"
+        className="text-sm text-bone-500 hover:text-bone-300"
+        title="Account security & MFA"
+      >
+        Security
+      </Link>
       <button
         onClick={() => void signOut()}
         className="text-sm font-medium text-bone-500 hover:text-bone-300"

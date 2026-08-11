@@ -6,6 +6,7 @@ import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import { Button, Card, Chip } from '@singha/ui';
 import {
   apiGetAuthed,
+  dashboardStreamUrl,
   fetchDashboard,
   fetchMyWatch,
   type DashboardGroup,
@@ -32,9 +33,13 @@ export default function DashboardPage() {
   const { token, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [projection, setProjection] = useState<DashboardProjection | null>(null);
+  const [live, setLive] = useState(false);
 
-  const load = useCallback(async (t: string) => {
-    setError(null);
+  // Refresh the projection without disturbing the screen. `quiet` refreshes
+  // (realtime pushes / polls) never surface a transient error, so a blip on the
+  // stream can't blank out a working dashboard.
+  const load = useCallback(async (t: string, quiet = false) => {
+    if (!quiet) setError(null);
     try {
       const server = await fetchDashboard(t);
       if (server) {
@@ -49,13 +54,53 @@ export default function DashboardPage() {
       ]);
       setProjection(deriveProjection(watch, eois, offers));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (!quiet) setError(err instanceof Error ? err.message : String(err));
     }
   }, []);
 
   useEffect(() => {
     if (token) void load(token);
     else setProjection(null);
+  }, [token, load]);
+
+  // Realtime command centre (pack doc 05 "realtime transitions"). Prefer a
+  // single SSE push connection; a projection frame replaces state in place. If
+  // the stream can't be opened (endpoint not shipped, network) we fall back to a
+  // 20s quiet poll so bids won/outbid, payments and pickups still transition
+  // without a manual reload — matching the auction BidPanel's resilient pattern.
+  useEffect(() => {
+    if (!token) return;
+    let es: EventSource | null = null;
+    let poll: ReturnType<typeof setInterval> | null = null;
+    const startPoll = () => {
+      if (poll) return;
+      poll = setInterval(() => void load(token, true), 20000);
+    };
+    try {
+      es = new EventSource(dashboardStreamUrl(token));
+      es.onopen = () => setLive(true);
+      es.onmessage = (e) => {
+        try {
+          setProjection(JSON.parse(e.data) as DashboardProjection);
+        } catch {
+          // A ping/keep-alive frame — treat as a nudge to refresh.
+          void load(token, true);
+        }
+      };
+      es.onerror = () => {
+        setLive(false);
+        es?.close();
+        es = null;
+        startPoll();
+      };
+    } catch {
+      startPoll();
+    }
+    return () => {
+      setLive(false);
+      es?.close();
+      if (poll) clearInterval(poll);
+    };
   }, [token, load]);
 
   if (!token) {
@@ -82,7 +127,18 @@ export default function DashboardPage() {
   return (
     <div className="container-page py-14">
       <div className="flex items-center justify-between">
-        <h1 className="font-serif text-4xl font-bold text-bone">Your command centre</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-serif text-4xl font-bold text-bone">Your command centre</h1>
+          {live && (
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-[#5fd0a3]"
+              title="Live — updates arrive automatically"
+            >
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#5fd0a3]" />
+              Live
+            </span>
+          )}
+        </div>
         <button onClick={signOut} className="text-sm text-bone-400 hover:text-bone-200">
           Sign out
         </button>

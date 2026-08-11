@@ -105,12 +105,34 @@ Verified: `next build` green (9/9 pages) and a runtime smoke (`next start`) —
       the real flat field names + guide/close time; buy-now via
       `/listings/:id/buy-now-price`.
 
-**Still open (mostly escalations needing real credentials):**
+## Product Alignment — MFA + dashboard realtime (frontend, no creds)
 
-- **P8 remainder**: privileged-staff **MFA**; disable `/auth/demo` in production
-  (`/dev/token` is already gated by `isProduction`).
-- **No realtime for the dashboard** yet (auction bidding is realtime; the buyer
-  command centre still refetches).
+Two remaining credential-free frontend gaps closed this pass:
+
+- [x] **Privileged-staff MFA** (doc 09 "MFA privileged staff"): TOTP on Supabase
+      Auth. `lib/mfa.ts` wraps enroll / verify / list / unenroll / AAL. New
+      `/account/security` page enrolls an authenticator (QR data-URI + manual
+      secret, no external lib) and manages factors; verifying lifts the session
+      to **AAL2**. `MfaGate` guards `/admin`: a real staff session with no factor
+      is sent to enroll (`requireEnrollment`), and a verified-but-AAL1 session
+      must pass a step-up challenge before the queue renders. Demo/dev sessions
+      pass through. **Backend must still enforce the `aal2` claim** for
+      privileged commands (UI is never the source of truth, rule 2).
+- [x] **Dashboard realtime** (doc 05 "realtime transitions", doc 17): the buyer
+      command centre now opens an `EventSource` to `GET /api/v2/me/dashboard/
+      stream` (bearer via query param since `EventSource` can't set headers) and
+      replaces the projection in place on each frame; a subtle "Live" pulse shows
+      when connected. Falls back to a 20s **quiet poll** when the stream isn't
+      shipped — mirroring `BidPanel`. Quiet refreshes never surface a transient
+      error, so a stream blip can't blank a working dashboard.
+
+Verified: `next build` green (12/12 pages, `/account/security` added), lint +
+prettier clean.
+
+**Still open (escalations needing real credentials):**
+
+- **P8 remainder**: backend `aal2` enforcement for staff commands; disable
+  `/auth/demo` in production (`/dev/token` is already gated by `isProduction`).
 - **Escalations** (mock adapters await real creds): P9 real AI provider + Buyer
   Twin + recommendations, P10 Connect channels (WhatsApp/Meta/email/SMS), P11
   Social publishing (Meta), P12 Asset Intelligence source-backed data, P13

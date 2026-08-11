@@ -346,6 +346,17 @@ export async function fetchDashboard(token: string): Promise<DashboardProjection
   }
 }
 
+/**
+ * SSE stream for the buyer command centre (pack doc 05 "realtime transitions",
+ * doc 17). `EventSource` cannot set an Authorization header, so the bearer token
+ * rides as a query param — the backend authenticates the stream from it. When
+ * the endpoint isn't shipped the connection errors and callers fall back to a
+ * poll, mirroring the auction `BidPanel`.
+ */
+export function dashboardStreamUrl(token: string): string {
+  return `${apiV2}/me/dashboard/stream?access_token=${encodeURIComponent(token)}`;
+}
+
 export async function addWatch(listingId: string, token: string) {
   return apiPost('/watch', { listingId }, token);
 }

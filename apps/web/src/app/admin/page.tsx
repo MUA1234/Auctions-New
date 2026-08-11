@@ -4,13 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, apiPost, type SellerListing } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { MfaGate } from '../../components/MfaGate';
 
 /**
  * Staff approvals queue (docs/05/06, Phase 5): listings awaiting review/publish.
  * Actions are server-authorized (listing:review / listing:publish) — a token
- * without the role gets a 403, surfaced inline.
+ * without the role gets a 403, surfaced inline. Wrapped in an MfaGate so a real
+ * staff session must satisfy MFA step-up before the queue is reachable (pack
+ * doc 09 "privileged MFA"); the backend enforces the aal2 claim server-side too.
  */
-export default function AdminApprovals() {
+export default function AdminApprovalsPage() {
+  return (
+    <MfaGate requireEnrollment>
+      <AdminApprovals />
+    </MfaGate>
+  );
+}
+
+function AdminApprovals() {
   const { token } = useAuth();
   const [queue, setQueue] = useState<SellerListing[]>([]);
   const [error, setError] = useState<string | null>(null);
