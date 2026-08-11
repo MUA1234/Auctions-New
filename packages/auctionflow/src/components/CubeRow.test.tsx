@@ -101,8 +101,12 @@ describe('CubeRow', () => {
     // Rotate only the first row; the second must stay on face 0.
     rotateNext(rows[0] as HTMLElement, 'Gems');
 
-    const activeA = rows[0].querySelector('.af-face[data-active="true"]') as HTMLElement;
-    const activeB = rows[1].querySelector('.af-face[data-active="true"]') as HTMLElement;
+    const activeA = (rows[0] as HTMLElement).querySelector(
+      '.af-face[data-active="true"]',
+    ) as HTMLElement;
+    const activeB = (rows[1] as HTMLElement).querySelector(
+      '.af-face[data-active="true"]',
+    ) as HTMLElement;
     expect(within(activeA).getByText('A Lot 4')).toBeTruthy(); // row A moved
     expect(within(activeB).getByText('B Lot 0')).toBeTruthy(); // row B unchanged
   });
