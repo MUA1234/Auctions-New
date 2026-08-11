@@ -3,11 +3,17 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
-import { apiGetAuthed, apiPost, type CatalogueLot, type MyEoi, type MyOffer } from '../../lib/api';
+import {
+  apiGetAuthed,
+  apiPost,
+  fetchMyWatch,
+  type MyEoi,
+  type MyOffer,
+  type WatchedLot,
+} from '../../lib/api';
 import { formatMoney } from '../../lib/format';
 
 const TOKEN_KEY = 'singha_demo_token';
-const WATCH_KEY = 'singha_watchlist';
 
 /**
  * Buyer command-centre (docs/13 "Buyer dashboard"): watchlist + the buyer's own
@@ -21,7 +27,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [eois, setEois] = useState<MyEoi[]>([]);
   const [offers, setOffers] = useState<MyOffer[]>([]);
-  const [watchlist, setWatchlist] = useState<CatalogueLot[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchedLot[]>([]);
 
   useEffect(() => {
     setToken(localStorage.getItem(TOKEN_KEY));
@@ -30,24 +36,16 @@ export default function DashboardPage() {
   const load = useCallback(async (t: string) => {
     setError(null);
     try {
-      const [e, o] = await Promise.all([
+      const [e, o, w] = await Promise.all([
         apiGetAuthed<MyEoi[]>('/eoi/mine', t).catch(() => []),
         apiGetAuthed<MyOffer[]>('/exchange/offers/mine', t).catch(() => []),
+        fetchMyWatch(t).catch(() => []),
       ]);
       setEois(e);
       setOffers(o);
+      setWatchlist(w);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    }
-    // Watchlist is lot ids in localStorage; resolve against the public catalogue.
-    try {
-      const ids: string[] = JSON.parse(localStorage.getItem(WATCH_KEY) ?? '[]');
-      if (ids.length) {
-        const all = await (await fetch(`${apiOrigin()}/api/v1/catalogue`)).json();
-        setWatchlist((all as CatalogueLot[]).filter((l) => ids.includes(l.id)));
-      }
-    } catch {
-      /* ignore */
     }
   }, []);
 
@@ -128,12 +126,14 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {watchlist.map((lot) => (
-              <Link key={lot.id} href={`/lot/${lot.id}`}>
+              <Link key={lot.listingId} href={`/lot/${lot.listingId}`}>
                 <Card className="flex flex-col gap-2 transition-colors hover:border-red-500/30">
                   <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
                   <h3 className="font-display text-sm font-semibold text-bone">{lot.title}</h3>
                   <span className="tabular font-display text-base font-bold text-gold-400">
-                    {formatMoney(lot.currentBidMinor, lot.currency)}
+                    {lot.currentBidMinor != null
+                      ? formatMoney(lot.currentBidMinor, lot.currency)
+                      : lot.status}
                   </span>
                 </Card>
               </Link>
@@ -179,10 +179,6 @@ export default function DashboardPage() {
       {error && <p className="mt-6 text-sm text-outbid">{error}</p>}
     </div>
   );
-}
-
-function apiOrigin(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 }
 
 function Stat({ label, value }: { label: string; value: number }) {

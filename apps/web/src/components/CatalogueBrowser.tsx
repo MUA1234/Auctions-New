@@ -1,141 +1,203 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card, Chip } from '@singha/ui';
-import { VIEW_MODES, type ViewMode } from '@singha/auctionflow';
-import type { CatalogueLot } from '../lib/api';
-import { formatMoney, timeLeft } from '../lib/format';
+import { fetchCatalogueV2, type CatalogueCardV2, type CatalogueResponse } from '../lib/api';
+import { SaleCard } from './SaleCard';
+
+type ViewMode = 'rubik' | 'grid' | 'list';
+const VIEWS: { id: ViewMode; label: string }[] = [
+  { id: 'rubik', label: 'Rubik' },
+  { id: 'grid', label: 'Grid' },
+  { id: 'list', label: 'List' },
+];
+const SORTS = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'ending', label: 'Ending soon' },
+  { id: 'price_desc', label: 'Price high→low' },
+  { id: 'price_asc', label: 'Price low→high' },
+];
 
 /**
- * AuctionFlow catalogue (docs/13, rule 14): Cube / Grid / List with search +
- * category filter. Filter/search/selection state is preserved across mode
- * switches (it lives here, above the view). The Cube uses DOM/CSS 3D transforms
- * — no WebGL required.
+ * AuctionFlow catalogue (consolidated pack doc 04). The default "Rubik" view is
+ * independent horizontal category BANDS (not a literal cube). All filtering,
+ * search and pagination happen SERVER-SIDE via /api/v2/catalogue — we never
+ * download all inventory and filter in React. Filter/search state persists
+ * across view switches.
  */
-export function CatalogueBrowser({ lots }: { lots: CatalogueLot[] }) {
-  const [mode, setMode] = useState<ViewMode>('grid');
+export function CatalogueBrowser() {
+  const [view, setView] = useState<ViewMode>('rubik');
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<string>('all');
+  const [debounced, setDebounced] = useState('');
+  const [category, setCategory] = useState<string>('');
+  const [saleMethod, setSaleMethod] = useState<string>('');
+  const [sort, setSort] = useState('newest');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<CatalogueResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const categories = useMemo(
-    () => ['all', ...Array.from(new Set(lots.map((l) => l.category))).sort()],
-    [lots],
-  );
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebounced(query), 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return lots.filter((l) => {
-      if (category !== 'all' && l.category !== category) return false;
-      if (!q) return true;
-      return (
-        l.title.toLowerCase().includes(q) ||
-        l.reference.toLowerCase().includes(q) ||
-        l.category.toLowerCase().includes(q)
-      );
-    });
-  }, [lots, query, category]);
+  // In Rubik mode we pull a larger page to fill the category bands.
+  const limit = view === 'rubik' ? 60 : 24;
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    fetchCatalogueV2({ search: debounced, category, saleMethod, sort, page, limit })
+      .then((d) => {
+        if (alive) {
+          setData(d);
+          setError(null);
+        }
+      })
+      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [debounced, category, saleMethod, sort, page, limit]);
+
+  // Reset to page 1 whenever filters change.
+  useEffect(() => setPage(1), [debounced, category, saleMethod, sort]);
+
+  const bands = useMemo(() => groupByCategory(data?.items ?? []), [data]);
 
   return (
     <div className="mt-8">
-      {/* Controls — persist across mode switches */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Controls */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCategory(c)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                category === c
-                  ? 'border-red-500/50 bg-red-500/10 text-bone'
-                  : 'border-white/10 text-bone-400 hover:border-white/20'
-              }`}
+          <FilterChip active={category === ''} onClick={() => setCategory('')}>
+            All
+          </FilterChip>
+          {(data?.facets.category ?? []).map((f) => (
+            <FilterChip
+              key={f.value}
+              active={category === f.value}
+              onClick={() => setCategory(f.value)}
             >
-              {c}
-            </button>
+              {f.value} <span className="text-bone-600">({f.count})</span>
+            </FilterChip>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search lots…"
             className="w-44 rounded-md border border-white/10 bg-coal-900/60 px-3 py-1.5 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none"
           />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="rounded-md border border-white/10 bg-coal-900/60 px-2 py-1.5 text-xs text-bone-300"
+          >
+            {SORTS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
           <div className="flex overflow-hidden rounded-md border border-white/10">
-            {VIEW_MODES.map((m) => (
+            {VIEWS.map((v) => (
               <button
-                key={m}
+                key={v.id}
                 type="button"
-                onClick={() => setMode(m)}
-                aria-pressed={mode === m}
-                className={`px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                  mode === m ? 'bg-red-500/15 text-bone' : 'text-bone-400 hover:text-bone-200'
+                onClick={() => setView(v.id)}
+                aria-pressed={view === v.id}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  view === v.id ? 'bg-red-500/15 text-bone' : 'text-bone-400 hover:text-bone-200'
                 }`}
               >
-                {m}
+                {v.label}
               </button>
             ))}
           </div>
         </div>
       </div>
 
+      {/* Sale-method sub-filter */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <FilterChip active={saleMethod === ''} onClick={() => setSaleMethod('')} small>
+          All methods
+        </FilterChip>
+        {(data?.facets.saleMethod ?? []).map((f) => (
+          <FilterChip
+            key={f.value}
+            active={saleMethod === f.value}
+            onClick={() => setSaleMethod(f.value)}
+            small
+          >
+            {f.value.replace(/_/g, ' ').toLowerCase()}{' '}
+            <span className="text-bone-600">({f.count})</span>
+          </FilterChip>
+        ))}
+      </div>
+
       <p className="mt-4 text-xs text-bone-500">
-        {filtered.length} {filtered.length === 1 ? 'lot' : 'lots'}
+        {loading ? 'Loading…' : error ? error : `${data?.total ?? 0} lots`}
       </p>
 
-      {filtered.length === 0 ? (
+      {!loading && data && data.items.length === 0 ? (
         <Card className="mt-4">
-          <p className="text-bone-400">No lots match your search.</p>
+          <p className="text-bone-400">No lots match your filters.</p>
         </Card>
-      ) : mode === 'grid' ? (
-        <GridView lots={filtered} />
-      ) : mode === 'list' ? (
-        <ListView lots={filtered} />
+      ) : view === 'rubik' ? (
+        <RubikBands bands={bands} />
+      ) : view === 'grid' ? (
+        <>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {data?.items.map((lot) => (
+              <SaleCard key={lot.id} lot={lot} />
+            ))}
+          </div>
+          <Pager data={data} page={page} setPage={setPage} />
+        </>
       ) : (
-        <CubeView lots={filtered} />
+        <>
+          <ListView items={data?.items ?? []} />
+          <Pager data={data} page={page} setPage={setPage} />
+        </>
       )}
     </div>
   );
 }
 
-function GridView({ lots }: { lots: CatalogueLot[] }) {
+/** Rubik = one independent, horizontally-scrolling band per category. */
+function RubikBands({ bands }: { bands: { category: string; items: CatalogueCardV2[] }[] }) {
   return (
-    <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {lots.map((lot) => (
-        <Link key={lot.id} href={`/lot/${lot.id}`}>
-          <Card className="flex h-full flex-col gap-3 transition-colors hover:border-red-500/30">
-            <div className="flex items-center justify-between">
-              <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-              <span className="text-xs text-bone-500">{lot.reference}</span>
-            </div>
-            <div
-              className="hud-cut-sm aspect-[4/3] w-full bg-gradient-to-br from-coal-700/60 to-coal-900/80"
-              aria-hidden
-            />
-            <h3 className="font-display text-base font-semibold text-bone">{lot.title}</h3>
-            <p className="text-xs capitalize text-bone-500">{lot.category}</p>
-            <div className="mt-auto flex items-end justify-between">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-bone-500">Current bid</p>
-                <span className="tabular font-display text-lg font-bold text-gold-400">
-                  {formatMoney(lot.currentBidMinor, lot.currency)}
-                </span>
+    <div className="mt-6 flex flex-col gap-10">
+      {bands.map((band) => (
+        <section key={band.category}>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-serif text-xl font-bold capitalize text-bone">{band.category}</h2>
+            <span className="text-xs text-bone-500">{band.items.length} lots</span>
+          </div>
+          <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-2">
+            {band.items.map((lot) => (
+              <div key={lot.id} className="w-64 shrink-0 snap-start">
+                <SaleCard lot={lot} compact />
               </div>
-              <span className="text-xs text-bone-400">{timeLeft(lot.endsAt)}</span>
-            </div>
-          </Card>
-        </Link>
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );
 }
 
-function ListView({ lots }: { lots: CatalogueLot[] }) {
+function ListView({ items }: { items: CatalogueCardV2[] }) {
   return (
     <div className="mt-5 overflow-hidden rounded-lg border border-white/10">
-      {lots.map((lot, i) => (
+      {items.map((lot, i) => (
         <Link
           key={lot.id}
           href={`/lot/${lot.id}`}
@@ -154,123 +216,81 @@ function ListView({ lots }: { lots: CatalogueLot[] }) {
             </p>
           </div>
           <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-          <div className="w-32 text-right">
-            <span className="tabular font-display text-sm font-bold text-gold-400">
-              {formatMoney(lot.currentBidMinor, lot.currency)}
-            </span>
-            <p className="text-[11px] text-bone-500">{timeLeft(lot.endsAt)}</p>
-          </div>
         </Link>
       ))}
     </div>
   );
 }
 
-/**
- * The Rubik-inspired Cube: lots are laid out on the six faces of a rotating 3D
- * cube (CSS transforms). Arrows rotate the cube; each face paginates through the
- * filtered lots six at a time.
- */
-function CubeView({ lots }: { lots: CatalogueLot[] }) {
-  const [rotX, setRotX] = useState(-18);
-  const [rotY, setRotY] = useState(24);
-  const faces = lots.slice(0, 6);
-  const facePositions = [
-    'rotateY(0deg)',
-    'rotateY(90deg)',
-    'rotateY(180deg)',
-    'rotateY(-90deg)',
-    'rotateX(90deg)',
-    'rotateX(-90deg)',
-  ];
-
+function Pager({
+  data,
+  page,
+  setPage,
+}: {
+  data: CatalogueResponse | null;
+  page: number;
+  setPage: (p: number) => void;
+}) {
+  if (!data || data.totalPages <= 1) return null;
   return (
-    <div className="mt-5">
-      <div className="flex items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => setRotY((y) => y - 90)}
-          className="rounded-md border border-white/10 px-3 py-1 text-sm text-bone-300 hover:border-white/20"
-          aria-label="Rotate left"
-        >
-          ←
-        </button>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setRotX((x) => x - 90)}
-            className="rounded-md border border-white/10 px-3 py-1 text-sm text-bone-300 hover:border-white/20"
-            aria-label="Rotate up"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={() => setRotX((x) => x + 90)}
-            className="rounded-md border border-white/10 px-3 py-1 text-sm text-bone-300 hover:border-white/20"
-            aria-label="Rotate down"
-          >
-            ↓
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => setRotY((y) => y + 90)}
-          className="rounded-md border border-white/10 px-3 py-1 text-sm text-bone-300 hover:border-white/20"
-          aria-label="Rotate right"
-        >
-          →
-        </button>
-      </div>
-
-      <div className="flex justify-center py-10" style={{ perspective: '1100px' }}>
-        <div
-          className="relative"
-          style={{
-            width: 240,
-            height: 240,
-            transformStyle: 'preserve-3d',
-            transform: `rotateX(${rotX}deg) rotateY(${rotY}deg)`,
-            transition: 'transform 500ms cubic-bezier(0.22,1,0.36,1)',
-          }}
-        >
-          {facePositions.map((transform, i) => {
-            const lot = faces[i];
-            return (
-              <div
-                key={i}
-                className="absolute inset-0 flex flex-col justify-between rounded-lg border border-red-500/25 bg-coal-900/85 p-4 backdrop-blur-sm"
-                style={{ transform: `${transform} translateZ(120px)` }}
-              >
-                {lot ? (
-                  <Link href={`/lot/${lot.id}`} className="flex h-full flex-col justify-between">
-                    <div className="flex items-center justify-between">
-                      <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-                    </div>
-                    <div>
-                      <h3 className="line-clamp-2 font-display text-sm font-semibold text-bone">
-                        {lot.title}
-                      </h3>
-                      <p className="mt-1 text-xs capitalize text-bone-500">{lot.category}</p>
-                      <span className="tabular mt-2 block font-display text-base font-bold text-gold-400">
-                        {formatMoney(lot.currentBidMinor, lot.currency)}
-                      </span>
-                    </div>
-                  </Link>
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <span className="text-xs text-bone-600">Singha</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <p className="text-center text-xs text-bone-600">
-        Showing the first {faces.length} of {lots.length} lots on the cube — use Grid or List for
-        all.
-      </p>
+    <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+      <button
+        disabled={page <= 1}
+        onClick={() => setPage(page - 1)}
+        className="rounded-md border border-white/10 px-3 py-1 text-bone-300 disabled:opacity-40"
+      >
+        ← Prev
+      </button>
+      <span className="text-bone-500">
+        Page {data.page} of {data.totalPages}
+      </span>
+      <button
+        disabled={page >= data.totalPages}
+        onClick={() => setPage(page + 1)}
+        className="rounded-md border border-white/10 px-3 py-1 text-bone-300 disabled:opacity-40"
+      >
+        Next →
+      </button>
     </div>
   );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+  small,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  small?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border ${small ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'} font-medium capitalize transition-colors ${
+        active
+          ? 'border-red-500/50 bg-red-500/10 text-bone'
+          : 'border-white/10 text-bone-400 hover:border-white/20'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function groupByCategory(
+  items: CatalogueCardV2[],
+): { category: string; items: CatalogueCardV2[] }[] {
+  const map = new Map<string, CatalogueCardV2[]>();
+  for (const item of items) {
+    const arr = map.get(item.category) ?? [];
+    arr.push(item);
+    map.set(item.category, arr);
+  }
+  return [...map.entries()]
+    .map(([category, list]) => ({ category, items: list }))
+    .sort((a, b) => b.items.length - a.items.length);
 }
