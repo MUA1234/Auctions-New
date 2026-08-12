@@ -76,17 +76,30 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero — restrained, premium, minimal HUD */}
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="hud-grid absolute inset-0 opacity-[0.06]" aria-hidden />
-        <div className="container-page relative py-24 sm:py-36">
-          <Chip tone="live">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Live &amp; timed auctions
-          </Chip>
-          <h1 className="mt-7 max-w-4xl font-serif text-5xl font-extrabold leading-[1.03] tracking-tight text-bone sm:text-7xl">
-            Sri Lanka’s trusted <span className="text-red-500">asset exchange</span>.
+      {/* Hero — cinematic, editorial, restrained */}
+      <section className="relative overflow-hidden border-b border-white/[0.07]">
+        {/* Sparse atmospheric depth — a single soft radial, not a red grid. */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              'radial-gradient(80% 60% at 78% 8%, rgba(224,70,58,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
+          }}
+        />
+        <div className="container-wide relative py-28 sm:py-40">
+          <p className="eyebrow flex items-center gap-2">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(224,70,58,0.8)]" />
+            Live · timed · sealed auctions
+          </p>
+          <h1 className="mt-6 max-w-4xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-7xl">
+            Sri Lanka’s trusted{' '}
+            <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
+              asset exchange
+            </span>
+            .
           </h1>
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-400">
+          <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
             Vehicles, machinery, gems, property and business assets — discovered, inspected and won
             through transparent, real-time auctions.
           </p>
@@ -98,7 +111,8 @@ export default async function HomePage() {
               <Button variant="outline">Watch live</Button>
             </Link>
           </div>
-          <p className="mt-7 text-sm text-bone-500">
+          <div className="mt-10 h-px w-full max-w-md rule-fade" />
+          <p className="mt-5 text-sm text-bone-500">
             Institutional transparency · Verified sellers · Server-authoritative bidding
           </p>
         </div>
@@ -108,11 +122,18 @@ export default async function HomePage() {
       <section className="container-page py-20">
         <div className="mb-9 flex items-end justify-between">
           <div>
-            <h2 className="font-serif text-3xl font-bold text-bone">Featured items</h2>
+            <p className="eyebrow">Open now</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
+              Featured items
+            </h2>
             <p className="mt-1 text-sm text-bone-500">Curated lots open right now.</p>
           </div>
-          <Link href="/catalogue" className="text-sm font-medium text-gold-400 hover:text-gold-300">
-            View all →
+          <Link
+            href="/catalogue"
+            className="group text-sm font-medium text-gold-300 transition-colors hover:text-gold-200"
+          >
+            View all{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
           </Link>
         </div>
         {featured.length > 0 ? (
@@ -155,20 +176,23 @@ export default async function HomePage() {
       </section>
 
       {/* Explore categories */}
-      <section className="border-y border-white/10 bg-coal-950/40">
+      <section className="border-y border-white/[0.07] bg-coal-950/40">
         <div className="container-page py-20">
-          <h2 className="mb-9 font-serif text-3xl font-bold text-bone">Explore categories</h2>
+          <p className="eyebrow">Browse by type</p>
+          <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
+            Explore categories
+          </h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {CATEGORIES.map((category) => (
               <Link
                 key={category.slug}
                 href={`/catalogue?category=${category.slug}`}
-                className="card group flex items-center justify-between p-5 transition-colors hover:border-gold-500/40"
+                className="card-premium group flex items-center justify-between p-5"
               >
-                <span className="font-display text-sm font-semibold text-bone-200">
+                <span className="font-display text-sm font-semibold text-bone-200 transition-colors group-hover:text-bone">
                   {category.label}
                 </span>
-                <span className="text-gold-500 transition-transform group-hover:translate-x-1">
+                <span className="text-gold-400 transition-transform group-hover:translate-x-1">
                   →
                 </span>
               </Link>

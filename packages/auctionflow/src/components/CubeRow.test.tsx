@@ -78,12 +78,15 @@ describe('CubeRow', () => {
   });
 
   it('renders independent rows that do not share a face position', () => {
+    // Pin 4 faces/page so this test asserts INDEPENDENCE deterministically,
+    // independent of the responsive density mapping (§7).
     const { container } = render(
       <AuctionFlowViewport>
         <CubeRow<Lot>
           rowId="a"
           title="Gems"
           items={lots}
+          maxPerFace={4}
           itemKey={(l) => l.id}
           renderItem={(l) => <span>{`A ${l.title}`}</span>}
         />
@@ -91,6 +94,7 @@ describe('CubeRow', () => {
           rowId="b"
           title="Art"
           items={lots}
+          maxPerFace={4}
           itemKey={(l) => l.id}
           renderItem={(l) => <span>{`B ${l.title}`}</span>}
         />

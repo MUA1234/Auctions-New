@@ -19,7 +19,7 @@ export interface CubeRowProps<T> {
   /** Stable key for an item, used for React keys so a bid update never remounts. */
   itemKey: (item: T) => string;
   renderItem: (item: T) => ReactNode;
-  /** Optional cap on faces-per-page (defaults to the responsive 1–4). */
+  /** Optional cap on faces-per-page (defaults to the responsive 1–10, §7). */
   maxPerFace?: number;
   /**
    * Fired when the visible face reaches the last loaded page — the row's cue to
@@ -29,8 +29,29 @@ export interface CubeRowProps<T> {
   onNearEnd?: () => void;
 }
 
+/**
+ * Visible lot positions across a Flow row, responsive to viewport (Revision 05
+ * §7): a large desktop is an expansive marketplace canvas (~8–10 across), a laptop
+ * is balanced, a tablet is reduced, mobile is touch-first — without ever shrinking
+ * cards into unreadability (compact Flow cards stay legible down to ~180px).
+ */
 function facesForWidth(w: number, max: number): number {
-  const n = w >= 1024 ? 4 : w >= 768 ? 3 : w >= 520 ? 2 : 1;
+  const n =
+    w >= 1920
+      ? 10
+      : w >= 1680
+        ? 9
+        : w >= 1440
+          ? 8
+          : w >= 1280
+            ? 6
+            : w >= 1024
+              ? 5
+              : w >= 768
+                ? 3
+                : w >= 520
+                  ? 2
+                  : 1;
   return Math.min(n, max);
 }
 
@@ -49,7 +70,7 @@ export function CubeRow<T>({
   items,
   itemKey,
   renderItem,
-  maxPerFace = 4,
+  maxPerFace = 10,
   onNearEnd,
 }: CubeRowProps<T>) {
   const stageRef = useRef<HTMLDivElement>(null);
