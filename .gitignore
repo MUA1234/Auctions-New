@@ -16,6 +16,11 @@ out/
 coverage/
 .vitest/
 
+# Playwright E2E artifacts
+test-results/
+playwright-report/
+.playwright/
+
 # Prisma generated client
 database/generated/
 **/.prisma/
