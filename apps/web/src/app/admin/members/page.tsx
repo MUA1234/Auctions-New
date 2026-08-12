@@ -12,7 +12,8 @@ import {
 } from '../../../lib/member';
 import { useAuth } from '../../../lib/auth';
 import { formatMoney } from '../../../lib/format';
-import { previewCapacityMinor, requiredSecurityBps } from '../../../lib/credit-policy';
+import { previewCapacityMinor } from '../../../lib/credit-policy';
+import { useCreditPolicy } from '../../../lib/use-credit-policy';
 
 type Tab = 'security' | 'performance' | 'flags' | 'temporary';
 
@@ -387,8 +388,9 @@ function OnsiteRegistration({
     if (prefillName) setName((n) => n || prefillName);
   }, [prefillName]);
 
+  const policy = useCreditPolicy();
   const depositMinor = Math.round(Number(deposit || '0') * 100);
-  const bps = requiredSecurityBps();
+  const bps = policy.requiredSecurityBps;
   const needsScopeId = scopeType !== 'platform';
 
   async function register() {

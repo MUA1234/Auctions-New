@@ -3,11 +3,8 @@
 import { Card } from '@singha/ui';
 import type { BidCapacity, SecuritySummary } from '../../lib/member';
 import { formatMoney } from '../../lib/format';
-import {
-  capacityMultiple,
-  previewCapacityMinor,
-  requiredSecurityBps,
-} from '../../lib/credit-policy';
+import { previewCapacityMinor } from '../../lib/credit-policy';
+import { useCreditPolicy } from '../../lib/use-credit-policy';
 
 /**
  * Shared, calm Bid Capacity presentation (Revision 06 §25). Used by both the
@@ -96,8 +93,9 @@ function SecurityCard({ s }: { s: SecuritySummary }) {
  * Singha verification" caveat — the backend remains authoritative.
  */
 export function CreditPolicyNote({ currency = 'LKR' }: { currency?: string }) {
-  const bps = requiredSecurityBps();
-  const mult = capacityMultiple(bps);
+  const policy = useCreditPolicy();
+  const bps = policy.requiredSecurityBps;
+  const mult = Math.round(policy.capacityMultiple);
   const example = previewCapacityMinor(500_000_00, bps);
   return (
     <Card>
