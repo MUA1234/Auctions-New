@@ -177,4 +177,50 @@ describe('CubeRow', () => {
     expect(within(active).getByText('Lot 5')).toBeTruthy();
     expect(within(active).queryByText('Lot 0')).toBeNull();
   });
+
+  it('pages from a dot click — not only via the rotation animation', () => {
+    // 14 lots at 5/face → 3 faces, 3 dots. Selecting the last dot must move the
+    // row even though there is no quarter-turn animation to piggyback on.
+    const { container } = renderRow();
+    fireEvent.click(
+      within(container.querySelector('.af-row') as HTMLElement).getByLabelText(
+        'Vehicles: face 3 of 3',
+      ),
+    );
+    const active = activeFace(container);
+    expect(within(active).getByText('Lot 10')).toBeTruthy(); // face 3 → lots 10..13
+    expect(within(active).queryByText('Lot 0')).toBeNull();
+  });
+
+  it('reduced-motion: arrows page the static rail instantly, no 3D (§15)', () => {
+    const orig = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: /reduce/.test(q),
+      media: q,
+      onchange: null,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const { container } = renderRow();
+      // Reduced motion → non-rotating rail, no 3D stage.
+      expect(container.querySelector('.af-rail')).not.toBeNull();
+      expect(container.querySelector('.af-stage')).toBeNull();
+
+      const rail = () => container.querySelector('.af-rail') as HTMLElement;
+      expect(within(rail()).getByText('Lot 0')).toBeTruthy();
+
+      // Arrow pages immediately — no transitionend needed.
+      fireEvent.click(within(container).getByLabelText('Vehicles: next'));
+      expect(within(rail()).getByText('Lot 5')).toBeTruthy();
+      expect(within(rail()).queryByText('Lot 0')).toBeNull();
+    } finally {
+      window.matchMedia = orig;
+    }
+  });
 });
