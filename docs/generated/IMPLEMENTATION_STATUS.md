@@ -214,9 +214,13 @@ proxy, soft-close, winner). Ready for Phase 3 (EOI + Exchange).
 
 ---
 
-## Revision 06.1 — AuctionFlow geometry hotfix (frontend) — `COMPLETE_VERIFIED`
+## Revision 06.1 — AuctionFlow geometry hotfix (frontend) — locally `COMPLETE`, deploy pending
 
-_2026-08-12. Frontend `Auctions New` `main` commit `2f09514`._
+_2026-08-12. Frontend `Auctions New` `main` commits `2f09514` (geometry) + `d4551ee`
+(paging re-render fix). Per §29 this is **not** `COMPLETE_VERIFIED` until the
+deployed Vercel catalogue is visually checked — the code is not yet pushed
+(owner action), so the one open DoD item is "deployed Vercel catalogue visually
+verified"._
 
 The literal-cube Flow geometry (faces at `translateZ(width/2)` toward a fixed
 camera) magnified cards ~3× and leaked side faces off the left edge; one-page
@@ -228,12 +232,19 @@ or snap back; partial final faces keep normal size; realtime appends never reset
 the face; the page indicator collapses to a counter past 10 pages so a long
 mobile row can't overflow.
 
-**Evidence:** 21 auctionflow unit tests (incl. §7/§8/§11 regressions);
-typecheck + lint + `next build` (17 routes) green; real-browser checks at
+A verification pass (§28 DoD) also caught and fixed a latent paging bug: the
+position store re-rendered only on the rotation animation, so reduced-motion
+arrows and the page dots did not page (`d4551ee`).
+
+**Evidence:** 23 auctionflow unit tests (incl. §7/§8/§11 + page-dot +
+reduced-motion regressions); typecheck + lint + route + contract checks +
+`next build` (18 routes) green; real-browser DoD checks at
 2560/1920/1440/1280/1024/768/430/390 across the §19 data scenarios
-(1/2/8/9/18/30 lots + zero-image) — no leakage, no giant cards, working
-contained quarter-turn, no horizontal document overflow. Deploy to Vercel:
-`owner action required` (commit not pushed).
+(1/2/8/9/18/30 lots + zero-image): no leakage, no giant cards, static one-page
+rows, contained quarter-turn, keyboard + mouse-drag + real touch swipe +
+direction-lock (vertical drag doesn't rotate) + wheel scroll + `touch-action:
+pan-y` + reduced-motion rail all pass, no horizontal overflow. **Open:** deployed
+Vercel visual check (commit not pushed — owner action).
 
 ## Revision 06 — member frontend items — `PARTIAL` (frontend done; some backend-gated)
 
