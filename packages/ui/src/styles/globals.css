@@ -157,3 +157,28 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/*
+ * Reduced-motion fallback (Revision 05 §20 — mandatory). Users who ask their OS
+ * for reduced motion get the full premium look with the ambient motion stilled:
+ * the hero slow-pan, entrance floats, shimmer skeletons and pulse rings collapse
+ * to a static state. Flow row rotation has its own guard (useReducedMotion).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-slow-pan,
+  .animate-float-in,
+  .animate-shimmer,
+  .animate-pulse-ring,
+  .animate-bid-pop {
+    animation: none !important;
+    transform: none !important;
+  }
+}
