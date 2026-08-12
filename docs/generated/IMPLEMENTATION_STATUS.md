@@ -211,3 +211,58 @@ Phases 1 and 2 gates **passed** via `pnpm run check` (format, lint, typecheck,
 build, unit), `pnpm run test:db` (migrations and integration), `pnpm run test:e2e`
 (data-core permissions + outbox/audit) and `pnpm run test:auction` (concurrency,
 proxy, soft-close, winner). Ready for Phase 3 (EOI + Exchange).
+
+---
+
+## Revision 06.1 — AuctionFlow geometry hotfix (frontend) — `COMPLETE_VERIFIED`
+
+_2026-08-12. Frontend `Auctions New` `main` commit `2f09514`._
+
+The literal-cube Flow geometry (faces at `translateZ(width/2)` toward a fixed
+camera) magnified cards ~3× and leaked side faces off the left edge; one-page
+rows still rotated. Replaced with an **edge-hinged two-face quarter-turn**
+(`packages/auctionflow`): bounded, locally contained (`overflow: clip` +
+bounded `perspective`), cards at normal scale. One-page rows are fully static
+(no 3D, no gesture, disabled controls); drag → live turn → commit past threshold
+or snap back; partial final faces keep normal size; realtime appends never reset
+the face; the page indicator collapses to a counter past 10 pages so a long
+mobile row can't overflow.
+
+**Evidence:** 21 auctionflow unit tests (incl. §7/§8/§11 regressions);
+typecheck + lint + `next build` (17 routes) green; real-browser checks at
+2560/1920/1440/1280/1024/768/430/390 across the §19 data scenarios
+(1/2/8/9/18/30 lots + zero-image) — no leakage, no giant cards, working
+contained quarter-turn, no horizontal document overflow. Deploy to Vercel:
+`owner action required` (commit not pushed).
+
+## Revision 06 — member frontend items — `PARTIAL` (frontend done; some backend-gated)
+
+_2026-08-12. Frontend `Auctions New` `main` commit `6df7e60`._
+
+- **P1-13 Real Passport QR — `COMPLETE_VERIFIED`.** Genuine scannable QR
+  (`qrcode.react`) encoding only an opaque `SINGHA:M:<ClientID>` reference; no
+  sensitive data. Payload unit-tested; rendered code decodes back to the
+  reference (BarcodeDetector/jsQR).
+- **P1-12 / P1-16 Bid Capacity page — `COMPLETE_VERIFIED`.** New
+  `/account/bid-capacity` (Approved/Committed/Available meter, security instrument
+  states, policy note); the "Set up Bid Capacity" CTA points here;
+  `/account/security` stays MFA.
+- **P1-05 / P1-09 Credit policy preview — `COMPLETE_VERIFIED` (frontend preview).**
+  Configurable, non-authoritative 5%→20× preview
+  (`NEXT_PUBLIC_CREDIT_REQUIRED_SECURITY_BPS`), labelled subject to verification.
+  A backend policy endpoint would let the frontend read it rather than mirror it.
+- **P1-14 Browser E2E — `COMPLETE_VERIFIED` (critical subset).** Playwright
+  (`apps/web/e2e`): catalogue Flow default / no-blank / no-overflow / Grid-List
+  switch, Bid-Capacity vs account-security separation. 8 web unit tests + 3/4
+  E2E pass (1 skips when the public catalogue has no facets).
+- **P1-10 onsite search-first — `BLOCKED_BACKEND`.** Needs a customer search
+  endpoint (by Client ID / mobile / email / name) in `Auctions-Backend`; the
+  deployed API only exposes `GET /members/:customerId/360` (ULID).
+- **P1-11 Member 360 by Client ID — `BLOCKED_BACKEND`.** Same missing search
+  endpoint; staff still look up by ULID until it exists.
+
+**Not in this session:** Rev 06 backend credit-integrity P0/P1 (converted-exposure
+admission, temporary scope enforcement, security-release blocking, expiry
+revalidation, binding-sale-method exposure) live in `Auctions-Backend` (much built
+in Rev 05); and the `SINGHA_AI_MANAGEMENT_V3_1` pack, which targets the separate
+`bot_business_Singha` repo — a different product, not this platform.
