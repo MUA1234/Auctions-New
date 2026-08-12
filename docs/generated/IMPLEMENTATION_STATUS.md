@@ -277,3 +277,21 @@ admission, temporary scope enforcement, security-release blocking, expiry
 revalidation, binding-sale-method exposure) live in `Auctions-Backend` (much built
 in Rev 05); and the `SINGHA_AI_MANAGEMENT_V3_1` pack, which targets the separate
 `bot_business_Singha` repo — a different product, not this platform.
+
+## Revision 06.2 — member search-first + policy consumption (frontend) — `COMPLETE` (deploy pending)
+
+_2026-08-12. `main` commits `ef38b72` (search-first), `d98ec86` (policy)._
+
+- **§13/§14 search-first (P1-10/P1-11)** — `/admin/members` is now a debounced SEARCH
+  (Client ID / mobile / email / name / company → results → open the authoritative 360),
+  not a raw ULID box. Onsite registration is the "no match → create" fallback with
+  identity (mobile/email), Buyer/Seller/Both and an EXPLICIT Access scope
+  (Auction/Event/Platform — blank never means platform); KYC never faked verified.
+  Consumes the backend `GET /members/search` (masked contact; raw contact never sent).
+- **§16 policy consumption** — `useCreditPolicy()` fetches the public
+  `GET /members/credit-policy`; the Bid Capacity note and onsite preview read it instead
+  of a hard-coded 5%, with a safe default while loading (backend stays authoritative).
+
+Evidence: web typecheck + 8 unit tests + lint + `next build` (18 routes) + Playwright
+(adds an admin-members search-first assertion) green. **Open:** deploy (not pushed).
+Backend P0 items §4/§6 remain open in `Auctions-Backend` → overall Rev 06.2 is NO_GO.
