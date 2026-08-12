@@ -35,6 +35,13 @@ export function AuthNav() {
         {user?.email ?? 'My account'}
       </Link>
       <Link
+        href="/account"
+        className="text-sm text-bone-500 hover:text-bone-300"
+        title="Membership"
+      >
+        Membership
+      </Link>
+      <Link
         href="/account/security"
         className="text-sm text-bone-500 hover:text-bone-300"
         title="Account security & MFA"

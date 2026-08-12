@@ -24,7 +24,7 @@ export default function HowItWorksPage() {
         <Card>
           <h2 className="font-serif text-xl font-semibold text-bone">For buyers</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-bone-300">
-            <li>Browse the catalogue as Rubik bands, a grid or a list.</li>
+            <li>Browse the catalogue in Flow, Grid or List.</li>
             <li>Watch lots and follow them from your command centre.</li>
             <li>
               Place bids on timed auctions — proxy bidding and soft-close protect you against

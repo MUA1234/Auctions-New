@@ -12,9 +12,12 @@ import {
 } from '../lib/api';
 import { SaleCard } from './SaleCard';
 
-type ViewMode = 'rubik' | 'grid' | 'list';
+// Customer-facing view names are Flow | Grid | List (Revision 05 §4). The internal
+// primitives keep their names (CubeRow, AuctionFlowViewport, `flow` id) — only the
+// label the customer reads is "Flow"; we never show "Rubik".
+type ViewMode = 'flow' | 'grid' | 'list';
 const VIEWS: { id: ViewMode; label: string }[] = [
-  { id: 'rubik', label: 'Rubik' },
+  { id: 'flow', label: 'Flow' },
   { id: 'grid', label: 'Grid' },
   { id: 'list', label: 'List' },
 ];
@@ -26,11 +29,12 @@ const SORTS = [
 ];
 
 /**
- * AuctionFlow catalogue (consolidated pack doc 04). The default "Rubik" view is
- * independent horizontal category BANDS (not a literal cube). All filtering,
- * search and pagination happen SERVER-SIDE via /api/v2/catalogue — we never
- * download all inventory and filter in React. Filter/search state persists
- * across view switches.
+ * Catalogue (Revision 05 §4–§7). The default "Flow" view is independent horizontal
+ * category BANDS (not a literal cube). All filtering, search and pagination happen
+ * SERVER-SIDE via /api/v2/catalogue — we never download all inventory and filter in
+ * React. Flow bands are SEEDED immediately from the initial catalogue page so the
+ * view appears at once, then each band background-loads its own cursor slice.
+ * Filter/search state persists across view switches.
  */
 export function CatalogueBrowser({
   initialCategory = '',
@@ -39,7 +43,7 @@ export function CatalogueBrowser({
   initialCategory?: string;
   initialSaleMethod?: string;
 } = {}) {
-  const [view, setView] = useState<ViewMode>('rubik');
+  const [view, setView] = useState<ViewMode>('flow');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [category, setCategory] = useState<string>(initialCategory);
@@ -57,8 +61,9 @@ export function CatalogueBrowser({
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  // In Rubik mode we pull a larger page to fill the category bands.
-  const limit = view === 'rubik' ? 60 : 24;
+  // In Flow mode we pull a larger page so bands can be seeded across many
+  // categories at once (density target: 7–10 bands, Revision 05 §7).
+  const limit = view === 'flow' ? 60 : 24;
 
   useEffect(() => {
     let alive = true;
@@ -80,13 +85,23 @@ export function CatalogueBrowser({
   // Reset to page 1 whenever filters change.
   useEffect(() => setPage(1), [debounced, category, saleMethod, sort]);
 
-  // Rubik bands are driven by the category facet (all categories), each loading
+  // Flow bands are driven by the category facet (all categories), each loading
   // its own cursor slice — not the first global page. A selected category filter
   // narrows to that single band.
-  const rubikCategories = useMemo(() => {
+  const flowCategories = useMemo(() => {
     if (category) return [category];
     return (data?.facets.category ?? []).map((f) => f.value);
   }, [category, data]);
+
+  // Seed each band instantly from the already-loaded first catalogue page,
+  // grouped by category (Revision 05 §6) — the band then background-loads more.
+  const seedByCategory = useMemo(() => {
+    const map: Record<string, CatalogueCardV2[]> = {};
+    for (const lot of data?.items ?? []) {
+      (map[lot.category] ??= []).push(lot);
+    }
+    return map;
+  }, [data]);
 
   return (
     <div className="mt-8">
@@ -168,9 +183,10 @@ export function CatalogueBrowser({
         <Card className="mt-4">
           <p className="text-bone-400">No lots match your filters.</p>
         </Card>
-      ) : view === 'rubik' ? (
-        <RubikBands
-          categories={rubikCategories}
+      ) : view === 'flow' ? (
+        <FlowBands
+          categories={flowCategories}
+          seedByCategory={seedByCategory}
           search={debounced}
           saleMethod={saleMethod}
           sort={sort}
@@ -195,31 +211,37 @@ export function CatalogueBrowser({
 }
 
 /**
- * Rubik = a stack of INDEPENDENT 3D-rotating category rows (pack doc 04) — not a
- * literal six-sided cube, and not a single rail that rotates every category
+ * Flow = a stack of INDEPENDENT 3D-rotating category rows (Revision 05 §4–§7) —
+ * not a literal six-sided cube, and not a single rail that rotates every category
  * together. Each row is a `CubeRow` from `@singha/auctionflow` keyed by a stable
- * category id, so rotating one row never touches another and a realtime bid
- * never resets a row. Horizontal drag/arrow/keys rotate a row; vertical intent
- * still scrolls the page normally (direction lock lives in the package).
+ * category id, so rotating one row never touches another and a realtime bid never
+ * resets a row. Horizontal drag/arrow/keys rotate a row; vertical intent still
+ * scrolls the page normally (direction lock lives in the package).
  */
-function RubikBands({
+function FlowBands({
   categories,
+  seedByCategory,
   search,
   saleMethod,
   sort,
 }: {
   categories: string[];
+  seedByCategory: Record<string, CatalogueCardV2[]>;
   search: string;
   saleMethod: string;
   sort: string;
 }) {
   return (
     <AuctionFlowViewport>
-      <div className="mt-6 text-bone">
+      <p className="mt-6 text-xs text-bone-500">
+        Browse in Flow — swipe or use the arrows to move through each category.
+      </p>
+      <div className="mt-3 text-bone">
         {categories.map((category) => (
           <CategoryBand
             key={category}
             category={category}
+            seedItems={seedByCategory[category] ?? []}
             search={search}
             saleMethod={saleMethod}
             sort={sort}
@@ -231,26 +253,33 @@ function RubikBands({
 }
 
 /**
- * One Rubik row that owns its OWN cursor (pack 01 doc 05). It fetches its first
- * slice on mount / filter change, appends the next slice when the user rotates
- * near the last face (`onNearEnd`), and stops at `exhausted`. Appending never
- * resets the visible face because CubeRow keys position by rowId. This is what
- * makes every category item reachable instead of only the first global page.
+ * One Flow row that owns its OWN cursor (Revision 05 §5/§6). It is SEEDED
+ * instantly from the initial catalogue page, then background-loads its first row
+ * slice and appends more when the user rotates near the last face (`onNearEnd`).
+ * Appending never resets the visible face because CubeRow keys position by rowId.
+ *
+ * Blank-screen contract (§5): a request FAILURE never silently disappears — it
+ * keeps whatever items are already visible, surfaces a small retryable error, and
+ * NEVER marks the row `exhausted`. `exhausted` means only that the backend
+ * confirmed there are no more results. A row with items never returns null.
  */
 function CategoryBand({
   category,
+  seedItems,
   search,
   saleMethod,
   sort,
 }: {
   category: string;
+  seedItems: CatalogueCardV2[];
   search: string;
   saleMethod: string;
   sort: string;
 }) {
-  const [items, setItems] = useState<CatalogueCardV2[]>([]);
+  const [items, setItems] = useState<CatalogueCardV2[]>(seedItems);
   const [cursor, setCursor] = useState<string | null>(null);
   const [exhausted, setExhausted] = useState(false);
+  const [errored, setErrored] = useState(false);
   const loadingRef = useRef(false);
   // Bumped whenever the filters change, so a late in-flight response for a stale
   // filter set is ignored instead of polluting the current row.
@@ -261,55 +290,84 @@ function CategoryBand({
     [category, search, saleMethod, sort],
   );
 
-  // Reset + load the first slice on mount and whenever the filters change.
+  /** Merge a slice into the row, de-duping by stable listing id (§6). */
+  const merge = useCallback((prev: CatalogueCardV2[], next: CatalogueCardV2[]) => {
+    const seen = new Set(prev.map((l) => l.id));
+    return [...prev, ...next.filter((l) => !seen.has(l.id))];
+  }, []);
+
+  const load = useCallback(
+    (fromCursor: string | null) => {
+      if (loadingRef.current) return;
+      const gen = genRef.current;
+      loadingRef.current = true;
+      setErrored(false);
+      fetchCatalogueRow({ ...params, ...(fromCursor ? { cursor: fromCursor } : {}) })
+        .then((r) => {
+          if (gen !== genRef.current) return;
+          // First load replaces the seed with authoritative order; paging merges.
+          setItems((prev) => (fromCursor ? merge(prev, r.items) : merge(r.items, prev)));
+          setCursor(r.nextCursor);
+          setExhausted(r.exhausted);
+        })
+        .catch(() => {
+          // Failure keeps the current items and does NOT mark exhausted (§5).
+          if (genRef.current === gen) setErrored(true);
+          if (typeof console !== 'undefined') {
+            console.warn(`[flow] row "${category}" load failed`, { cursor: fromCursor });
+          }
+        })
+        .finally(() => {
+          if (gen === genRef.current) loadingRef.current = false;
+        });
+    },
+    [params, merge, category],
+  );
+
+  // Reset to the new seed + load the first slice whenever the filters change.
   useEffect(() => {
-    const gen = ++genRef.current;
-    setItems([]);
+    ++genRef.current;
+    setItems(seedItems);
     setCursor(null);
     setExhausted(false);
-    loadingRef.current = true;
-    fetchCatalogueRow(params)
-      .then((r) => {
-        if (gen !== genRef.current) return;
-        setItems(r.items);
-        setCursor(r.nextCursor);
-        setExhausted(r.exhausted);
-      })
-      .catch(() => genRef.current === gen && setExhausted(true))
-      .finally(() => {
-        if (gen === genRef.current) loadingRef.current = false;
-      });
-  }, [params]);
+    setErrored(false);
+    load(null);
+    // `params` is the single trigger; seedItems/load derive from the same filters.
+  }, [params, seedItems, load]);
 
   const loadMore = useCallback(() => {
-    if (loadingRef.current || exhausted || !cursor) return;
-    const gen = genRef.current;
-    loadingRef.current = true;
-    fetchCatalogueRow({ ...params, cursor })
-      .then((r) => {
-        if (gen !== genRef.current) return;
-        setItems((prev) => [...prev, ...r.items]);
-        setCursor(r.nextCursor);
-        setExhausted(r.exhausted);
-      })
-      .catch(() => genRef.current === gen && setExhausted(true))
-      .finally(() => {
-        if (gen === genRef.current) loadingRef.current = false;
-      });
-  }, [params, cursor, exhausted]);
+    if (exhausted || !cursor) return;
+    load(cursor);
+  }, [exhausted, cursor, load]);
 
-  if (items.length === 0) return null;
+  // A row with zero items AND a confirmed-empty backend simply renders nothing;
+  // but if it errored with no items we still show a retry so it never vanishes.
+  if (items.length === 0 && !errored) return null;
 
   return (
-    <CubeRow<CatalogueCardV2>
-      rowId={category}
-      title={category}
-      subtitle={bandSubtitle(items, exhausted)}
-      items={items}
-      itemKey={(lot) => lot.id}
-      renderItem={(lot) => <SaleCard lot={lot} compact />}
-      onNearEnd={loadMore}
-    />
+    <div>
+      <CubeRow<CatalogueCardV2>
+        rowId={category}
+        title={category}
+        subtitle={bandSubtitle(items, exhausted)}
+        items={items}
+        itemKey={(lot) => lot.id}
+        renderItem={(lot) => <SaleCard lot={lot} compact />}
+        onNearEnd={loadMore}
+      />
+      {errored ? (
+        <div className="mt-1 flex items-center gap-3 px-1 text-xs text-amber-300/80">
+          <span>Couldn’t load more in {category}.</span>
+          <button
+            type="button"
+            onClick={() => load(cursor)}
+            className="rounded border border-amber-300/30 px-2 py-0.5 font-medium text-amber-200 hover:bg-amber-300/10"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
