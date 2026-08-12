@@ -105,6 +105,38 @@ export async function fetchMember360(token: string, customerId: string): Promise
   return apiGetAuthed<Member360>(`/members/${customerId}/360`, token);
 }
 
+// ---- Staff member search (Revision 06.2 §12/§13) ----------------------------
+
+/** A summary row from staff member search — contact is MASKED (open the 360 for
+ *  full detail); never carries internal score, flags or private docs. */
+export interface MemberSearchResult {
+  customerId: string;
+  clientReference: string | null;
+  legalName: string | null;
+  emailMasked: string | null;
+  phoneMasked: string | null;
+  kycStatus: string;
+  membershipStatus: string;
+  roles: Array<'buyer' | 'seller'>;
+  organization: { reference: string | null; legalName: string } | null;
+}
+
+export interface MemberSearchResponse {
+  query: string;
+  count: number;
+  results: MemberSearchResult[];
+}
+
+/** Staff member search — GET /api/v1/members/search (requires member:read). */
+export async function searchMembers(
+  token: string,
+  q: string,
+  limit = 10,
+): Promise<MemberSearchResponse> {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  return apiGetAuthed<MemberSearchResponse>(`/members/search?${params.toString()}`, token);
+}
+
 // ---- Staff commands (thin wrappers; server enforces perms + AAL2) -----------
 
 export interface OnsiteGrantInput {

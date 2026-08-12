@@ -1,13 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiPost } from '../../../lib/api';
-import { fetchMember360, grantTemporaryMembership, type Member360 } from '../../../lib/member';
+import {
+  fetchMember360,
+  grantTemporaryMembership,
+  searchMembers,
+  type Member360,
+  type MemberSearchResult,
+} from '../../../lib/member';
 import { useAuth } from '../../../lib/auth';
 import { formatMoney } from '../../../lib/format';
+import { previewCapacityMinor, requiredSecurityBps } from '../../../lib/credit-policy';
 
 type Tab = 'security' | 'performance' | 'flags' | 'temporary';
+
+const INPUT =
+  'w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none';
 
 /**
  * Staff member operations (Revision 05 §12/§15/§17/§20). A premium operational
@@ -18,12 +28,44 @@ type Tab = 'security' | 'performance' | 'flags' | 'temporary';
  */
 export default function AdminMembersPage() {
   const { token } = useAuth();
-  const [lookupId, setLookupId] = useState('');
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [results, setResults] = useState<MemberSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [member, setMember] = useState<Member360 | null>(null);
   const [tab, setTab] = useState<Tab>('security');
   const [error, setError] = useState<string | null>(null);
 
-  async function load(id: string) {
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  // Search-first (§13/§14): find an existing member before ever creating one.
+  useEffect(() => {
+    if (!token || debounced.length < 2) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    let alive = true;
+    setSearching(true);
+    searchMembers(token, debounced)
+      .then((r) => {
+        if (!alive) return;
+        setResults(r.results);
+        setSearched(true);
+        setError(null);
+      })
+      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => alive && setSearching(false));
+    return () => {
+      alive = false;
+    };
+  }, [token, debounced]);
+
+  async function open(id: string) {
     if (!token || !id) return;
     setError(null);
     try {
@@ -34,41 +76,100 @@ export default function AdminMembersPage() {
     }
   }
 
-  return (
-    <div className="container-page py-14">
-      <h1 className="font-serif text-4xl font-bold text-bone">Members</h1>
-      <p className="mt-2 text-bone-400">
-        Look up a member for the full 360, or register a walk-in at the auction desk.
-      </p>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        <input
-          value={lookupId}
-          onChange={(e) => setLookupId(e.target.value)}
-          placeholder="Customer ID (ULID)"
-          className="w-80 rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none"
-        />
-        <Button onClick={() => load(lookupId)}>Open Member 360</Button>
-      </div>
-      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
-
-      {member ? (
+  if (member) {
+    return (
+      <div className="container-page py-14">
+        <button
+          onClick={() => setMember(null)}
+          className="text-xs text-bone-500 hover:text-bone-300"
+        >
+          ← Back to search
+        </button>
         <Member360Cockpit
           member={member}
           tab={tab}
           setTab={setTab}
-          onReload={() => load(member.customerId)}
+          onReload={() => open(member.customerId)}
         />
-      ) : (
-        <OnsiteRegistration
-          token={token}
-          onRegistered={(id) => {
-            setLookupId(id);
-            void load(id);
-          }}
+      </div>
+    );
+  }
+
+  const noMatch = searched && !searching && results.length === 0;
+
+  return (
+    <div className="container-page py-14">
+      <h1 className="font-serif text-4xl font-bold text-bone">Members</h1>
+      <p className="mt-2 text-bone-400">
+        Search an existing member by Client ID, mobile, email, name or company — or register a
+        walk-in at the auction desk.
+      </p>
+
+      <div className="mt-6">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search: CUS-000123 · 0771234567 · name@email · legal name · company"
+          className={`max-w-2xl ${INPUT}`}
+          autoFocus
         />
-      )}
+        <p className="mt-2 text-xs text-bone-500">
+          {searching
+            ? 'Searching…'
+            : results.length
+              ? `${results.length} match${results.length === 1 ? '' : 'es'} — select to open the full 360.`
+              : noMatch
+                ? 'No existing member matches — register a walk-in below.'
+                : 'Find an existing member before creating a new one (avoids duplicates).'}
+        </p>
+      </div>
+      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+
+      {results.length > 0 ? (
+        <ul className="mt-4 grid gap-2">
+          {results.map((r) => (
+            <ResultRow key={r.customerId} r={r} onOpen={() => open(r.customerId)} />
+          ))}
+        </ul>
+      ) : null}
+
+      <OnsiteRegistration
+        token={token}
+        prefillName={noMatch && /[a-z]/i.test(query) ? query.trim() : ''}
+        highlight={noMatch}
+        onRegistered={open}
+      />
     </div>
+  );
+}
+
+/** One member-search result — Client ID prominent, contact masked, quick chips. */
+function ResultRow({ r, onOpen }: { r: MemberSearchResult; onOpen: () => void }) {
+  const contact = [r.emailMasked, r.phoneMasked, r.organization?.legalName]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <li>
+      <button
+        onClick={onOpen}
+        className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-amber-300/30 hover:bg-white/[0.04]"
+      >
+        <div className="min-w-0">
+          <p className="font-mono text-sm font-semibold tracking-wider text-amber-100">
+            {r.clientReference ?? '—'}
+          </p>
+          <p className="truncate text-sm text-bone-200">{r.legalName ?? 'Member'}</p>
+          <p className="truncate text-xs text-bone-500">{contact || '—'}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {r.roles.map((role) => (
+            <Chip key={role}>{role}</Chip>
+          ))}
+          <Chip tone={r.membershipStatus === 'active' ? 'win' : 'gold'}>{r.membershipStatus}</Chip>
+          <Chip tone={r.kycStatus === 'verified' ? 'win' : 'neutral'}>KYC {r.kycStatus}</Chip>
+        </div>
+      </button>
+    </li>
   );
 }
 
@@ -253,47 +354,71 @@ function Member360Cockpit({
 }
 
 /**
- * Onsite quick registration (§15) — Search/Create → Identity → spot deposit →
- * calculate temporary capacity → event/expiry → confirm → passport. Kept to a
- * few fast fields for the tablet at the registration desk.
+ * Onsite registration (Revision 06.2 §14) — reached only AFTER search finds no
+ * match. Identity (name + mobile/email) → Buyer/Seller/Both → spot deposit →
+ * EXPLICIT scope (Auction/Event/Platform — blank never silently means platform)
+ * → backend calculates temporary capacity → passport. KYC is never faked verified.
  */
 function OnsiteRegistration({
   token,
+  prefillName,
+  highlight,
   onRegistered,
 }: {
   token: string | null;
+  prefillName: string;
+  highlight: boolean;
   onRegistered: (customerId: string) => void;
 }) {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'buyer' | 'seller' | 'both'>('buyer');
   const [deposit, setDeposit] = useState('50000');
-  const [scopeId, setScopeId] = useState('');
   const [hours, setHours] = useState('8');
+  const [scopeType, setScopeType] = useState<'event' | 'auction' | 'platform'>('event');
+  const [scopeId, setScopeId] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ clientId: string; capacity: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Search-first: seed the name from the query when no existing member matched.
+  useEffect(() => {
+    if (prefillName) setName((n) => n || prefillName);
+  }, [prefillName]);
+
+  const depositMinor = Math.round(Number(deposit || '0') * 100);
+  const bps = requiredSecurityBps();
+  const needsScopeId = scopeType !== 'platform';
+
   async function register() {
-    if (!token) {
-      setError('Sign in as staff first.');
-      return;
-    }
+    if (!token) return setError('Sign in as staff first.');
+    if (!name.trim()) return setError('Name is required.');
+    if (!email.trim() && !phone.trim())
+      return setError('Add a mobile or email so the member can be found later.');
+    if (needsScopeId && !scopeId.trim())
+      return setError(`Enter the ${scopeType} ID for a scoped grant.`);
     setBusy(true);
     setError(null);
     try {
       const customer = await apiPost<{ id: string; clientReference: string }>(
         '/customers',
-        { legalName: name },
+        {
+          legalName: name.trim(),
+          ...(email.trim() ? { email: email.trim() } : {}),
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+        },
         token,
       );
       const expiresAt = new Date(Date.now() + Number(hours) * 3_600_000).toISOString();
       const grant = await grantTemporaryMembership(token, {
         customerId: customer.id,
-        scopeType: scopeId ? 'event' : 'platform',
-        scopeId: scopeId || undefined,
-        spotDepositMinor: Math.round(Number(deposit) * 100),
-        requiredSecurityBps: 500,
+        scopeType,
+        scopeId: needsScopeId ? scopeId.trim() : undefined,
+        spotDepositMinor: depositMinor,
+        requiredSecurityBps: bps,
         expiresAt,
-        reason: 'Onsite registration desk',
+        reason: `Onsite registration desk · ${role} · KYC pending`,
       });
       const capacity = (grant as { approvedLimitMinor?: number }).approvedLimitMinor ?? 0;
       setResult({ clientId: customer.clientReference, capacity });
@@ -306,18 +431,48 @@ function OnsiteRegistration({
   }
 
   return (
-    <Card className="mt-8 max-w-xl">
-      <h2 className="font-display text-sm font-semibold text-bone">Onsite quick registration</h2>
+    <Card className={`mt-8 max-w-xl ${highlight ? 'border-amber-300/30' : ''}`}>
+      <h2 className="font-display text-sm font-semibold text-bone">
+        {highlight ? 'No match — register this walk-in' : 'Register a walk-in'}
+      </h2>
       <p className="mt-1 text-xs text-bone-500">
-        Register a walk-in bidder against a spot deposit and issue temporary access.
+        Create only after searching. Identity, spot deposit and an explicit scope, then a temporary
+        passport. KYC stays pending until Singha verifies it.
       </p>
       <div className="mt-4 space-y-3">
-        <Field label="Name / company">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone focus:border-red-500/40 focus:outline-none"
-          />
+        <Field label="Legal / person / company name">
+          <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Mobile">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              inputMode="tel"
+              placeholder="0771234567"
+              className={INPUT}
+            />
+          </Field>
+          <Field label="Email">
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              inputMode="email"
+              placeholder="name@email"
+              className={INPUT}
+            />
+          </Field>
+        </div>
+        <Field label="Acting as">
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as 'buyer' | 'seller' | 'both')}
+            className={INPUT}
+          >
+            <option value="buyer">Buyer</option>
+            <option value="seller">Seller</option>
+            <option value="both">Both</option>
+          </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Spot deposit (LKR)">
@@ -325,7 +480,7 @@ function OnsiteRegistration({
               value={deposit}
               onChange={(e) => setDeposit(e.target.value)}
               inputMode="numeric"
-              className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone focus:border-red-500/40 focus:outline-none"
+              className={INPUT}
             />
           </Field>
           <Field label="Valid for (hours)">
@@ -333,26 +488,46 @@ function OnsiteRegistration({
               value={hours}
               onChange={(e) => setHours(e.target.value)}
               inputMode="numeric"
-              className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone focus:border-red-500/40 focus:outline-none"
+              className={INPUT}
             />
           </Field>
         </div>
-        <Field label="Event ID (optional — blank = platform-wide)">
-          <input
-            value={scopeId}
-            onChange={(e) => setScopeId(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone focus:border-red-500/40 focus:outline-none"
-          />
-        </Field>
-        {/* Calculated capacity preview at the default 5% ratio. */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Access scope">
+            <select
+              value={scopeType}
+              onChange={(e) => setScopeType(e.target.value as 'event' | 'auction' | 'platform')}
+              className={INPUT}
+            >
+              <option value="auction">Auction — this auction</option>
+              <option value="event">Event — this event</option>
+              <option value="platform">Platform — all (needs authority)</option>
+            </select>
+          </Field>
+          {needsScopeId ? (
+            <Field label={`${scopeType === 'auction' ? 'Auction' : 'Event'} ID`}>
+              <input
+                value={scopeId}
+                onChange={(e) => setScopeId(e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+          ) : (
+            <div className="flex items-end pb-2">
+              <p className="text-xs text-amber-300/80">Platform-wide — use only with authority.</p>
+            </div>
+          )}
+        </div>
+        {/* Non-authoritative preview from the configured policy (§16). */}
         <p className="text-xs text-bone-500">
-          At 5%, a {formatMoney(Math.round(Number(deposit || '0') * 100))} deposit ≈{' '}
+          At {(bps / 100).toFixed(bps % 100 === 0 ? 0 : 1)}%, a {formatMoney(depositMinor)} deposit
+          ≈{' '}
           <span className="text-amber-100">
-            {formatMoney(Math.round(Number(deposit || '0') * 100) * 20)}
+            {formatMoney(previewCapacityMinor(depositMinor, bps))}
           </span>{' '}
-          bid capacity.
+          capacity — final on Singha verification.
         </p>
-        <Button onClick={register} disabled={busy || !name}>
+        <Button onClick={register} disabled={busy || !name.trim()}>
           {busy ? 'Registering…' : 'Register & issue passport'}
         </Button>
         {error ? <p className="text-sm text-red-300">{error}</p> : null}

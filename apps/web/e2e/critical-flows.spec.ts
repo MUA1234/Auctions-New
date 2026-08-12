@@ -80,4 +80,19 @@ test.describe('Singha critical flows', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: /bid capacity/i })).toHaveCount(0);
   });
+
+  test('admin members is search-first with explicit scope, not a raw ULID box (P1-10/P1-11)', async ({
+    page,
+  }) => {
+    await page.goto('/admin/members');
+    // Lookup is a search (Client ID / contact / name), never the old ULID input.
+    await expect(page.getByPlaceholder(/CUS-|name@email/i).first()).toBeVisible();
+    await expect(page.getByPlaceholder(/Customer ID \(ULID\)/i)).toHaveCount(0);
+    // Onsite registration is the "no match → create" fallback with EXPLICIT scope.
+    await expect(page.getByText(/register a walk-in/i).first()).toBeVisible();
+    await expect(page.getByText(/access scope/i).first()).toBeVisible();
+    // Scope must be an explicit choice (Auction/Event/Platform) — not blank=platform.
+    await expect(page.locator('select option[value="platform"]')).toHaveCount(1);
+    await expect(page.locator('select option[value="auction"]')).toHaveCount(1);
+  });
 });
