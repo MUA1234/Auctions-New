@@ -9,12 +9,12 @@ interface Lot {
   title: string;
 }
 
-const lots: Lot[] = Array.from({ length: 14 }, (_, i) => ({
-  id: `lot-${i}`,
-  title: `Lot ${i}`,
-}));
+const makeLots = (n: number): Lot[] =>
+  Array.from({ length: n }, (_, i) => ({ id: `lot-${i}`, title: `Lot ${i}` }));
 
-/** Click a row's "next" arrow, then complete the 3D rotation (jsdom does not
+const lots = makeLots(14);
+
+/** Click a row's "next" arrow, then complete the quarter-turn (jsdom does not
  *  fire CSS transitionend on its own) so the page commits. */
 function rotateNext(scope: HTMLElement, label: string) {
   fireEvent.click(within(scope).getByLabelText(`${label}: next`));
@@ -22,13 +22,18 @@ function rotateNext(scope: HTMLElement, label: string) {
   fireEvent.transitionEnd(stage);
 }
 
-function renderRow() {
+function activeFace(scope: HTMLElement): HTMLElement {
+  return scope.querySelector('.af-face[data-active="true"]') as HTMLElement;
+}
+
+function renderRow(rowLots: Lot[] = lots, maxPerFace?: number) {
   return render(
     <AuctionFlowViewport>
       <CubeRow<Lot>
         rowId="vehicles"
         title="Vehicles"
-        items={lots}
+        items={rowLots}
+        maxPerFace={maxPerFace}
         itemKey={(l) => l.id}
         renderItem={(l) => <a href={`/lot/${l.id}`}>{l.title}</a>}
       />
@@ -42,13 +47,14 @@ describe('CubeRow', () => {
   it('renders the first face and keeps offscreen faces inert (not focusable)', () => {
     const { container } = renderRow();
 
-    // 14 lots at 4/face (jsdom has no layout → default desktop width) → face 0
-    // shows the first four, and only current + prev + next stay mounted.
+    // A multi-page row keeps the current face plus its two neighbours mounted so
+    // a quarter-turn has something to pivot to — but the neighbours are folded
+    // edge-on and inert.
     const faces = container.querySelectorAll('.af-face');
     expect(faces.length).toBe(3);
 
-    const active = container.querySelector('.af-face[data-active="true"]')!;
-    expect(within(active as HTMLElement).getByText('Lot 0')).toBeTruthy();
+    const active = activeFace(container);
+    expect(within(active).getByText('Lot 0')).toBeTruthy();
 
     // Every non-active face is inert + aria-hidden, so its links can't be tabbed.
     container.querySelectorAll('.af-face[data-active="false"]').forEach((f) => {
@@ -57,18 +63,15 @@ describe('CubeRow', () => {
     });
   });
 
-  it('reaches EVERY lot by rotating — not only the first six', () => {
+  it('reaches EVERY lot by rotating — not only the first face', () => {
     const { container } = renderRow();
-    const activeText = () =>
-      within(container.querySelector('.af-face[data-active="true"]') as HTMLElement).getAllByText(
-        /^Lot \d+$/,
-      );
-
     const seen = new Set<string>();
-    const collect = () => activeText().forEach((el) => seen.add(el.textContent!));
+    const collect = () =>
+      within(activeFace(container))
+        .getAllByText(/^Lot \d+$/)
+        .forEach((el) => seen.add(el.textContent!));
 
     collect();
-    // 14 lots / 4 per face = 4 faces. Rotate through all of them (and wrap).
     for (let i = 0; i < 4; i++) {
       rotateNext(container.querySelector('.af-row') as HTMLElement, 'Vehicles');
       collect();
@@ -78,8 +81,6 @@ describe('CubeRow', () => {
   });
 
   it('renders independent rows that do not share a face position', () => {
-    // Pin 4 faces/page so this test asserts INDEPENDENCE deterministically,
-    // independent of the responsive density mapping (§7).
     const { container } = render(
       <AuctionFlowViewport>
         <CubeRow<Lot>
@@ -102,16 +103,78 @@ describe('CubeRow', () => {
     );
 
     const rows = container.querySelectorAll('.af-row');
-    // Rotate only the first row; the second must stay on face 0.
     rotateNext(rows[0] as HTMLElement, 'Gems');
 
-    const activeA = (rows[0] as HTMLElement).querySelector(
-      '.af-face[data-active="true"]',
-    ) as HTMLElement;
-    const activeB = (rows[1] as HTMLElement).querySelector(
-      '.af-face[data-active="true"]',
-    ) as HTMLElement;
-    expect(within(activeA).getByText('A Lot 4')).toBeTruthy(); // row A moved
-    expect(within(activeB).getByText('B Lot 0')).toBeTruthy(); // row B unchanged
+    expect(within(activeFace(rows[0] as HTMLElement)).getByText('A Lot 4')).toBeTruthy(); // moved
+    expect(within(activeFace(rows[1] as HTMLElement)).getByText('B Lot 0')).toBeTruthy(); // unchanged
+  });
+
+  // --- Revision 06.1 regressions -------------------------------------------
+
+  it('makes a single-page row fully static: no 3D viewport, no rotation, disabled controls (§7)', () => {
+    // 3 lots at the jsdom default density is one page → static rail, not a cube.
+    const { container } = renderRow(makeLots(3));
+
+    expect(container.querySelector('.af-viewport')).toBeNull();
+    expect(container.querySelector('.af-rail')).not.toBeNull();
+    // No mounted faces at all — nothing hidden to leak (§7 "no hidden prev/next").
+    expect(container.querySelectorAll('.af-face').length).toBe(0);
+
+    const next = within(container).getByLabelText('Vehicles: next') as HTMLButtonElement;
+    const prev = within(container).getByLabelText('Vehicles: previous') as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    expect(prev.disabled).toBe(true);
+
+    // Arrow key on the static rail must not change what is shown.
+    fireEvent.keyDown(container.querySelector('.af-rail')!, { key: 'ArrowRight' });
+    expect(within(container).getByText('Lot 0')).toBeTruthy();
+    expect(within(container).getByText('Lot 2')).toBeTruthy();
+  });
+
+  it('keeps a partial final face at normal slicing (no stretch / no duplicate) (§8)', () => {
+    // 9 lots at 5/face → face 0 = 0..4, final face = 5..8 (four cards).
+    const { container } = renderRow(makeLots(9));
+    rotateNext(container.querySelector('.af-row') as HTMLElement, 'Vehicles');
+
+    const active = activeFace(container);
+    expect(
+      within(active)
+        .getAllByText(/^Lot \d+$/)
+        .map((n) => n.textContent),
+    ).toEqual(['Lot 5', 'Lot 6', 'Lot 7', 'Lot 8']);
+  });
+
+  it('does not reset the visible face when realtime data appends more lots (§11)', () => {
+    const { container, rerender } = render(
+      <AuctionFlowViewport>
+        <CubeRow<Lot>
+          rowId="vehicles"
+          title="Vehicles"
+          items={makeLots(14)}
+          itemKey={(l) => l.id}
+          renderItem={(l) => <a href={`/lot/${l.id}`}>{l.title}</a>}
+        />
+      </AuctionFlowViewport>,
+    );
+
+    rotateNext(container.querySelector('.af-row') as HTMLElement, 'Vehicles');
+    expect(within(activeFace(container)).getByText('Lot 5')).toBeTruthy(); // now on face 1
+
+    // A realtime update grows the row; the visible face must stay put.
+    rerender(
+      <AuctionFlowViewport>
+        <CubeRow<Lot>
+          rowId="vehicles"
+          title="Vehicles"
+          items={makeLots(20)}
+          itemKey={(l) => l.id}
+          renderItem={(l) => <a href={`/lot/${l.id}`}>{l.title}</a>}
+        />
+      </AuctionFlowViewport>,
+    );
+
+    const active = activeFace(container);
+    expect(within(active).getByText('Lot 5')).toBeTruthy();
+    expect(within(active).queryByText('Lot 0')).toBeNull();
   });
 });

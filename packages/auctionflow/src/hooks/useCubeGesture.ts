@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { resolveAxis, swipeDelta, type GestureAxis } from '../paging';
+import { resolveAxis, type GestureAxis } from '../paging';
 
 export interface CubeGestureHandlers {
   onPointerDown: (e: ReactPointerEvent) => void;
@@ -21,22 +21,29 @@ export interface CubeGesture {
 }
 
 /**
- * Pointer gesture for a single Rubik row with a hard direction lock (doc 04):
- * once the pointer resolves to VERTICAL intent we release entirely so the page
- * scrolls normally; only HORIZONTAL intent drags/rotates the row. Pair with
- * `touch-action: pan-y` on the element so touch vertical scroll is never
- * hijacked. On release a drag past the commit threshold advances one face.
+ * Pointer gesture for a single Flow row with a hard direction lock (doc 04 /
+ * Revision 06.1 §17): once the pointer resolves to VERTICAL intent we release
+ * entirely so the page scrolls normally; only HORIZONTAL intent drags the row.
+ * Pair with `touch-action: pan-y` on the element so touch vertical scroll is
+ * never hijacked.
+ *
+ * On release it reports the final horizontal displacement via `onEnd(dx)` (dx 0
+ * for a non-horizontal gesture). The row itself decides — from dx and its own
+ * measured width — whether that displacement commits a quarter-turn or snaps
+ * back (Revision 06.1 §10), keeping all paging maths in one place.
  */
-export function useCubeGesture(faceWidth: number, onCommit: (delta: number) => void): CubeGesture {
+export function useCubeGesture(onEnd: (dx: number) => void): CubeGesture {
   const [dragX, setDragX] = useState(0);
   const [axis, setAxis] = useState<GestureAxis>(null);
   const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   const axisRef = useRef<GestureAxis>(null);
+  const dragXRef = useRef(0);
 
   const reset = useCallback(() => {
     start.current = null;
     axisRef.current = null;
+    dragXRef.current = 0;
     setAxis(null);
     setDragX(0);
     setDragging(false);
@@ -46,6 +53,7 @@ export function useCubeGesture(faceWidth: number, onCommit: (delta: number) => v
     if (!e.isPrimary) return;
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     axisRef.current = null;
+    dragXRef.current = 0;
     setDragging(true);
   }, []);
 
@@ -70,20 +78,21 @@ export function useCubeGesture(faceWidth: number, onCommit: (delta: number) => v
       (e.currentTarget as Element).setPointerCapture?.(s.id);
     }
 
-    if (axisRef.current === 'horizontal') setDragX(dx);
+    if (axisRef.current === 'horizontal') {
+      dragXRef.current = dx;
+      setDragX(dx);
+    }
   }, []);
 
   const onPointerUp = useCallback(
     (e: ReactPointerEvent) => {
       const s = start.current;
       if (s) (e.currentTarget as Element).releasePointerCapture?.(s.id);
-      if (axisRef.current === 'horizontal') {
-        const delta = swipeDelta(dragX, faceWidth);
-        if (delta !== 0) onCommit(delta);
-      }
+      const finalDx = axisRef.current === 'horizontal' ? dragXRef.current : 0;
       reset();
+      if (finalDx !== 0) onEnd(finalDx);
     },
-    [dragX, faceWidth, onCommit, reset],
+    [onEnd, reset],
   );
 
   return {

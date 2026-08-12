@@ -40,7 +40,15 @@ export function CubeControls({
   );
 }
 
-/** Dot page indicator (doc 04 "page indicator / CubeProgress"). */
+/** Max dots before the indicator collapses to a compact counter. */
+const MAX_DOTS = 10;
+
+/**
+ * Page indicator (doc 04). A dot rail for a handful of pages; past `MAX_DOTS`
+ * (e.g. a long mobile row paged one-at-a-time) it collapses to a compact
+ * "n / total" counter so the row header can never force horizontal document
+ * overflow (Revision 06.1 §28).
+ */
 export function CubeProgress({
   total,
   current,
@@ -53,6 +61,13 @@ export function CubeProgress({
   label: string;
 }) {
   if (total <= 1) return null;
+  if (total > MAX_DOTS) {
+    return (
+      <span className="af-count" aria-label={`${label}: face ${current + 1} of ${total}`}>
+        {current + 1} / {total}
+      </span>
+    );
+  }
   return (
     <div className="af-progress" role="tablist" aria-label={`${label} pages`}>
       {Array.from({ length: total }, (_, i) => (
