@@ -5,11 +5,11 @@
 /*
  * Singha Auctions design system — global stylesheet (ported from V1).
  * Owned by @singha/ui; imported once by each app's root layout. Depends on the
- * @singha/ui Tailwind preset for the coal/bone/red/gold palette and fonts.
+ * @singha/ui Tailwind preset for the coal/bone/green/gold palette and fonts.
  */
 
 :root {
-  --flash-from: #e0463a;
+  --flash-from: #1fa055;
 }
 
 html {
@@ -21,12 +21,12 @@ body {
   /*
    * Premium cinematic backdrop (Revision 05 Visual Taste Addendum): a deep
    * graphite base with two sparse, restrained atmospheric highlights — a whisper
-   * of Singha red high up and a refined gold catch low down. No red grid, no
+   * of Singha green high up and a refined gold catch low down. No green grid, no
    * casino noise; glow is controlled and rare.
    */
   background-color: #070709;
   background-image:
-    radial-gradient(70% 38% at 50% -8%, rgba(224, 70, 58, 0.1), transparent 70%),
+    radial-gradient(70% 38% at 50% -8%, rgba(31, 160, 85, 0.1), transparent 70%),
     radial-gradient(60% 45% at 92% 108%, rgba(201, 162, 75, 0.06), transparent 72%),
     linear-gradient(180deg, #0b0b0e 0%, #070709 40%, #060608 100%);
   background-attachment: fixed;
@@ -39,7 +39,7 @@ body {
 }
 
 ::selection {
-  background: rgba(224, 70, 58, 0.35);
+  background: rgba(31, 160, 85, 0.35);
 }
 
 .font-serif {
@@ -98,7 +98,7 @@ body {
   }
   .btn-primary {
     @apply btn bg-red-500 text-white hover:bg-red-600;
-    filter: drop-shadow(0 3px 11px rgba(224, 70, 58, 0.45));
+    filter: drop-shadow(0 3px 11px rgba(31, 160, 85, 0.45));
   }
   .btn-gold {
     @apply btn bg-gold-500 text-coal-950 hover:bg-gold-400;
@@ -155,8 +155,8 @@ body {
 /* ---------- AuctionFlow: gaming / HUD theme ---------- */
 .hud-grid {
   background-image:
-    linear-gradient(rgba(224, 70, 58, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(224, 70, 58, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(31, 160, 85, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 160, 85, 0.07) 1px, transparent 1px);
   background-size: 34px 34px;
 }
 .hud-cut {
@@ -177,8 +177,8 @@ body {
 }
 .text-glow-red {
   text-shadow:
-    0 0 10px rgba(224, 70, 58, 0.75),
-    0 0 26px rgba(224, 70, 58, 0.4);
+    0 0 10px rgba(31, 160, 85, 0.75),
+    0 0 26px rgba(31, 160, 85, 0.4);
 }
 .text-glow-gold {
   text-shadow:

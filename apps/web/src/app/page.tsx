@@ -84,12 +84,12 @@ export default async function HomePage() {
           aria-hidden
           style={{
             background:
-              'radial-gradient(80% 60% at 78% 8%, rgba(224,70,58,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
+              'radial-gradient(80% 60% at 78% 8%, rgba(31,160,85,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
           }}
         />
         <div className="container-wide relative py-28 sm:py-40">
           <p className="eyebrow flex items-center gap-2">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(224,70,58,0.8)]" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(31,160,85,0.8)]" />
             Live · timed · sealed auctions
           </p>
           <h1 className="mt-6 max-w-4xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-7xl">
