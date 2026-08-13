@@ -30,7 +30,8 @@
     "db:seed": "pnpm --filter @singha/database run seed",
     "supabase:deploy": "dotenv -e .env -- pnpm --filter @singha/database exec prisma migrate deploy",
     "supabase:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed",
-    "demo:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed:demo"
+    "demo:seed": "dotenv -e .env -- pnpm --filter @singha/database run seed:demo",
+    "security:bundle": "node scripts/security-bundle-scan.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
