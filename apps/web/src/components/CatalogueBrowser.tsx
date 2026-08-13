@@ -53,6 +53,7 @@ export function CatalogueBrowser({
   const [data, setData] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export function CatalogueBrowser({
     return () => {
       alive = false;
     };
-  }, [debounced, category, saleMethod, sort, page, limit]);
+  }, [debounced, category, saleMethod, sort, page, limit, reloadKey]);
 
   // Reset to page 1 whenever filters change.
   useEffect(() => setPage(1), [debounced, category, saleMethod, sort]);
@@ -176,12 +177,34 @@ export function CatalogueBrowser({
       </div>
 
       <p className="mt-4 text-xs text-bone-500">
-        {loading ? 'Loading…' : error ? error : `${data?.total ?? 0} lots`}
+        {loading && !data
+          ? 'Loading…'
+          : error && !data
+            ? 'Couldn’t reach the catalogue'
+            : `${data?.total ?? 0} lots`}
       </p>
 
-      {!loading && data && data.items.length === 0 ? (
-        <Card className="mt-4">
-          <p className="text-bone-400">No lots match your filters.</p>
+      {error && !data ? (
+        <Card className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
+          <p className="text-bone-300">We couldn’t load the catalogue just now.</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="rounded-md border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-300/10"
+          >
+            Retry
+          </button>
+        </Card>
+      ) : loading && !data ? (
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 animate-pulse rounded-2xl bg-white/[0.04]" />
+          ))}
+        </div>
+      ) : data && data.items.length === 0 ? (
+        <Card className="mt-6 py-10 text-center">
+          <p className="text-bone-300">No lots match your filters.</p>
+          <p className="mt-1 text-sm text-bone-500">Try clearing the category or search.</p>
         </Card>
       ) : view === 'flow' ? (
         <FlowBands

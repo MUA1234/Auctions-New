@@ -11,6 +11,7 @@ import {
   CreditPolicyNote,
   SecurityCards,
 } from '../../../components/member/capacity';
+import { SignInPrompt } from '../../../components/SignInPrompt';
 
 /**
  * Bid Capacity (Revision 06 P1-12). The customer's FINANCIAL capacity page —
@@ -61,14 +62,11 @@ export default function BidCapacityPage() {
           <div className="h-40 animate-pulse rounded-xl bg-white/5" />
         </div>
       ) : !token ? (
-        <Card className="mt-8">
-          <p className="text-bone-400">Sign in to see your Bid Capacity.</p>
-          <Link href="/login?next=/account/bid-capacity" className="mt-4 inline-block">
-            <span className="rounded-md border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-300/10">
-              Sign in
-            </span>
-          </Link>
-        </Card>
+        <SignInPrompt
+          title="Your Bid Capacity"
+          description="Sign in to see your approved capacity, deposits and guarantees — and what you can bid against."
+          next="/account/bid-capacity"
+        />
       ) : error ? (
         <Card className="mt-8">
           <p className="text-bone-400">

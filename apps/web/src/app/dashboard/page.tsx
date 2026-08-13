@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
-import { Button, Card, Chip } from '@singha/ui';
+import { Card, Chip } from '@singha/ui';
+import { SignInPrompt } from '../../components/SignInPrompt';
 import {
   apiGetAuthed,
   streamDashboard,
@@ -106,18 +107,18 @@ export default function DashboardPage() {
 
   if (!token) {
     return (
-      <div className="container-page py-16">
-        <h1 className="font-serif text-4xl font-bold text-bone">Buyer command centre</h1>
-        <Card className="mt-8 max-w-md">
-          <p className="text-sm text-bone-400">
-            {loading ? 'Checking your session…' : 'Sign in to see your watchlist, bids and offers.'}
-          </p>
-          {!loading && (
-            <Link href="/login?next=/dashboard" className="mt-4 inline-block">
-              <Button variant="gold">Sign in</Button>
-            </Link>
-          )}
-        </Card>
+      <div className="container-page">
+        {loading ? (
+          <div className="flex min-h-[52vh] items-center justify-center text-sm text-bone-500">
+            Checking your session…
+          </div>
+        ) : (
+          <SignInPrompt
+            title="Your command centre"
+            description="Sign in to track your watchlist, live bids, offers, payments due and pickups — all in one place."
+            next="/dashboard"
+          />
+        )}
       </div>
     );
   }

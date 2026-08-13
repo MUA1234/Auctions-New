@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, type SellerListing } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { SignInPrompt } from '../../components/SignInPrompt';
 
 /** Seller dashboard (docs/05, Phase 5): the seller's own listings + wizard CTA. */
 export default function SellerDashboard() {
@@ -37,14 +38,12 @@ export default function SellerDashboard() {
       </div>
 
       {!token ? (
-        <Card className="mt-8">
-          <p className="text-sm text-bone-400">
-            <Link href="/login?next=/sell" className="text-gold-400">
-              Sign in
-            </Link>{' '}
-            with a seller account to see your listings.
-          </p>
-        </Card>
+        <SignInPrompt
+          title="Sell with Singha"
+          description="Sign in with a seller account to manage your consignments from listing to settlement."
+          next="/sell"
+          cta="Sign in to sell"
+        />
       ) : listings.length === 0 ? (
         <Card className="mt-8">
           <p className="text-sm text-bone-400">

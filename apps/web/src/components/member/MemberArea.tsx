@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/auth';
 import { formatMoney } from '../../lib/format';
 import { memberLookupPayload } from '../../lib/passport';
 import { BidCapacityMeter, SecurityCards } from './capacity';
+import { SignInPrompt } from '../SignInPrompt';
 
 /**
  * Customer member area (Revision 05 §21/§22, Revision 06 §25). Renders the SELF
@@ -35,11 +36,11 @@ export function MemberArea() {
   if (loading) return <MemberSkeleton />;
   if (!token) {
     return (
-      <Card className="mt-8">
-        <p className="text-bone-400">
-          Sign in to see your Singha membership, Client ID and Bid Capacity.
-        </p>
-      </Card>
+      <SignInPrompt
+        title="Your Singha membership"
+        description="Sign in to see your Member Passport, Client ID and Bid Capacity."
+        next="/account"
+      />
     );
   }
   if (error) {
