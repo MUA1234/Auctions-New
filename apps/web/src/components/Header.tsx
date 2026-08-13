@@ -4,6 +4,7 @@ import { AuthNav, SellCta } from './AuthNav';
 
 const NAV = [
   { href: '/catalogue', label: 'Catalogue' },
+  { href: '/events', label: 'Events' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/live', label: 'Live' },
   { href: '/how-it-works', label: 'How it works' },

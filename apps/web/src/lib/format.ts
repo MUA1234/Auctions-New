@@ -4,6 +4,13 @@ export function formatMoney(minor: number | null | undefined, currency = 'LKR'):
   return `${currency} ${(minor / 100).toLocaleString('en-LK', { maximumFractionDigits: 0 })}`;
 }
 
+/** Parse a user-entered major-unit amount (e.g. "200000" or "200,000") to integer minor units. */
+export function parseMoneyToMinor(major: string | number): number | null {
+  const n = typeof major === 'number' ? major : Number(String(major).replace(/[,\s]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
 /** Human "time left" until an ISO timestamp. */
 export function timeLeft(iso: string | null | undefined): string {
   if (!iso) return '';

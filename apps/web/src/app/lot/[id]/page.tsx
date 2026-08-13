@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Card, Chip } from '@singha/ui';
+import { Chip } from '@singha/ui';
 import { fetchLotDetail, type LotDetail } from '../../../lib/api';
 import { BidPanel } from '../../../components/BidPanel';
+import { SalePanel } from '../../../components/SalePanel';
 import { WatchButton } from '../../../components/WatchButton';
 import { LotGallery } from '../../../components/LotGallery';
-import { formatMoney } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,16 +15,6 @@ const SALE_METHOD_LABEL: Record<string, string> = {
   MAKE_OFFER: 'Make an offer',
   SEALED_TENDER: 'Sealed tender',
   EOI: 'Expression of interest',
-};
-
-const SALE_METHOD_BLURB: Record<string, string> = {
-  TIMED_AUCTION:
-    'Bids are validated and sequenced by the auction engine; soft-close protects you against last-second sniping.',
-  BUY_NOW: 'A fixed price — the first buyer to purchase secures the lot.',
-  MAKE_OFFER: 'Submit a private offer; the seller can accept, counter or decline.',
-  SEALED_TENDER:
-    'Submit one sealed bid before the deadline; the highest is awarded at the controlled open.',
-  EOI: 'Register your interest and qualified buyers are contacted as the sale progresses.',
 };
 
 export default async function LotPage({ params }: { params: { id: string } }) {
@@ -39,12 +29,6 @@ export default async function LotPage({ params }: { params: { id: string } }) {
   const place = [lot.location?.city, lot.location?.region].filter(Boolean).join(', ');
   const method = SALE_METHOD_LABEL[lot.saleMethod] ?? lot.saleMethod.replace(/_/g, ' ');
   const priceMinor = lot.auction?.currentBidMinor ?? lot.currentBidMinor;
-  const priceLabel =
-    lot.saleMethod === 'BUY_NOW'
-      ? 'Price'
-      : lot.saleMethod === 'TIMED_AUCTION'
-        ? 'Latest bid'
-        : 'Guide';
 
   return (
     <div className="container-page py-12">
@@ -110,20 +94,12 @@ export default async function LotPage({ params }: { params: { id: string } }) {
           {lot.auction ? (
             <BidPanel auctionId={lot.auction.id} initial={lot.auction} lotId={lot.id} />
           ) : (
-            <Card>
-              <p className="text-[11px] uppercase tracking-widest text-bone-500">{priceLabel}</p>
-              <p className="mt-1 font-display text-3xl font-bold text-gold-400">
-                {priceMinor != null ? formatMoney(priceMinor, lot.currency) : 'On request'}
-              </p>
-              <div className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3 text-sm leading-relaxed text-bone-400">
-                {SALE_METHOD_BLURB[lot.saleMethod] ??
-                  'This lot is available through the Singha exchange.'}
-              </div>
-              <p className="mt-3 text-xs text-bone-500">
-                Not open for live bidding right now — watch this lot to be notified the moment it
-                opens.
-              </p>
-            </Card>
+            <SalePanel
+              listingId={lot.id}
+              saleMethod={lot.saleMethod}
+              currency={lot.currency}
+              priceMinor={priceMinor ?? null}
+            />
           )}
 
           <div className="mt-4">

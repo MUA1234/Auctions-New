@@ -425,3 +425,106 @@ export async function removeWatch(listingId: string, token: string) {
 export async function fetchMyWatch(token: string) {
   return apiGetAuthed<WatchedLot[]>('/watch', token);
 }
+
+// --- Singha Exchange: Buy Now / Make Offer / Sealed Tender (docs/07) ---------
+
+/** Immediate purchase of a BUY_NOW listing. Server holds the price — no body. */
+export async function buyNow(listingId: string, token: string) {
+  return apiPost<{ listingId: string; status: string }>(
+    `/exchange/listings/${listingId}/buy-now`,
+    {},
+    token,
+  );
+}
+
+/** Place a private offer on a MAKE_OFFER listing (amount in minor units). */
+export async function makeOffer(
+  listingId: string,
+  body: { amountMinor: number; currency?: string; note?: string },
+  token: string,
+) {
+  return apiPost<MyOffer>(`/exchange/listings/${listingId}/offers`, body, token);
+}
+
+/** Submit one sealed tender bid before the deadline (amount in minor units). */
+export async function submitTender(
+  listingId: string,
+  body: { amountMinor: number; currency?: string },
+  token: string,
+) {
+  return apiPost<{ id: string; status: string }>(
+    `/exchange/listings/${listingId}/tender-bids`,
+    body,
+    token,
+  );
+}
+
+export async function fetchMyOffers(token: string) {
+  return apiGetAuthed<MyOffer[]>('/exchange/offers/mine', token);
+}
+export async function withdrawOffer(offerId: string, token: string) {
+  return apiPost<MyOffer>(`/exchange/offers/${offerId}/withdraw`, {}, token);
+}
+
+// --- Expression of Interest (docs/07) ---------------------------------------
+
+export async function submitEoi(
+  body: {
+    listingId: string;
+    amountMinor?: number | null;
+    currency?: string;
+    message?: string;
+    conditions?: string;
+  },
+  token: string,
+) {
+  return apiPost<MyEoi>('/eoi', body, token);
+}
+
+export async function fetchMyEois(token: string) {
+  return apiGetAuthed<MyEoi[]>('/eoi/mine', token);
+}
+export async function withdrawEoi(eoiId: string, token: string) {
+  return apiPost<MyEoi>(`/eoi/${eoiId}/withdraw`, {}, token);
+}
+
+// --- Auction events (docs/06) ----------------------------------------------
+
+export interface EventSummary {
+  id: string;
+  publicRef: string;
+  title: string;
+  eventType: string;
+  status: string;
+  startsAt: string | null;
+  locationCity: string | null;
+  liveEnabled: boolean;
+  featured: boolean;
+  lotCount: number;
+}
+
+export interface EventLot {
+  sequence: number;
+  lane: string | null;
+  scheduledStart: string | null;
+  listingId: string;
+  reference: string;
+  title: string;
+  category: string;
+  saleMethod: string;
+  currentBidMinor: number | null;
+}
+
+export interface EventDetail extends Omit<EventSummary, 'lotCount'> {
+  description: string | null;
+  venue: string | null;
+  lots: EventLot[];
+}
+
+export async function fetchEvents(featuredOnly = false): Promise<EventSummary[]> {
+  return apiGet<EventSummary[]>(`/events${featuredOnly ? '?featured=true' : ''}`);
+}
+
+export async function fetchEvent(idOrRef: string): Promise<EventDetail> {
+  return apiGet<EventDetail>(`/events/${idOrRef}`);
+}

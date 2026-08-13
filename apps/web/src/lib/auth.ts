@@ -3,60 +3,50 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '../utils/supabase/client';
 
-const DEMO_KEY = 'singha_demo_token';
-
 /**
- * Demo/dev auth path. On by default for local dev; MUST be disabled in
- * production by setting NEXT_PUBLIC_DEMO_AUTH_ENABLED=false (pack doc 09
- * "Dev/demo auth endpoints must be disabled in production").
+ * Real, production authentication (pack doc 09) on Supabase Auth ONLY. There is
+ * no demo/dev bypass: the bearer sent to the Singha API is always a genuine,
+ * short-lived Supabase access token from a secure cookie-backed session. This
+ * removes the previous `singha_demo_token` localStorage path (a token in
+ * localStorage is readable by any script — an XSS token-theft vector).
  */
-export const demoAuthEnabled = process.env.NEXT_PUBLIC_DEMO_AUTH_ENABLED !== 'false';
-
 export interface AuthUser {
+  id: string;
   email: string | null;
-  source: 'supabase' | 'demo';
+  name: string | null;
 }
 
-/**
- * The bearer token to send to the Singha API. Prefers a real, secure Supabase
- * session (production auth, doc 09); falls back to the gated demo token only in
- * non-production. Resolves null when signed out.
- */
+/** The bearer token for the Singha API, or null when signed out. */
 export async function getAccessToken(): Promise<string | null> {
   try {
     const { data } = await createClient().auth.getSession();
-    if (data.session?.access_token) return data.session.access_token;
+    return data.session?.access_token ?? null;
   } catch {
-    /* Supabase not configured in this environment */
+    return null;
   }
-  if (demoAuthEnabled && typeof window !== 'undefined') return localStorage.getItem(DEMO_KEY);
-  return null;
 }
 
-/** Store a demo token and notify same-tab listeners (dev only). */
-export function setDemoToken(token: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(DEMO_KEY, token);
-  window.dispatchEvent(new StorageEvent('storage', { key: DEMO_KEY, newValue: token }));
-}
-
-/** Sign out of both the real session and any demo token. */
-export async function signOut() {
+/** Sign out of the real session. */
+export async function signOut(): Promise<void> {
   try {
     await createClient().auth.signOut();
   } catch {
     /* ignore */
   }
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(DEMO_KEY);
-    window.dispatchEvent(new StorageEvent('storage', { key: DEMO_KEY, newValue: null }));
-  }
+}
+
+function toUser(session: {
+  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> };
+} | null): AuthUser | null {
+  if (!session?.user) return null;
+  const meta = session.user.user_metadata ?? {};
+  const name = (meta.full_name ?? meta.name) as string | undefined;
+  return { id: session.user.id, email: session.user.email ?? null, name: name ?? null };
 }
 
 /**
- * React auth state: current token + user, reacting to Supabase auth changes and
- * demo-token changes. Used by every authed surface so no component reads the
- * demo token directly (doc 09 "Remove `singha_demo_token` dependency").
+ * React auth state: current token + user, reacting live to Supabase auth
+ * changes. Used by every authed surface so no component reads a token directly.
  */
 export function useAuth(): { token: string | null; user: AuthUser | null; loading: boolean } {
   const [token, setToken] = useState<string | null>(null);
@@ -75,17 +65,8 @@ export function useAuth(): { token: string | null; user: AuthUser | null; loadin
         /* not configured */
       }
       if (!active) return;
-      if (session?.access_token) {
-        setToken(session.access_token);
-        setUser({ email: session.user.email ?? null, source: 'supabase' });
-      } else if (demoAuthEnabled) {
-        const t = localStorage.getItem(DEMO_KEY);
-        setToken(t);
-        setUser(t ? { email: null, source: 'demo' } : null);
-      } else {
-        setToken(null);
-        setUser(null);
-      }
+      setToken(session?.access_token ?? null);
+      setUser(toUser(session));
       setLoading(false);
     };
 
@@ -97,15 +78,10 @@ export function useAuth(): { token: string | null; user: AuthUser | null; loadin
     } catch {
       /* not configured */
     }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === DEMO_KEY) void sync();
-    };
-    window.addEventListener('storage', onStorage);
 
     return () => {
       active = false;
       unsub();
-      window.removeEventListener('storage', onStorage);
     };
   }, []);
 

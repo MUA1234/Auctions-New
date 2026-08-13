@@ -31,7 +31,7 @@ export default function SecurityPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const isReal = user?.source === 'supabase';
+  const isReal = !!user;
 
   const refresh = useCallback(async () => {
     try {

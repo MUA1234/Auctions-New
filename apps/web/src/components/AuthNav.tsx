@@ -6,8 +6,8 @@ import { signOut, useAuth } from '../lib/auth';
 
 /**
  * Session-aware header actions (pack doc 09). Shows Sign in when signed out, and
- * the account email + Sign out when a real (or demo) session exists. Reacts live
- * to Supabase auth changes via `useAuth`.
+ * the account name/email + Sign out when a real session exists. Reacts live to
+ * Supabase auth changes via `useAuth`.
  */
 export function AuthNav() {
   const { token, user, loading } = useAuth();
@@ -32,7 +32,7 @@ export function AuthNav() {
         href="/dashboard"
         className="max-w-[12rem] truncate text-sm text-bone-300 hover:text-bone"
       >
-        {user?.email ?? 'My account'}
+        {user?.name ?? user?.email ?? 'My account'}
       </Link>
       <Link
         href="/account"

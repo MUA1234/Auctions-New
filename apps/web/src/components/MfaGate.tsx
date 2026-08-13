@@ -38,7 +38,7 @@ export function MfaGate({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isReal = user?.source === 'supabase';
+  const isReal = !!user;
 
   const refresh = useCallback(async () => {
     setChecking(true);
