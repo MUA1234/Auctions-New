@@ -1,0 +1,23 @@
+# Code ownership + required review (anti-clone doc 03). Combine with branch
+# protection: require review on these security-sensitive paths, no force-push.
+# Frontend/product repo — owner MUA1234.
+
+* @MUA1234
+
+# Auth / session / MFA
+/apps/web/src/lib/auth.ts          @MUA1234
+/apps/web/src/lib/mfa.ts           @MUA1234
+/apps/web/src/middleware.ts        @MUA1234
+/apps/web/src/utils/supabase/      @MUA1234
+
+# Member / credit / bid capacity surfaces
+/apps/web/src/lib/member.ts        @MUA1234
+/apps/web/src/lib/credit-policy.ts @MUA1234
+/apps/web/src/app/admin/           @MUA1234
+/apps/web/src/app/account/         @MUA1234
+
+# Security config, deploy + CI
+/apps/web/next.config.mjs          @MUA1234
+/scripts/                          @MUA1234
+/.github/                          @MUA1234
+/vercel.json                       @MUA1234
