@@ -40,6 +40,8 @@ infra (Class D) decisions are NOT made here.
 | D-0032 | B     | Listing Studio draft autosaves to `localStorage` (object-URL blobs excluded); AI draft is derived + human-applied, never auto-written                     | Doc 08 "save draft at every stage"; pack rule 3 (AI never overwrites facts)    | High                           |
 | D-0033 | A     | Production auth = Supabase Auth (password + magic link + reset) via `/login` + `/auth/callback`; secure cookie sessions, no localStorage on the real path | Doc 09 production authentication; Supabase already wired for SSR               | Medium                         |
 | D-0034 | B     | All authed surfaces route through `lib/auth.ts` (`getAccessToken`/`useAuth`/`signOut`); demo token gated by `NEXT_PUBLIC_DEMO_AUTH_ENABLED`               | Doc 09 "remove demo-token dependency; demo disabled in production"             | High                           |
+| D-0035 | A     | Anti-clone retrofit hardens the CURRENT system in place (Helmet/CSP + prod CORS allow-list + sanitized errors + route-aware rate limiting with privacy-safe security events + browser-bundle secret scan + supply-chain CI), no rebuild | Retrofit pack 06.3: reduce clone/scrape/exfil surface without regressing browse/bid; verified across E2E | Medium |
+| D-0036 | A     | Rate limiter is production-only (skipped unless `NODE_ENV=production` or `SECURITY_THROTTLE_TEST=1`) with an in-memory store; opaque catalogue cursors waived (lot IDs already public in `/lot/[id]`) | Keeps single-IP E2E suites green; Redis throttler + signed cursors deferred until multi-instance / non-public cursor state (see SECURITY_WAIVERS W2/W4) | High |
 
 ## Open items awaiting inputs
 
