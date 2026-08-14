@@ -8,17 +8,13 @@ import { AuthNav, SellCta } from './AuthNav';
 import { DiscoverNavLink } from './DiscoverNavLink';
 import { MobileNav } from './MobileNav';
 import { NAV_ITEMS } from '../lib/nav';
-import { useFlags } from '../lib/use-flags';
 
 /**
  * Global header (V3-1 shell). Scroll-aware elevation, a responsive mobile drawer
- * (the desktop nav is `hidden md:flex`), and an active-route indicator. When the
- * `v3VisualArchitecture` flag/preview is on it carries a small "V3 preview" marker so
- * reviewers can see the elevated shell is a real, reversible flag effect.
+ * (the desktop nav is `hidden md:flex`), and an active-route indicator.
  */
 export function Header() {
   const pathname = usePathname();
-  const { flags } = useFlags();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -37,23 +33,13 @@ export function Header() {
       }`}
     >
       <div className="container-wide flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            aria-label="Singha Auctions home"
-            className="transition-opacity hover:opacity-90"
-          >
-            <BrandLogo />
-          </Link>
-          {flags.v3VisualArchitecture && (
-            <span
-              className="hidden select-none items-center gap-1 rounded-full border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold-300 sm:inline-flex"
-              title="V3 experience preview is active"
-            >
-              V3 preview
-            </span>
-          )}
-        </div>
+        <Link
+          href="/"
+          aria-label="Singha Auctions home"
+          className="transition-opacity hover:opacity-90"
+        >
+          <BrandLogo />
+        </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-bone-300 md:flex">
           {NAV_ITEMS.map((item) => {
