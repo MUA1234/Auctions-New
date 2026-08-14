@@ -1,23 +1,21 @@
 # Singha Auctions V3 — Program Status Log
 
-_Snapshot: 2026-08-14. Working repos (both on `main`, **NOT pushed** — per repo policy;
-production still runs the pack baseline)._
-
-- **Frontend** `MUA1234/Auctions-New` — pack baseline `17d45e7` (on origin) → local V3 work on top.
-- **Backend** `LakshanV/Auctions-Backend` — pack baseline `1a10340` (on origin) → local V3 work on top.
-- Everything V3 is **feature-flagged OFF by default**, so production is unaffected until flags flip.
+_Snapshot: 2026-08-14. Both repos are on `main` and **pushed** to origin
+(`MUA1234/Auctions-New`, `LakshanV/Auctions-Backend`). Everything V3 is
+**feature-flagged OFF by default**, so production is unaffected until flags flip._
 
 ## Overall
 
-|                                 |                                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| Phase plan (V3-0 … V3-11)       | **~4.5 of 12 phases** substantially done                                      |
-| Production readiness (GO/NO_GO) | **NO_GO** — owner P0s + hardening (V3-10) not done                            |
-| Commits landed this program     | 6 frontend + 4 backend (all local)                                            |
-| Test posture                    | all touched code has unit/component tests; backend migration real-DB-verified |
+|                           |                                                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase plan (V3-0 … V3-11) | **V3-0…V3-10 done** (build track complete); V3-11 is post-pilot by design                                                                                |
+| Production readiness      | **GO_FOR_CONTROLLED_PILOT** — see `V3_FINAL_GO_NO_GO.md`                                                                                                 |
+| Heads                     | FE `bb8285c` · BE `e458ccc` (both on `main`)                                                                                                             |
+| Test posture              | FE 43 unit + build + bundle scan; BE domain 90 / api 21 / contracts 17; full acceptance E2E + scale (2,000) green on real Postgres; contract:check green |
 
-Progress is on the **build** track. It is **not** near production GO: the owner security P0s,
-load/backup/observability drills (V3-10), and provider credentials are all outstanding by design.
+The **build track is complete and verified**. Full public GO is withheld only for
+owner-provisioned items (provider credentials) and infra drills (load / backup-restore /
+WCAG audit) — none of which waive auction/credit/security integrity (all tested).
 
 ---
 
@@ -180,12 +178,19 @@ This increment adds the pilot **instrumentation** the pack asks for.
   bid + notification return path; attention-state refinement; full browser-matrix visual
   pass (existing Playwright suite covers the critical flows).
 
-### ⬜ V3-10 — Production hardening + GO/NO_GO — **NOT STARTED**
+### ✅ V3-10 — Production hardening + GO/NO_GO — **DONE (self-review)**
 
-Full remote CI + security scans green, load/security/accessibility, backup-restore drill, observability,
-migration/cutover rehearsal, rollback-flag test. Emits the final GO/NO_GO.
+Ran the hardening review (pack doc 09/15). CI-equivalent gates green both repos
+(format/lint/typecheck/build/unit); the **full backend acceptance E2E suite + scale (2,000
+lots) pass on a real Postgres**; `contract:check` green (snapshot regenerated after the
+scale fix, synced to FE); FE bundle secret/source-map scan clean. Security E2E 11/11;
+auction concurrency + idempotency verified; Tier-A boundaries (rivalry aliases, AI prompt
+injection/redaction, no proxy-max/PII leakage) tested. Produced **`V3_FINAL_GO_NO_GO.md`**
+→ **GO_FOR_CONTROLLED_PILOT**. Outstanding for full GO (owner/infra, waived for pilot):
+provider credentials, production-scale load, backup/restore drill, full WCAG audit, repo
+privacy.
 
-### ⬜ V3-11 — Trial-led dashboard refinement — **NOT STARTED (post-pilot)**
+### ⬜ V3-11 — Trial-led dashboard refinement — **NOT STARTED (post-pilot, by design)**
 
 ---
 
