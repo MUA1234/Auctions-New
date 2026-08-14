@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Logo } from '@singha/ui';
+import { BrandLogo } from './BrandLogo';
 import { AuthNav, SellCta } from './AuthNav';
 import { DiscoverNavLink } from './DiscoverNavLink';
 import { MobileNav } from './MobileNav';
@@ -43,7 +43,7 @@ export function Header() {
             aria-label="Singha Auctions home"
             className="transition-opacity hover:opacity-90"
           >
-            <Logo />
+            <BrandLogo />
           </Link>
           {flags.v3VisualArchitecture && (
             <span
