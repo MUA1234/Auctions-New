@@ -636,3 +636,59 @@ export async function fetchRivalry(auctionId: string, token?: string): Promise<R
     ? apiGetAuthed<RivalryView>(`/auctions/${auctionId}/rivalry`, token)
     : apiGet<RivalryView>(`/auctions/${auctionId}/rivalry`);
 }
+
+// --- Engagement notification preferences + delivery (pack doc 05) -----------
+
+export type NotificationChannel = 'in_app' | 'push' | 'email' | 'sms' | 'whatsapp';
+
+export interface NotificationPreferencesView {
+  channels: Record<NotificationChannel, boolean>;
+  engagementOptIn: boolean;
+  quietHours: { start: string; end: string } | null;
+  timezoneOffsetMinutes: number;
+  frequencyCapPerDay: number;
+  mutedCategories: string[];
+}
+
+export interface NotificationDeliveryView {
+  id: string;
+  eventType: string;
+  classification: 'transactional' | 'engagement';
+  channel: NotificationChannel | null;
+  status: 'sent' | 'suppressed' | 'failed' | 'dead';
+  suppressedReason: string | null;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export async function fetchNotificationPreferences(token: string) {
+  return apiGetAuthed<NotificationPreferencesView>('/engagement/preferences', token);
+}
+
+export async function updateNotificationPreferences(
+  body: Partial<Omit<NotificationPreferencesView, 'channels'>> & {
+    channels?: Partial<Record<NotificationChannel, boolean>>;
+  },
+  token: string,
+) {
+  return apiPatchLike<NotificationPreferencesView>('/engagement/preferences', body, token);
+}
+
+export async function fetchNotifications(token: string, limit = 30) {
+  return apiGetAuthed<NotificationDeliveryView[]>(
+    `/engagement/notifications?limit=${limit}`,
+    token,
+  );
+}
+
+/** PUT helper (the engagement preferences endpoint is idempotent PUT). */
+async function apiPatchLike<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${apiBase}${path}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`PUT ${path} -> ${res.status}`);
+  return res.json() as Promise<T>;
+}

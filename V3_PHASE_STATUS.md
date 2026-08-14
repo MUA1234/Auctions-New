@@ -94,10 +94,32 @@ increment) discovery HTTP E2E; FE (this increment) Discover page + gating + Buye
 - **Remaining (non-blocking):** feed personalisation from bid/offer history via outbox/rebuild;
   authenticated Playwright path once a Supabase test credential is available (owner P0 #4).
 
-### ⬜ V3-6 — Bid Battle + Engagement Engine — **NOT STARTED**
+### ✅ V3-6 — Bid Battle + Engagement Engine — **DONE**
 
-Bidder aliases (privacy-safe), rivalry projection, Bid Battle UI, notification preferences + in-app
-engine + provider adapters, sound/haptics.
+Commits: BE `71d1263` (rivalry engine) + `8e6737e` (rivalry endpoint+E2E) + `8a82b52`
+(engagement engine); FE `730c875` (Bid Battle strip) + this increment (engagement UI + sound).
+
+- **Bid Battle (behind `bidBattleV3`):** pure, rebuildable rivalry engine over the immutable
+  bid ledger — leader/nearest-challenger, lead changes, comeback + you-outbid moments —
+  with **privacy-safe aliases** (viewer = "You", never a bidderId/proxy max). `GET
+/auctions/:id/rivalry` (404 when OFF). Frontend strip on the lot page. Domain 15 tests;
+  HTTP E2E 17 checks (real proxy bidding, no PII leak, flag gate).
+- **Engagement Engine (behind `engagementV3`):** Tier-A notification policy engine —
+  transactional (mandatory, in-app floor) vs engagement (opt-in, category mutes, tz-aware
+  quiet hours, per-day frequency cap), both **idempotent/de-duplicated**. Additive migration
+  (`notification_preference` + append-only `notification_delivery` ledger). Service delivers
+  with **retry → dead-letter** through a `NotificationProvider` adapter bound to a
+  credential-free fake. API: GET/PUT preferences, GET notifications. Domain 11 tests; HTTP
+  E2E 14 checks (opt-in, dedup, transactional bypass, quiet hours, cap, DLQ, flag gate).
+- **Sound + haptics:** premium Web-Audio cue language (gavel/lead/outbid/countdown/win) +
+  Vibration API, with On/Reduced/Off control, honouring reduced-motion; wired into Bid
+  Battle. Preference centre at `/account/notifications`. FE sound + prefs tests (10).
+- Gates green both repos: FE typecheck/lint/41 web tests/`next build`; BE domain 78,
+  contracts 17, api 21, discovery/bid-battle/engagement E2E on real Postgres. Flags OFF.
+
+### ⬜ V3-7 — Connect / AI / Social / Asset Intelligence — **NOT STARTED**
+
+Credential-free provider adapters + contract tests first; activate with credentials later.
 
 ### ⬜ V3-7 — Connect / AI / Social / Asset Intelligence — **NOT STARTED**
 

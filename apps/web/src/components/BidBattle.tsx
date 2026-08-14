@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { type RivalryView, fetchRivalry } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useFlags } from '../lib/use-flags';
 import { formatMoney } from '../lib/format';
+import { playCue } from '../lib/sound';
 
 const MOMENT_STYLE: Record<RivalryView['moments'][number]['kind'], { icon: string; cls: string }> =
   {
@@ -52,6 +53,20 @@ export function BidBattle({
     const t = setInterval(load, 10_000);
     return () => clearInterval(t);
   }, [enabled, load]);
+
+  // Premium cue on a NEW rivalry moment (pack doc 05): outbid → alert, taking the lead →
+  // chime. Never on first load, and the sound module honours the user's Sound setting +
+  // reduced motion (silent by default until the user opts in).
+  const lastSeq = useRef(0);
+  useEffect(() => {
+    const latest = view?.moments.at(-1);
+    if (!latest || latest.sequence <= lastSeq.current) return;
+    const firstLoad = lastSeq.current === 0;
+    lastSeq.current = latest.sequence;
+    if (firstLoad) return;
+    if (latest.kind === 'you_outbid') playCue('outbid');
+    else if (view?.youAreLeading) playCue('take_lead');
+  }, [view]);
 
   // Render nothing until the flag is on AND a contest actually exists.
   if (!enabled || !view || view.activeBidderCount === 0) return null;
