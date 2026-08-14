@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, waitFor } from '@testing-library/react';
 
 const h = vi.hoisted(() => ({
-  record: vi.fn(() => Promise.resolve()),
+  record: vi.fn((_body?: unknown, _token?: unknown) => Promise.resolve()),
   flags: { dashboardV3Beta: false },
   token: 'tok' as string | null,
 }));

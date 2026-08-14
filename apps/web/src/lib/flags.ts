@@ -30,6 +30,43 @@ export interface FeatureFlags {
   liveV3: boolean;
 }
 
+/** The eleven V3 experience flags, in review order (the preview switch flips all of them). */
+export const V3_FLAG_KEYS = [
+  'v3VisualArchitecture',
+  'flowMatrixV3',
+  'categoryOverlayV3',
+  'featuredReelV3',
+  'discoverV3',
+  'buyerTwinV3',
+  'bidBattleV3',
+  'gestureBidV3',
+  'engagementV3',
+  'dashboardV3Beta',
+  'liveV3',
+] as const satisfies readonly (keyof FeatureFlags)[];
+
+/**
+ * Overlay every V3 experience flag to ON. This is the review/preview switch: it lets a
+ * staging deployment (or an owner review cookie) show the full V3 experience WITHOUT
+ * changing production defaults — production still resolves flags from the backend, all OFF.
+ * It never turns anything off, so a genuinely-enabled prod flag is preserved.
+ */
+export function withV3Preview(flags: FeatureFlags, on: boolean): FeatureFlags {
+  if (!on) return flags;
+  const next = { ...flags };
+  for (const key of V3_FLAG_KEYS) next[key] = true;
+  return next;
+}
+
+/**
+ * V3 preview via env — set `NEXT_PUBLIC_V3_PREVIEW=1` ONLY on a staging/review deployment so
+ * the owner can see V3 with production untouched. Unset/absent in production ⇒ defaults OFF.
+ */
+export function v3PreviewEnvOn(): boolean {
+  const v = process.env.NEXT_PUBLIC_V3_PREVIEW;
+  return v === '1' || v === 'true';
+}
+
 export const DEFAULT_FLAGS: FeatureFlags = {
   timedAuctions: true,
   eoi: true,
@@ -59,10 +96,10 @@ export const DEFAULT_FLAGS: FeatureFlags = {
 export async function getFeatureFlags(): Promise<FeatureFlags> {
   try {
     const res = await fetch(`${apiBase}/feature-flags`, { next: { revalidate: 30 } });
-    if (!res.ok) return DEFAULT_FLAGS;
+    if (!res.ok) return withV3Preview(DEFAULT_FLAGS, v3PreviewEnvOn());
     const body = (await res.json()) as { features?: Partial<FeatureFlags> };
-    return { ...DEFAULT_FLAGS, ...(body.features ?? {}) };
+    return withV3Preview({ ...DEFAULT_FLAGS, ...(body.features ?? {}) }, v3PreviewEnvOn());
   } catch {
-    return DEFAULT_FLAGS;
+    return withV3Preview(DEFAULT_FLAGS, v3PreviewEnvOn());
   }
 }
