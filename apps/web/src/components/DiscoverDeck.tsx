@@ -1,6 +1,12 @@
 'use client';
 
-import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Chip } from '@singha/ui';
@@ -43,6 +49,7 @@ export function DiscoverDeck() {
   const router = useRouter();
   const reduced = useReducedMotion();
   const [items, setItems] = useState<DiscoverFeedItem[] | null>(null);
+  const [error, setError] = useState(false);
   const [i, setI] = useState(0);
   const [drag, setDrag] = useState(0);
   const [flA, setFly] = useState<0 | 1 | -1>(0);
@@ -50,11 +57,24 @@ export function DiscoverDeck() {
     null,
   );
 
-  useEffect(() => {
+  // Load (and reload, for the retry button) the server-ranked feed. A failed feed
+  // surfaces an explicit error+retry — NOT a silent "all caught up", which would
+  // misrepresent an outage as an empty result (pack doc 04 §B: error/retry states).
+  const load = useCallback(() => {
+    setError(false);
+    setItems(null);
+    setI(0);
     fetchDiscoverFeed(30)
       .then((r) => setItems(r.items))
-      .catch(() => setItems([]));
+      .catch(() => {
+        setItems(null);
+        setError(true);
+      });
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const current = items?.[i];
 
@@ -109,7 +129,29 @@ export function DiscoverDeck() {
     else setDrag(0);
   };
 
-  if (items == null) return <p className="py-16 text-center text-bone-500">Loading Discover…</p>;
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center"
+      >
+        <p className="font-serif text-2xl font-bold text-bone">Discover is unavailable</p>
+        <p className="max-w-sm text-bone-400">
+          We couldn&rsquo;t load your recommendations just now. Your watches, bids and history are
+          unaffected.
+        </p>
+        <Button variant="gold" onClick={load}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+  if (items == null)
+    return (
+      <p role="status" className="py-16 text-center text-bone-500">
+        Loading Discover…
+      </p>
+    );
   if (!current) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
@@ -151,7 +193,11 @@ export function DiscoverDeck() {
         >
           <button type="button" onClick={open} className="block h-full w-full text-left">
             <div className="relative h-full">
-              <LotImage src={mediaUrl(current.coverStorageKey)} alt={current.title} aspect="h-full" />
+              <LotImage
+                src={mediaUrl(current.coverStorageKey)}
+                alt={current.title}
+                aspect="h-full"
+              />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-coal-950/95 via-coal-950/40 to-transparent" />
               {/* Swipe intent badges. */}
               {decision === 'interested' && (
@@ -176,7 +222,9 @@ export function DiscoverDeck() {
                       : 'View lot'}
                   </span>
                   {current.endsAt && (
-                    <span className="text-xs text-bone-300">Ends in {timeLeft(current.endsAt)}</span>
+                    <span className="text-xs text-bone-300">
+                      Ends in {timeLeft(current.endsAt)}
+                    </span>
                   )}
                 </div>
                 {current.reason && (

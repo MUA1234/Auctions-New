@@ -48,7 +48,7 @@ describe('GestureBidControl (pack doc 12)', () => {
     await waitFor(() => expect(mockPlaceBid).toHaveBeenCalledTimes(1));
 
     // Bids the exact next increment (200,000 + 5,000) with an idempotency key.
-    const [auctionId, body] = mockPlaceBid.mock.calls[0];
+    const [auctionId, body] = mockPlaceBid.mock.calls[0]!;
     expect(auctionId).toBe('auc-1');
     expect(body.maxAmountMinor).toBe(205_000);
     expect(typeof body.idempotencyKey).toBe('string');

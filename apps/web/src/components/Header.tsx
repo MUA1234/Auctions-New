@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@singha/ui';
 import { AuthNav, SellCta } from './AuthNav';
+import { DiscoverNavLink } from './DiscoverNavLink';
 
 const NAV = [
   { href: '/catalogue', label: 'Catalogue' },
@@ -32,6 +33,8 @@ export function Header() {
               <span className="absolute inset-x-0 -bottom-0.5 h-px scale-x-0 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent transition-transform duration-300 group-hover:scale-x-100" />
             </Link>
           ))}
+          {/* Flag-gated: appears only when `discoverV3` is enabled server-side. */}
+          <DiscoverNavLink />
         </nav>
         <div className="flex items-center gap-3">
           <AuthNav />
