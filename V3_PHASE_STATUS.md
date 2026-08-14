@@ -34,11 +34,22 @@ Commits: FE `e91a274`, BE `031fa02`.
 - **Deferred (code):** remove frozen `apps/api`/`apps/worker` from FE (blocked — FE e2e still builds
   `@singha/api`; rewire first); generated OpenAPI→TS client.
 
-### ⬜ V3-1 — Design system + visual shell — **NOT STARTED**
+### ✅ V3-1 — Design system + visual shell — **DONE (UI/UX pass)**
 
-Tokens/motion/emerald palette already largely exist (pack says avoid another cosmetic pass); the
-concrete V3 component families were built inside V3-2/3/4. A dedicated motion-vocabulary + shell pass
-remains optional/low-priority.
+Completed in the UI/UX + outstanding-gap pass (see `V3_UIUX_COMPLETION_REPORT.md` and
+`V3_UIUX_GAP_AUDIT.md`). The tokens/motion/emerald palette already existed; this pass built the
+genuinely-missing shell:
+
+- **`Sheet`** overlay primitive (`@singha/ui`) — focus-trapped, scroll-locking, reduced-motion safe.
+- **Mobile navigation** — hamburger → `Sheet` drawer (the desktop nav was `hidden md:flex` with no
+  mobile menu, so phones lost all navigation — the top shell defect, now fixed).
+- **Scroll-aware `Header`** + a real, reversible effect for the previously-dead `v3VisualArchitecture`.
+- **V3 preview switch** — `NEXT_PUBLIC_V3_PREVIEW` env + `?v3=on/off` cookie overlay every V3 flag ON
+  for review without changing production defaults.
+- App-root **loading / error / not-found** chrome; reduced-motion completeness; site-wide
+  horizontal-overflow clip.
+
+Proven by the Playwright screenshot matrix (7 widths, 11/11 green, no horizontal overflow).
 
 ### ✅ V3-2 — Ending Soon + Infinite Flow Canvas — **DONE**
 
