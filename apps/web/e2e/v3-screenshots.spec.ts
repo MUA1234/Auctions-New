@@ -17,13 +17,22 @@ const SHOT_DIR = process.env.SHOT_DIR ?? 'v3-screens';
 mkdirSync(SHOT_DIR, { recursive: true });
 
 type Card = Record<string, unknown>;
+// Realistic identifiers (make/model/year etc.) — the cell shows the identifier, never the
+// category word, which is the band's job.
+const IDENTIFIERS: Record<string, string[]> = {
+  vehicles: ['2018 Toyota Prado', '2016 Nissan Caravan', '2020 Honda Vezel', '2015 Suzuki WagonR'],
+  machinery: ['CAT 320D Excavator', 'Komatsu PC200', 'JCB 3DX Backhoe', 'Hitachi ZX130'],
+  gems: ['3.2ct Blue Sapphire', '1.8ct Ceylon Ruby', '5ct Star Sapphire', '2ct Yellow Sapphire'],
+  property: ['Colombo 07 Land 12P', 'Kandy House 8P', 'Galle Commercial Unit', 'Negombo Plot'],
+};
 function card(cat: string, i: number): Card {
   const methods = ['TIMED_AUCTION', 'BUY_NOW', 'EOI', 'SEALED_TENDER'];
   const kind = ['auction', 'buy_now', 'eoi', 'sealed_tender'][i % 4];
+  const names = IDENTIFIERS[cat] ?? [`${cat} ${i + 1}`];
   return {
     id: `${cat}-${i}`,
     reference: `LOT-${cat}-${i}`,
-    title: `${cat[0]?.toUpperCase()}${cat.slice(1)} lot ${i + 1}`,
+    title: names[i % names.length],
     category: cat,
     saleMethod: methods[i % 4],
     status: 'live',
@@ -112,16 +121,19 @@ test.describe('V3 screenshot matrix — catalogue Flow (dense: 16/cat)', () => {
       await mockCatalogue(page, CATS, 16);
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/catalogue');
-      const grid = page.locator('[data-band] .grid').first();
-      await grid.waitFor({ state: 'visible', timeout: 20_000 });
+      const rail = page.locator('[data-band] [data-rail]').first();
+      await rail.waitFor({ state: 'visible', timeout: 20_000 });
       await page.waitForTimeout(1900); // let the floating category overlay settle
-      // Density (measured from the GRID width = viewport minus container padding):
-      // a compact multi-column matrix on phones, denser on wide desktops (brief §5).
-      const cols = await grid.evaluate(
-        (el) => getComputedStyle(el as HTMLElement).gridTemplateColumns.split(' ').length,
-      );
-      if (width <= 430) expect(cols).toBeGreaterThanOrEqual(3);
-      if (width >= 1440) expect(cols).toBeGreaterThanOrEqual(5);
+      // Each category is a SINGLE horizontal line (one row), not a multi-row grid.
+      const oneRow = await rail.evaluate((el) => {
+        const cells = Array.from((el as HTMLElement).children).filter(
+          (c) => (c as HTMLElement).offsetWidth > 0,
+        );
+        if (cells.length < 2) return true;
+        const top = (cells[0] as HTMLElement).offsetTop;
+        return cells.every((c) => Math.abs((c as HTMLElement).offsetTop - top) <= 1);
+      });
+      expect(oneRow).toBe(true);
       // Hard invariant at every width: no horizontal document overflow (brief §15).
       expect(await noHorizontalOverflow(page)).toBe(true);
       await page.screenshot({ path: `${SHOT_DIR}/catalogue-${width}.png`, fullPage: false });
@@ -136,7 +148,7 @@ test.describe('V3 screenshot matrix — sparse (2/cat) and very dense (80/cat)',
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/catalogue');
       await page
-        .locator('[data-band] .grid')
+        .locator('[data-band] [data-rail]')
         .first()
         .waitFor({ state: 'visible', timeout: 20_000 });
       await page.waitForTimeout(1900);
@@ -151,7 +163,7 @@ test.describe('V3 screenshot matrix — sparse (2/cat) and very dense (80/cat)',
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/catalogue');
       await page
-        .locator('[data-band] .grid')
+        .locator('[data-band] [data-rail]')
         .first()
         .waitFor({ state: 'visible', timeout: 20_000 });
       await page.waitForTimeout(1900);

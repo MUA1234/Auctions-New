@@ -71,12 +71,26 @@ async function mockFlow(page: Page) {
   });
 }
 
-async function firstBandColumns(page: Page): Promise<number> {
-  const grid = page.locator('[data-band] .grid').first();
-  await grid.waitFor({ state: 'visible', timeout: 20_000 });
-  return grid.evaluate(
-    (el) => getComputedStyle(el as HTMLElement).gridTemplateColumns.split(' ').length,
-  );
+async function firstRail(page: Page) {
+  const rail = page.locator('[data-band] [data-rail]').first();
+  await rail.waitFor({ state: 'visible', timeout: 20_000 });
+  return rail;
+}
+
+/** Every cell in a rail must sit on ONE horizontal line (single row per category). */
+async function railIsSingleRow(page: Page): Promise<boolean> {
+  return (await firstRail(page)).evaluate((el) => {
+    const cells = Array.from((el as HTMLElement).children).filter(
+      (c) => (c as HTMLElement).offsetWidth > 0,
+    );
+    if (cells.length < 2) return true;
+    const top = (cells[0] as HTMLElement).offsetTop;
+    return cells.every((c) => Math.abs((c as HTMLElement).offsetTop - top) <= 1);
+  });
+}
+
+async function railScrollsHorizontally(page: Page): Promise<boolean> {
+  return (await firstRail(page)).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
 }
 
 async function noHorizontalOverflow(page: Page): Promise<boolean> {
@@ -84,21 +98,26 @@ async function noHorizontalOverflow(page: Page): Promise<boolean> {
 }
 
 test.describe('V3 Infinite Flow Canvas', () => {
-  test('mobile 390px: compact 4-column matrix, no horizontal overflow', async ({ page }) => {
+  test('mobile 390px: single horizontal rail per category, scrolls, no page overflow', async ({
+    page,
+  }) => {
     await mockFlow(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/catalogue');
 
-    expect(await firstBandColumns(page)).toBe(4);
-    expect(await noHorizontalOverflow(page)).toBe(true);
+    await firstRail(page);
+    expect(await railIsSingleRow(page)).toBe(true); // one line, not many rows
+    expect(await railScrollsHorizontally(page)).toBe(true); // 18 lots > one screen
+    expect(await noHorizontalOverflow(page)).toBe(true); // rail scroll ≠ page scroll
   });
 
-  test('desktop 1440px: denser matrix than mobile, still no overflow', async ({ page }) => {
+  test('desktop 1440px: still a single horizontal rail, no page overflow', async ({ page }) => {
     await mockFlow(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/catalogue');
 
-    expect(await firstBandColumns(page)).toBeGreaterThanOrEqual(5);
+    await firstRail(page);
+    expect(await railIsSingleRow(page)).toBe(true);
     expect(await noHorizontalOverflow(page)).toBe(true);
   });
 });

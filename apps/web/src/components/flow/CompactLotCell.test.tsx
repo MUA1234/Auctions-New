@@ -33,10 +33,12 @@ function lot(overrides: Record<string, unknown> = {}): CatalogueCardV2 {
 afterEach(cleanup);
 
 describe('CompactLotCell (V3 Flow — legible compact cell)', () => {
-  it('links to the lot detail and shows the price and watched count', () => {
+  it('links to the lot detail and shows the price (currency + amount) and watched count', () => {
     render(<CompactLotCell lot={lot()} />);
     expect(screen.getByRole('link').getAttribute('href')).toBe('/lot/lot-1');
-    expect(screen.getByText(/LKR 12,500,000/)).toBeTruthy();
+    // Currency and amount are separate elements (currency set smaller than the amount).
+    expect(screen.getByText('LKR')).toBeTruthy();
+    expect(screen.getByText('12,500,000')).toBeTruthy();
     expect(screen.getByText(/♥ 3/)).toBeTruthy();
   });
 
