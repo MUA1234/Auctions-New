@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
 import { apiGet, fetchCatalogueV2, type CatalogueCardV2, type MarketPulse } from '../lib/api';
 import { formatMoney } from '../lib/format';
-import { SaleCard } from '../components/SaleCard';
+import { FeaturedSection } from '../components/FeaturedSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,11 +137,9 @@ export default async function HomePage() {
           </Link>
         </div>
         {featured.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((lot) => (
-              <SaleCard key={lot.id} lot={lot} />
-            ))}
-          </div>
+          // Data fetched server-side; FeaturedSection picks the cinematic reel
+          // (featuredReelV3) or the static grid client-side (pack doc 09).
+          <FeaturedSection items={featured} />
         ) : (
           <Card>
             <p className="text-bone-400">
