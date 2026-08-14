@@ -21,9 +21,11 @@ const VIEWS: { id: ViewMode; label: string }[] = [
   { id: 'grid', label: 'Grid' },
   { id: 'list', label: 'List' },
 ];
+// V3 (pack doc 08): Ending Soon is the primary/default sort, listed first — the
+// backend enforces the same default when `sort` is omitted, so the two agree.
 const SORTS = [
-  { id: 'newest', label: 'Newest' },
   { id: 'ending', label: 'Ending soon' },
+  { id: 'newest', label: 'Newest' },
   { id: 'price_desc', label: 'Price high→low' },
   { id: 'price_asc', label: 'Price low→high' },
 ];
@@ -48,7 +50,7 @@ export function CatalogueBrowser({
   const [debounced, setDebounced] = useState('');
   const [category, setCategory] = useState<string>(initialCategory);
   const [saleMethod, setSaleMethod] = useState<string>(initialSaleMethod);
-  const [sort, setSort] = useState('newest');
+  const [sort, setSort] = useState('ending');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CatalogueResponse | null>(null);
   const [loading, setLoading] = useState(true);
