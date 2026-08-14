@@ -140,7 +140,24 @@ The genuine gap was AI prompt-safety, now closed (BE `a885bc2`).
   → `approved`); materialized/rebuildable Intelligence projections + sell-through; AI
   translation task. Documented for post-pilot.
 
-### ⬜ V3-8 — Singha Live V3 — **NOT STARTED**
+### ✅ V3-8 — Singha Live V3 — **DONE (core)**
+
+Commit: BE `fb77bc6`. Audit-first: the live module, mock stream adapter (`LiveStreamProvider`),
+public room, YouTube-simulcast + recording hooks, and clerk floor-bid-through-the-engine
+already existed and passed E2E; the gaps were flag enforcement + realtime.
+
+- **liveV3 gate enforced:** the whole `/live` surface 404s when the flag is OFF (it was
+  previously inert — always on). Same pattern as bidBattle/engagement.
+- **Canonical live-room + realtime:** `GET /live/events/:id/room` = broadcast status +
+  `videoAvailable` + the AUTHORITATIVE bid state from the auction engine (never a separate
+  live-bid store) + monotonic `seq`. SSE `GET /live/events/:id/stream` gives a snapshot on
+  connect then deduped frames → deterministic reconnect/resync, duplicate-safe.
+- **Rule 12 held:** online + clerk-relayed floor bids all flow through the ONE row-locked
+  engine ledger; the engine decides the winner. Video outage never corrupts bidding.
+- E2E 17 checks on real Postgres (flag gate, live-room engine bid state, seq, SSE snapshot,
+  video-outage independence, permissions).
+- **Remaining (post-pilot):** distinct auctioneer/clerk/producer console roles; multi-lot
+  current-lot sequencing wired to `AuctionEventLot`; real IVS/YouTube adapter.
 
 Event/live room/consoles, stream adapter + fakes, simulcast/recording hooks, canonical bid-state channel.
 
