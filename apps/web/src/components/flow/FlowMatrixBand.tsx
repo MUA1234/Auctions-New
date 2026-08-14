@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from '@singha/auctionflow';
 import { fetchCatalogueRow, type CatalogueCardV2 } from '../../lib/api';
 import { CompactLotCell } from './CompactLotCell';
+import { CategoryOverlay } from './CategoryOverlay';
 
 const PAGE_FETCH = 18; // cursor slice size
 
@@ -17,19 +18,22 @@ function dedupe(items: CatalogueCardV2[]): CatalogueCardV2[] {
  * (never a multi-row grid). The band owns its own cursor so every lot in the category is
  * reachable: it lazy-loads only when scrolled near the viewport (vertical virtualization)
  * and fetches the next cursor slice as the user nears the right end of the rail. It never
- * fakes a next page — the rail simply ends when the cursor is exhausted. Native horizontal
- * scroll on touch; discreet arrow controls on pointer devices. Reduced-motion safe.
+ * fakes a next page — the rail simply ends when the cursor is exhausted. The big category
+ * name lives IN this band (aligned with its row) and pops in on hover / touch / when the
+ * row scrolls into view — there is no small heading at the top. Reduced-motion safe.
  */
 export function FlowMatrixBand({
   category,
   label,
   saleMethod,
   search,
+  showLabel = true,
 }: {
   category: string;
   label: string;
   saleMethod?: string;
   search?: string;
+  showLabel?: boolean;
 }) {
   const rootRef = useRef<HTMLElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
@@ -40,6 +44,15 @@ export function FlowMatrixBand({
   const [exhausted, setExhausted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [near, setNear] = useState(false);
+  const [poked, setPoked] = useState(false); // label "pop" on touch / entry
+  const pokeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const poke = useCallback(() => {
+    setPoked(true);
+    if (pokeTimer.current) clearTimeout(pokeTimer.current);
+    pokeTimer.current = setTimeout(() => setPoked(false), 1400);
+  }, []);
+  useEffect(() => () => void (pokeTimer.current && clearTimeout(pokeTimer.current)), []);
 
   const loadMore = useCallback(async () => {
     if (loading || exhausted) return;
@@ -81,12 +94,13 @@ export function FlowMatrixBand({
     if (near && items.length === 0 && !loading && !exhausted) void loadMore();
   }, [near, items.length, loading, exhausted, loadMore]);
 
-  // Prefetch the next slice as the user scrolls near the right end of the rail.
+  // Prefetch the next slice as the user scrolls near the right end; pop the label too.
   const onScroll = useCallback(() => {
+    if (showLabel) poke();
     const el = railRef.current;
     if (!el || loading || exhausted) return;
     if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 320) void loadMore();
-  }, [loading, exhausted, loadMore]);
+  }, [showLabel, poke, loading, exhausted, loadMore]);
 
   const nudge = useCallback(
     (dir: 1 | -1) => {
@@ -100,23 +114,18 @@ export function FlowMatrixBand({
   const showArrows = items.length > 0 && (!exhausted || items.length > 4);
 
   return (
-    <section ref={rootRef} className="py-3" aria-roledescription="Flow band">
-      {/* Real semantic heading for assistive tech (the visual label is the overlay). */}
-      <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-widest text-bone-500">
-        {label}
-        {items.length > 0 && (
-          <span className="ml-2 font-normal normal-case tracking-normal text-bone-600">
-            {items.length}
-            {!exhausted ? '+' : ''}
-          </span>
-        )}
-      </h3>
+    <section ref={rootRef} className="group/band relative py-3" aria-roledescription="Flow band">
+      {/* Real heading for assistive tech only — the visible name is the pop-in overlay. */}
+      <h3 className="sr-only">{label}</h3>
+
+      {showLabel && <CategoryOverlay label={label} active={poked} />}
 
       <div className="group/rail relative">
         <div
           ref={railRef}
           data-rail
           onScroll={onScroll}
+          onPointerDown={showLabel ? poke : undefined}
           className="no-scrollbar flex gap-2 overflow-x-auto pb-1 [scroll-snap-type:x_proximity]"
         >
           {items.map((lot) => (
@@ -140,7 +149,7 @@ export function FlowMatrixBand({
               type="button"
               onClick={() => nudge(-1)}
               aria-label={`Scroll ${label} left`}
-              className="absolute -left-3 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-coal-900/85 p-2 text-bone-300 opacity-0 backdrop-blur transition hover:text-bone group-hover/rail:opacity-100 sm:flex"
+              className="absolute -left-3 top-[38%] z-30 hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-coal-900/85 p-2 text-bone-300 opacity-0 backdrop-blur transition hover:text-bone group-hover/rail:opacity-100 sm:flex"
             >
               ‹
             </button>
@@ -148,7 +157,7 @@ export function FlowMatrixBand({
               type="button"
               onClick={() => nudge(1)}
               aria-label={`Scroll ${label} right`}
-              className="absolute -right-3 top-[38%] hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-coal-900/85 p-2 text-bone-300 opacity-0 backdrop-blur transition hover:text-bone group-hover/rail:opacity-100 sm:flex"
+              className="absolute -right-3 top-[38%] z-30 hidden -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-coal-900/85 p-2 text-bone-300 opacity-0 backdrop-blur transition hover:text-bone group-hover/rail:opacity-100 sm:flex"
             >
               ›
             </button>
