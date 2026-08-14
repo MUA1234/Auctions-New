@@ -11,14 +11,14 @@ export function CategoryOverlay({ label, visible }: { label: string; visible: bo
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center px-6"
+      className="pointer-events-none fixed inset-x-0 top-1/2 z-30 flex -translate-y-1/2 justify-center overflow-hidden px-6"
     >
       <span
-        className={`select-none text-center font-serif font-black uppercase tracking-tight text-transparent transition-all duration-500 motion-reduce:transition-none ${
+        className={`max-w-full select-none overflow-hidden text-ellipsis whitespace-nowrap text-center font-serif font-black uppercase tracking-tight text-transparent transition-all duration-500 motion-reduce:transition-none ${
           visible ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
         }`}
         style={{
-          fontSize: 'clamp(2.5rem, 12vw, 9rem)',
+          fontSize: 'clamp(2.25rem, 10vw, 8rem)',
           backgroundImage: 'linear-gradient(180deg,#5fe0a3 0%,#1fa055 55%,#c9a24b 120%)',
           WebkitBackgroundClip: 'text',
           backgroundClip: 'text',

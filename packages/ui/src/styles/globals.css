@@ -15,6 +15,10 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  /* Full-bleed cinematic surfaces (hero showcase, Flow bands, the floating category
+     overlay) must never produce a horizontal page scroll. `body` already clips; clip
+     at the root too so a fixed/absolute element can never extend the document width. */
+  overflow-x: clip;
 }
 
 body {

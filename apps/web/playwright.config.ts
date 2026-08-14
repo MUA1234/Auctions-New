@@ -18,7 +18,16 @@ export default defineConfig({
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: [['line']],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure' },
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    trace: 'retain-on-failure',
+    // Allow pointing at a pre-installed Chromium (e.g. a managed runner where the
+    // Playwright-pinned build isn't downloaded) via PW_EXECUTABLE_PATH. Unset in
+    // normal runs, so Playwright resolves its own browser as usual.
+    ...(process.env.PW_EXECUTABLE_PATH
+      ? { launchOptions: { executablePath: process.env.PW_EXECUTABLE_PATH } }
+      : {}),
+  },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `next dev --port ${PORT}`,
