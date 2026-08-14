@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlowMatrixBand } from './FlowMatrixBand';
 import { CategoryOverlay } from './CategoryOverlay';
+import { useFlags } from '../../lib/use-flags';
 
 const LABELS: Record<string, string> = {
   vehicles: 'Vehicles',
@@ -33,6 +34,7 @@ export function FlowCanvas({
   search?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { flags } = useFlags();
   const [activeKey, setActiveKey] = useState(categories[0] ?? '');
   const [overlayVisible, setOverlayVisible] = useState(false);
 
@@ -77,7 +79,11 @@ export function FlowCanvas({
 
   return (
     <div ref={containerRef} className="relative">
-      <CategoryOverlay label={labelFor(activeKey)} visible={overlayVisible} />
+      {/* Floating band label — gated on `categoryOverlayV3`. When off, bands still
+          carry their real semantic headings, so navigation/a11y is unaffected. */}
+      {flags.categoryOverlayV3 && (
+        <CategoryOverlay label={labelFor(activeKey)} visible={overlayVisible} />
+      )}
       {categories.map((cat) => (
         <div key={cat} data-band={cat}>
           <FlowMatrixBand
