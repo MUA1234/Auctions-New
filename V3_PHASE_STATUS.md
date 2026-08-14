@@ -6,12 +6,12 @@ _Snapshot: 2026-08-14. Both repos are on `main` and **pushed** to origin
 
 ## Overall
 
-|                           |                                                                                                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase plan (V3-0 … V3-11) | **V3-0…V3-10 done** (build track complete); V3-11 is post-pilot by design                                                                                |
-| Production readiness      | **GO_FOR_CONTROLLED_PILOT** — see `V3_FINAL_GO_NO_GO.md`                                                                                                 |
-| Heads                     | FE `bb8285c` · BE `e458ccc` (both on `main`)                                                                                                             |
-| Test posture              | FE 43 unit + build + bundle scan; BE domain 90 / api 21 / contracts 17; full acceptance E2E + scale (2,000) green on real Postgres; contract:check green |
+|                           |                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase plan (V3-0 … V3-11) | **V3-0…V3-10 done** (build track complete); V3-11 is post-pilot by design                                                                                                             |
+| Production readiness      | **GO_FOR_CONTROLLED_PILOT** — see `V3_FINAL_GO_NO_GO.md`                                                                                                                              |
+| Heads                     | Both track `main`. Build-track tips: FE `edd2c44` · BE `3e01f9a`, with CI-formatting hygiene committed on top.                                                                        |
+| Test posture              | FE 43 web unit + `next build` + bundle scan; BE domain 90 / api 21 / contracts 17; full acceptance E2E + catalogue scale (2,000 lots) green on real Postgres; `contract:check` green. |
 
 The **build track is complete and verified**. Full public GO is withheld only for
 owner-provisioned items (provider credentials) and infra drills (load / backup-restore /
@@ -72,8 +72,8 @@ Commit: FE `ac3db28`.
 
 ### ✅ V3-5 — Singha Discover + Buyer Twin — **DONE**
 
-Commits: BE `2777337` (engine + contracts) + `33bd0f3` (persistence + module) + BE (this
-increment) discovery HTTP E2E; FE (this increment) Discover page + gating + Buyer Twin panel.
+Commits: BE `2777337` (engine + contracts) + `33bd0f3` (persistence + module) + discovery HTTP E2E;
+FE `9e8e991` (Discover page + gating + Buyer Twin panel).
 
 - **DONE (backend):** deterministic, privacy-safe, Tier-A Buyer Twin engine (weights backend-only, no
   overfit, dislikes, reset, explanations, versioned). Additive Prisma migration
@@ -87,7 +87,7 @@ increment) discovery HTTP E2E; FE (this increment) Discover page + gating + Buye
 - **DONE (frontend):** `/discover` page gated on `discoverV3` (safe fallback when OFF), flag-gated nav
   entry, `DiscoverDeck` swipe deck with loading/empty/**error+retry**/end-of-feed states (a swipe is
   never a bid), safe Buyer Twin "Why you're seeing this" panel + preference reset behind `buyerTwinV3`.
-  Component test `DiscoverDeck.test.tsx` (7). Frontend gates green: typecheck, lint, 26 web tests,
+  Component test `DiscoverDeck.test.tsx` (7). Frontend gates green: typecheck, lint, web unit suite,
   `next build` (route `/discover` present).
 - **Remaining (non-blocking):** feed personalisation from bid/offer history via outbox/rebuild;
   authenticated Playwright path once a Supabase test credential is available (owner P0 #4).
@@ -95,7 +95,8 @@ increment) discovery HTTP E2E; FE (this increment) Discover page + gating + Buye
 ### ✅ V3-6 — Bid Battle + Engagement Engine — **DONE**
 
 Commits: BE `71d1263` (rivalry engine) + `8e6737e` (rivalry endpoint+E2E) + `8a82b52`
-(engagement engine); FE `730c875` (Bid Battle strip) + this increment (engagement UI + sound).
+(engagement engine); FE `730c875` (Bid Battle strip) + `81a2a1a` (engagement preference
+centre + premium sound/haptics).
 
 - **Bid Battle (behind `bidBattleV3`):** pure, rebuildable rivalry engine over the immutable
   bid ledger — leader/nearest-challenger, lead changes, comeback + you-outbid moments —
@@ -111,9 +112,9 @@ Commits: BE `71d1263` (rivalry engine) + `8e6737e` (rivalry endpoint+E2E) + `8a8
   E2E 14 checks (opt-in, dedup, transactional bypass, quiet hours, cap, DLQ, flag gate).
 - **Sound + haptics:** premium Web-Audio cue language (gavel/lead/outbid/countdown/win) +
   Vibration API, with On/Reduced/Off control, honouring reduced-motion; wired into Bid
-  Battle. Preference centre at `/account/notifications`. FE sound + prefs tests (10).
-- Gates green both repos: FE typecheck/lint/41 web tests/`next build`; BE domain 78,
-  contracts 17, api 21, discovery/bid-battle/engagement E2E on real Postgres. Flags OFF.
+  Battle. Preference centre at `/account/notifications`. FE sound + preference component tests.
+- Gates green both repos (typecheck/lint/build/unit); BE discovery/bid-battle/engagement E2E
+  on real Postgres. Flags OFF.
 
 ### ✅ V3-7 — Connect / AI / Social / Asset Intelligence — **DONE (core)**
 
@@ -128,7 +129,7 @@ The genuine gap was AI prompt-safety, now closed (BE `a885bc2`).
   prompt-injection detection, data-boundary context redaction (proxy-max/credit/score never
   cross), cheapest-capable **model-tier router** + private prompt/policy registry. Wired into
   `AiService.assist`: injections are refused + audited, never sent to a provider; free text
-  can't place a bid. 12 domain tests + 6 new E2E checks.
+  can't place a bid. 12 domain tests + 6 new AI E2E checks.
 - **Social:** `SocialPublisherProvider` + fake, campaign/publication models, draft→publish
   with audit + posting history; publish is permissioned (human-gated).
 - **Asset Intelligence:** public `GET /intelligence/market-pulse` (homepage) + permissioned
@@ -157,14 +158,12 @@ already existed and passed E2E; the gaps were flag enforcement + realtime.
 - **Remaining (post-pilot):** distinct auctioneer/clerk/producer console roles; multi-lot
   current-lot sequencing wired to `AuctionEventLot`; real IVS/YouTube adapter.
 
-Event/live room/consoles, stream adapter + fakes, simulcast/recording hooks, canonical bid-state channel.
-
 ### ✅ V3-9 — Customer dashboard pilot shell + instrumentation — **DONE (core)**
 
-Commits: BE `b06d67e`, FE (this increment). The buyer command-centre dashboard already
+Commits: BE `b06d67e`, FE `1f3ed35`. The buyer command-centre dashboard already
 existed (server projection `GET /api/v2/me/dashboard`: urgent strip + Watching/Winning/
 Outbid/Payment status groups, realtime, **no catalogue category overlays** per doc 09).
-This increment adds the pilot **instrumentation** the pack asks for.
+This phase adds the pilot **instrumentation** the pack asks for.
 
 - **Backend:** additive append-only `product_event` table + `POST /api/v2/me/analytics`
   (privacy-safe: surface/action/optional listing+funnel step, primitive metadata, no PII;
@@ -183,12 +182,12 @@ This increment adds the pilot **instrumentation** the pack asks for.
 Ran the hardening review (pack doc 09/15). CI-equivalent gates green both repos
 (format/lint/typecheck/build/unit); the **full backend acceptance E2E suite + scale (2,000
 lots) pass on a real Postgres**; `contract:check` green (snapshot regenerated after the
-scale fix, synced to FE); FE bundle secret/source-map scan clean. Security E2E 11/11;
-auction concurrency + idempotency verified; Tier-A boundaries (rivalry aliases, AI prompt
-injection/redaction, no proxy-max/PII leakage) tested. Produced **`V3_FINAL_GO_NO_GO.md`**
-→ **GO_FOR_CONTROLLED_PILOT**. Outstanding for full GO (owner/infra, waived for pilot):
-provider credentials, production-scale load, backup/restore drill, full WCAG audit, repo
-privacy.
+scale fix, prettier-normalised, synced to FE); FE bundle secret/source-map scan clean.
+Security E2E 11/11; auction concurrency + idempotency verified; Tier-A boundaries (rivalry
+aliases, AI prompt injection/redaction, no proxy-max/PII leakage) tested. Produced
+**`V3_FINAL_GO_NO_GO.md`** → **GO_FOR_CONTROLLED_PILOT**. Outstanding for full GO
+(owner/infra, waived for pilot): provider credentials, production-scale load, backup/restore
+drill, full WCAG audit, repo privacy.
 
 ### ⬜ V3-11 — Trial-led dashboard refinement — **NOT STARTED (post-pilot, by design)**
 
@@ -196,30 +195,36 @@ privacy.
 
 ## Feature flags (all default OFF, server-controlled)
 
-`v3VisualArchitecture` · `flowMatrixV3` ✔built · `categoryOverlayV3` (in Flow) · `featuredReelV3` ✔built ·
-`discoverV3` (page pending) · `buyerTwinV3` · `bidBattleV3` · `gestureBidV3` ✔built · `engagementV3` ·
-`dashboardV3Beta` · `liveV3`.
+`v3VisualArchitecture` · `flowMatrixV3` · `categoryOverlayV3` (in Flow) · `featuredReelV3` ·
+`discoverV3` · `buyerTwinV3` · `bidBattleV3` · `gestureBidV3` · `engagementV3` ·
+`dashboardV3Beta` · `liveV3`. Every V3 experience is built, gated and tested; none is enabled
+in production by this program.
 
 ## 🚨 Owner P0s (block production GO — cannot be done by the agent)
 
 1. Make **both repos private** (`MUA1234/Auctions-New`, `LakshanV/Auctions-Backend`).
-2. Resolve the **GitHub Actions billing/account lock** (frontend) so security scans actually run.
+2. Resolve the **GitHub Actions billing/account lock** so remote security/CI scans (CodeQL) actually run.
 3. Verify **branch protection** on `main` (both).
 4. Provide a **Supabase test-user credential** to unlock authenticated Playwright e2e.
-5. Later: provider credentials (WhatsApp/SMS/email/push/AI/streaming) for V3-6/7/8 activation.
-6. **Push** is withheld pending owner go-ahead (repo policy).
+5. Provider credentials (WhatsApp/SMS/email/push/AI/streaming) to activate Connect / Engagement /
+   AI / Social / Live beyond the credential-free fakes.
+6. Backup/restore drill, production-scale load test, and full WCAG audit (per `V3_FINAL_GO_NO_GO.md`).
+
+_(Resolved: GitHub App `contents: write` on the backend repo — pushes to `main` now work on both repos.)_
 
 ## Verification summary (local, this program)
 
-- Frontend: typecheck + lint + `next build` green each increment; unit/component **26 web tests**
-  (incl. `DiscoverDeck` 7); Playwright suite **5 pass / 1 skip / 0 fail** (Flow canvas + critical
-  flows + route protection).
-- Backend: typecheck + build green; contracts **17/17**, domain **52/52**, api **21/21**; discovery
-  HTTP E2E **24 checks** + Ending-Soon/discovery migrations **applied to a real ephemeral Postgres**.
+- **Frontend:** typecheck + lint + `next build` green; **43 web unit/component tests** (10 files);
+  Playwright Flow-canvas + critical-flow + route-protection suite green; bundle secret/source-map
+  scan clean.
+- **Backend:** format:check + lint + typecheck + build green; unit **domain 90 / api 21 /
+  contracts 17**; the full acceptance E2E suite **+ catalogue scale (2,000 lots)** pass on a **real
+  ephemeral Postgres**; `contract:check` (public-API drift) green and synced to the frontend.
 
 ## Immediate next step
 
-V3-5 is complete (frontend Discover + backend discovery E2E landed and verified). Next is **V3-6 —
-Bid Battle + Engagement Engine**: privacy-safe bidder aliases + a rebuildable, non-authoritative
-rivalry projection from the immutable bid ledger (backend, Tier-A), then the `bidBattleV3` UI and the
-`engagementV3` notification engine with provider fakes-first adapters.
+Build track (V3-0…V3-10) is complete, pushed to `main`, and self-reviewed to
+**GO_FOR_CONTROLLED_PILOT** (`V3_FINAL_GO_NO_GO.md`). No feature work is pending. What remains is
+**owner-provisioned** (P0s above) and **post-pilot V3-11** (trial-led dashboard refinement,
+evidence-led). Operationally: keep `main` green (CI / security / CodeQL), then enable one flag in
+staging to verify and disable to prove rollback (doc 14) before any pilot.
