@@ -64,35 +64,22 @@ test.describe('Singha critical flows', () => {
     await expect(active).toHaveClass(/bg-red-500\/10|border-red-500/);
   });
 
-  test('Bid Capacity is a distinct page from account security (P1-12)', async ({ page }) => {
-    await page.goto('/account/bid-capacity');
-    await expect(page.getByRole('heading', { name: /bid capacity/i })).toBeVisible();
-    // It links to account security (MFA) — the two are separate surfaces.
-    await expect(page.getByRole('link', { name: /account security/i })).toBeVisible();
-
-    // /account/security is the account-security / MFA page, not the capacity page.
-    // (Signed out it shows the sign-in prompt; signed in, MFA enrollment — both
-    // are the security surface, never Bid Capacity.)
-    await page.goto('/account/security');
-    await expect(page.getByRole('heading', { name: /account security/i })).toBeVisible();
-    await expect(
-      page.getByText(/multi-factor|authenticator|manage your account security/i).first(),
-    ).toBeVisible();
-    await expect(page.getByRole('heading', { name: /bid capacity/i })).toHaveCount(0);
-  });
-
-  test('admin members is search-first with explicit scope, not a raw ULID box (P1-10/P1-11)', async ({
-    page,
-  }) => {
-    await page.goto('/admin/members');
-    // Lookup is a search (Client ID / contact / name), never the old ULID input.
-    await expect(page.getByPlaceholder(/CUS-|name@email/i).first()).toBeVisible();
-    await expect(page.getByPlaceholder(/Customer ID \(ULID\)/i)).toHaveCount(0);
-    // Onsite registration is the "no match → create" fallback with EXPLICIT scope.
-    await expect(page.getByText(/register a walk-in/i).first()).toBeVisible();
-    await expect(page.getByText(/access scope/i).first()).toBeVisible();
-    // Scope must be an explicit choice (Auction/Event/Platform) — not blank=platform.
-    await expect(page.locator('select option[value="platform"]')).toHaveCount(1);
-    await expect(page.locator('select option[value="auction"]')).toHaveCount(1);
+  // Route protection (added with the real-auth migration): private surfaces redirect
+  // a signed-out visitor to /login?next=… so they return after signing in. The
+  // authenticated CONTENT of these pages (Bid Capacity distinct from security;
+  // admin members search-first with explicit scope — P1-10/11/12) needs a real
+  // Supabase test session to drive; that awaits an owner-provided test credential,
+  // since demo/guest auth was deliberately removed. Tracked in V3_BASELINE.
+  test('protected account/admin routes redirect signed-out users to login', async ({ page }) => {
+    for (const route of [
+      '/account/bid-capacity',
+      '/account/security',
+      '/admin/members',
+      '/dashboard',
+    ]) {
+      await page.goto(route);
+      await expect(page).toHaveURL(/\/login\?next=/);
+      expect(decodeURIComponent(page.url())).toContain(`next=${route}`);
+    }
   });
 });

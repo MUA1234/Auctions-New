@@ -11,6 +11,8 @@ import {
   type CatalogueResponse,
 } from '../lib/api';
 import { SaleCard } from './SaleCard';
+import { FlowCanvas } from './flow/FlowCanvas';
+import { useFlags } from '../lib/use-flags';
 
 // Customer-facing view names are Flow | Grid | List (Revision 05 §4). The internal
 // primitives keep their names (CubeRow, AuctionFlowViewport, `flow` id) — only the
@@ -45,6 +47,7 @@ export function CatalogueBrowser({
   initialCategory?: string;
   initialSaleMethod?: string;
 } = {}) {
+  const { flags } = useFlags();
   const [view, setView] = useState<ViewMode>('flow');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -209,13 +212,19 @@ export function CatalogueBrowser({
           <p className="mt-1 text-sm text-bone-500">Try clearing the category or search.</p>
         </Card>
       ) : view === 'flow' ? (
-        <FlowBands
-          categories={flowCategories}
-          seedByCategory={seedByCategory}
-          search={debounced}
-          saleMethod={saleMethod}
-          sort={sort}
-        />
+        // V3 Infinite Flow Canvas behind flowMatrixV3 (pack doc 08); the current
+        // edge-hinged band Flow stays until the flag is enabled server-side.
+        flags.flowMatrixV3 ? (
+          <FlowCanvas categories={flowCategories} saleMethod={saleMethod} search={debounced} />
+        ) : (
+          <FlowBands
+            categories={flowCategories}
+            seedByCategory={seedByCategory}
+            search={debounced}
+            saleMethod={saleMethod}
+            sort={sort}
+          />
+        )
       ) : view === 'grid' ? (
         <>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

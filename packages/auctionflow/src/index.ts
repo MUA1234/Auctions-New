@@ -46,10 +46,19 @@ export {
   swipeDelta,
   type GestureAxis,
 } from './paging';
+export {
+  matrixLayout,
+  matrixPageSize,
+  overlayReducer,
+  type MatrixLayout,
+  type OverlayEvent,
+  type OverlayState,
+} from './matrix';
 
 // --- Hooks -----------------------------------------------------------------
 export { useReducedMotion } from './hooks/useReducedMotion';
 export { useFaceCount } from './hooks/useFaceCount';
+export { useMatrixLayout } from './hooks/useMatrixLayout';
 export { useCubeGesture, type CubeGesture, type CubeGestureHandlers } from './hooks/useCubeGesture';
 export {
   CubePositionProvider,
