@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Button, Logo, Sheet } from '@singha/ui';
+import { Button, Sheet } from '@singha/ui';
+import { BrandLogo } from './BrandLogo';
 import { NAV_ITEMS } from '../lib/nav';
 import { useFlags } from '../lib/use-flags';
 import { signOut, useAuth } from '../lib/auth';
@@ -54,7 +55,7 @@ export function MobileNav() {
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
             <Link href="/" aria-label="Singha Auctions home" onClick={() => setOpen(false)}>
-              <Logo />
+              <BrandLogo className="h-9 w-auto" />
             </Link>
             <button
               type="button"

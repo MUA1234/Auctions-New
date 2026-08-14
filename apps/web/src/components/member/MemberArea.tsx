@@ -9,6 +9,7 @@ import { formatMoney } from '../../lib/format';
 import { memberLookupPayload } from '../../lib/passport';
 import { BidCapacityMeter, SecurityCards } from './capacity';
 import { SignInPrompt } from '../SignInPrompt';
+import { BrandLogo } from '../BrandLogo';
 
 /**
  * Customer member area (Revision 05 §21/§22, Revision 06 §25). Renders the SELF
@@ -74,7 +75,7 @@ function MemberPassport({ member }: { member: MemberSelf }) {
     <div className="relative overflow-hidden rounded-2xl border border-amber-200/15 bg-gradient-to-br from-coal-800/90 to-coal-950 p-6 shadow-xl">
       <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-amber-300/5 blur-2xl" />
       <div className="flex items-center justify-between">
-        <span className="font-serif text-lg font-bold tracking-tight text-bone">Singha</span>
+        <BrandLogo className="h-6 w-auto" />
         <MembershipBadge status={member.membership.status} />
       </div>
       <p className="mt-6 text-[11px] uppercase tracking-widest text-bone-500">Client ID</p>

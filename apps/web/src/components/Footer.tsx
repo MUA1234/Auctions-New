@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Logo } from '@singha/ui';
+import { BrandLogo } from './BrandLogo';
 
 const FOOTER_NAV: { heading: string; links: { href: string; label: string }[] }[] = [
   {
@@ -28,7 +28,7 @@ export function Footer() {
     <footer className="mt-24 border-t border-white/[0.07] bg-coal-950/50">
       <div className="container-wide grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="space-y-3">
-          <Logo />
+          <BrandLogo className="h-11 w-auto" />
           <p className="max-w-xs text-sm leading-relaxed text-bone-500">
             Sri Lanka’s trusted asset exchange. Serious commerce, beautifully presented — with a
             server-authoritative auction engine and immutable records at its core.
