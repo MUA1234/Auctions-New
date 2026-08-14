@@ -20,9 +20,13 @@ missing" list. Current Git state is trusted over stale snapshot prose (pack doc 
 
 ## Current phase
 
-**V3-5 — Singha Discover + Buyer Twin (frontend completion).** Reconcile + finish the WIP:
-`/discover` page gated on `discoverV3`, flag-gated nav entry, explicit error/retry state,
-safe Buyer Twin "Why am I seeing this?" panel + preference reset, component test, verify.
+**V3-6 — Bid Battle (frontend).** V3-5 frontend complete (Discover shipped, commit `9e8e991`,
+pushed). This increment adds the **Bid Battle strip** on the lot page, gated on `bidBattleV3`:
+`components/BidBattle.tsx` consumes the backend's safe `RivalryView`
+(`GET /auctions/:id/rivalry`) via `lib/api.ts` (`fetchRivalry`) — YOU vs the leader/challenger
+alias, gap-to-next, active-bidder count and lead-change/comeback/outbid moments. Read-only:
+it never places a bid. Renders nothing when the flag is OFF or before a contest exists.
+Component test `BidBattle.test.tsx` (5). Web suite 31 green; `next build` OK.
 
 ## Landed frontend commits (this program, on `main`)
 

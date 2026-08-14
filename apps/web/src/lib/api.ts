@@ -599,3 +599,40 @@ export interface BuyerTwinSummary {
 export async function fetchBuyerTwin(token: string): Promise<BuyerTwinSummary> {
   return apiGetAuthed<BuyerTwinSummary>('/discovery/buyer-twin', token);
 }
+
+// --- Bid Battle rivalry (pack doc 05) ---------------------------------------
+// Mirrors the backend `RivalryView` contract. The view is privacy-safe by
+// construction: every participant is an alias and the caller is "You" — the
+// backend never sends a bidderId or proxy maximum, so none can appear here.
+
+export interface RivalryMoment {
+  kind: 'lead_taken' | 'comeback' | 'you_outbid';
+  who: string;
+  sequence: number;
+}
+
+export interface RivalryView {
+  auctionId: string;
+  currentHighMinor: number | null;
+  nextValidBidMinor: number | null;
+  gapToNextMinor: number | null;
+  activeBidderCount: number;
+  totalBids: number;
+  leadChanges: number;
+  youAreLeading: boolean;
+  leader: string | null;
+  challenger: string | null;
+  moments: RivalryMoment[];
+}
+
+/**
+ * The safe Bid Battle rivalry view for an auction. Sends the bearer when signed in
+ * so the caller is resolved to "You". Returns 404 (throws) when `bidBattleV3` is OFF
+ * server-side — callers gate on the flag first, so that path is not normally hit.
+ * Reading this never places a bid.
+ */
+export async function fetchRivalry(auctionId: string, token?: string): Promise<RivalryView> {
+  return token
+    ? apiGetAuthed<RivalryView>(`/auctions/${auctionId}/rivalry`, token)
+    : apiGet<RivalryView>(`/auctions/${auctionId}/rivalry`);
+}

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Chip } from '@singha/ui';
 import { fetchLotDetail, type LotDetail } from '../../../lib/api';
 import { BidPanel } from '../../../components/BidPanel';
+import { BidBattle } from '../../../components/BidBattle';
 import { SalePanel } from '../../../components/SalePanel';
 import { WatchButton } from '../../../components/WatchButton';
 import { LotGallery } from '../../../components/LotGallery';
@@ -92,7 +93,11 @@ export default async function LotPage({ params }: { params: { id: string } }) {
         {/* Right: bid engine or a proper sale summary — sticky on desktop. */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           {lot.auction ? (
-            <BidPanel auctionId={lot.auction.id} initial={lot.auction} lotId={lot.id} />
+            <>
+              <BidPanel auctionId={lot.auction.id} initial={lot.auction} lotId={lot.id} />
+              {/* Live rivalry context, gated on bidBattleV3 (renders nothing when OFF). */}
+              <BidBattle auctionId={lot.auction.id} currency={lot.auction.currency} />
+            </>
           ) : (
             <SalePanel
               listingId={lot.id}
