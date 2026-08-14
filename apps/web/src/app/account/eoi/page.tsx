@@ -18,7 +18,10 @@ export default function EoiPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) fetchMyEois(token).then(setRows).catch(() => setRows([]));
+    if (token)
+      fetchMyEois(token)
+        .then(setRows)
+        .catch(() => setRows([]));
   }, [token]);
 
   async function withdraw(id: string) {
@@ -52,7 +55,10 @@ export default function EoiPage() {
       ) : rows.length === 0 ? (
         <Card className="mt-8 text-center">
           <p className="text-bone-300">You haven't registered interest in any lots yet.</p>
-          <Link href="/catalogue?saleMethod=EOI" className="mt-3 inline-block text-sm text-gold-400">
+          <Link
+            href="/catalogue?saleMethod=EOI"
+            className="mt-3 inline-block text-sm text-gold-400"
+          >
             Find lots open to interest →
           </Link>
         </Card>
@@ -64,7 +70,9 @@ export default function EoiPage() {
                 <div>
                   <StatusChip status={e.status} />
                   <p className="mt-1.5 tabular font-display text-2xl font-bold text-gold-400">
-                    {e.amountMinor != null ? formatMoney(e.amountMinor, e.currency) : 'Interest registered'}
+                    {e.amountMinor != null
+                      ? formatMoney(e.amountMinor, e.currency)
+                      : 'Interest registered'}
                   </p>
                   <Link
                     href={`/lot/${e.listingId}`}

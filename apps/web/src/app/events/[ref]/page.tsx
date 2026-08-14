@@ -53,7 +53,9 @@ export default async function EventDetailPage({ params }: { params: { ref: strin
       <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-bone">{event.title}</h1>
       <p className="mt-2 text-bone-300">{eventDate(event.startsAt)}</p>
       {(event.venue || event.locationCity) && (
-        <p className="text-sm text-bone-500">{[event.venue, event.locationCity].filter(Boolean).join(' · ')}</p>
+        <p className="text-sm text-bone-500">
+          {[event.venue, event.locationCity].filter(Boolean).join(' · ')}
+        </p>
       )}
       {event.description && (
         <p className="mt-5 max-w-3xl whitespace-pre-line leading-relaxed text-bone-300">
@@ -86,7 +88,8 @@ export default async function EventDetailPage({ params }: { params: { ref: strin
                       {lot.title}
                     </p>
                     <p className="text-xs capitalize text-bone-500">
-                      {lot.category} · {METHOD_LABEL[lot.saleMethod] ?? lot.saleMethod} · {lot.reference}
+                      {lot.category} · {METHOD_LABEL[lot.saleMethod] ?? lot.saleMethod} ·{' '}
+                      {lot.reference}
                     </p>
                   </div>
                   {lot.currentBidMinor != null && (

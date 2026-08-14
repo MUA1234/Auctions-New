@@ -35,9 +35,11 @@ export async function signOut(): Promise<void> {
   }
 }
 
-function toUser(session: {
-  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> };
-} | null): AuthUser | null {
+function toUser(
+  session: {
+    user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> };
+  } | null,
+): AuthUser | null {
   if (!session?.user) return null;
   const meta = session.user.user_metadata ?? {};
   const name = (meta.full_name ?? meta.name) as string | undefined;

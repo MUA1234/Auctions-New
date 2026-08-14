@@ -51,15 +51,30 @@ export function SalePanel({
   switch (saleMethod) {
     case 'BUY_NOW':
       return (
-        <BuyNowPanel listingId={listingId} currency={currency} priceMinor={priceMinor} token={token} />
+        <BuyNowPanel
+          listingId={listingId}
+          currency={currency}
+          priceMinor={priceMinor}
+          token={token}
+        />
       );
     case 'MAKE_OFFER':
       return (
-        <OfferPanel listingId={listingId} currency={currency} priceMinor={priceMinor} token={token} />
+        <OfferPanel
+          listingId={listingId}
+          currency={currency}
+          priceMinor={priceMinor}
+          token={token}
+        />
       );
     case 'SEALED_TENDER':
       return (
-        <TenderPanel listingId={listingId} currency={currency} priceMinor={priceMinor} token={token} />
+        <TenderPanel
+          listingId={listingId}
+          currency={currency}
+          priceMinor={priceMinor}
+          token={token}
+        />
       );
     case 'EOI':
       return <EoiPanel listingId={listingId} currency={currency} token={token} />;
@@ -344,7 +359,8 @@ function TenderPanel({
         </Button>
       </form>
       <p className="text-xs text-bone-500">
-        One sealed bid per buyer. It stays private until the controlled open — bid your true maximum.
+        One sealed bid per buyer. It stays private until the controlled open — bid your true
+        maximum.
       </p>
     </Card>
   );

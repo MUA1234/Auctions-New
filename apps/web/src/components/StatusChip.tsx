@@ -2,7 +2,15 @@ import { Chip, type ChipTone } from '@singha/ui';
 
 const WIN = ['won', 'winning', 'accepted', 'active', 'live', 'open', 'verified', 'paid', 'settled'];
 const BAD = ['outbid', 'declined', 'rejected', 'withdrawn', 'expired', 'lapsed', 'cancelled'];
-const PENDING = ['pending', 'submitted', 'review', 'countered', 'counter', 'negotiate', 'shortlist'];
+const PENDING = [
+  'pending',
+  'submitted',
+  'review',
+  'countered',
+  'counter',
+  'negotiate',
+  'shortlist',
+];
 
 /** Map a free-text server status to a coloured pill. */
 export function StatusChip({ status }: { status: string }) {

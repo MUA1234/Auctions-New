@@ -16,7 +16,10 @@ export default function WatchlistPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) fetchMyWatch(token).then(setRows).catch(() => setRows([]));
+    if (token)
+      fetchMyWatch(token)
+        .then(setRows)
+        .catch(() => setRows([]));
   }, [token]);
 
   async function unwatch(id: string) {

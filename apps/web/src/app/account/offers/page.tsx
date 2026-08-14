@@ -18,7 +18,10 @@ export default function OffersPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) fetchMyOffers(token).then(setRows).catch(() => setRows([]));
+    if (token)
+      fetchMyOffers(token)
+        .then(setRows)
+        .catch(() => setRows([]));
   }, [token]);
 
   async function withdraw(id: string) {
@@ -52,7 +55,10 @@ export default function OffersPage() {
       ) : rows.length === 0 ? (
         <Card className="mt-8 text-center">
           <p className="text-bone-300">You haven't made any offers yet.</p>
-          <Link href="/catalogue?saleMethod=MAKE_OFFER" className="mt-3 inline-block text-sm text-gold-400">
+          <Link
+            href="/catalogue?saleMethod=MAKE_OFFER"
+            className="mt-3 inline-block text-sm text-gold-400"
+          >
             Find lots open to offers →
           </Link>
         </Card>
