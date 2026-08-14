@@ -1,6 +1,7 @@
 'use client';
 
 import { type PointerEvent as ReactPointerEvent, useRef, useState } from 'react';
+import { useReducedMotion } from '@singha/auctionflow';
 import { placeBid, type AuctionState, type PlaceBidResult } from '../lib/api';
 import { formatMoney } from '../lib/format';
 import { isRepriced, newIntentId, nextBidMinor, shouldCommitGesture } from '../lib/gesture';
@@ -36,6 +37,7 @@ export function GestureBidControl({
   onPlaced: (r: PlaceBidResult, message: string) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
   const startX = useRef(0);
   const startAmount = useRef(0);
   const [travel, setTravel] = useState(0);
@@ -144,7 +146,7 @@ export function GestureBidControl({
           className="absolute inset-y-0 left-0 bg-red-500/25"
           style={{
             width: `${travel + HANDLE}px`,
-            transition: dragging ? 'none' : 'width 200ms ease',
+            transition: dragging || reduced ? 'none' : 'width 200ms ease',
           }}
           aria-hidden
         />
@@ -167,7 +169,8 @@ export function GestureBidControl({
           className="absolute left-1 top-1 flex h-12 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-red-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 disabled:opacity-60"
           style={{
             transform: `translateX(${travel}px)`,
-            transition: dragging ? 'none' : 'transform 200ms cubic-bezier(0.22,0.61,0.36,1)',
+            transition:
+              dragging || reduced ? 'none' : 'transform 200ms cubic-bezier(0.22,0.61,0.36,1)',
           }}
         >
           <span aria-hidden>{progress >= 82 ? '✓' : '→'}</span>

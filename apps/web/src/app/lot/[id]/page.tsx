@@ -7,6 +7,7 @@ import { BidBattle } from '../../../components/BidBattle';
 import { SalePanel } from '../../../components/SalePanel';
 import { WatchButton } from '../../../components/WatchButton';
 import { LotGallery } from '../../../components/LotGallery';
+import { LotStickyDock } from '../../../components/LotStickyDock';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
   const priceMinor = lot.auction?.currentBidMinor ?? lot.currentBidMinor;
 
   return (
-    <div className="container-page py-12">
+    <div className="container-page pb-28 pt-12 lg:pb-12">
       <Link href="/catalogue" className="text-sm text-bone-400 hover:text-bone">
         ← Back to catalogue
       </Link>
@@ -91,7 +92,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
         </div>
 
         {/* Right: bid engine or a proper sale summary — sticky on desktop. */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div id="lot-action" className="scroll-mt-24 lg:sticky lg:top-24 lg:self-start">
           {lot.auction ? (
             <>
               <BidPanel auctionId={lot.auction.id} initial={lot.auction} lotId={lot.id} />
@@ -125,6 +126,13 @@ export default async function LotPage({ params }: { params: { id: string } }) {
           </div>
         </div>
       </div>
+
+      {/* Mobile-only sticky action dock — key state + primary action always in reach. */}
+      <LotStickyDock
+        priceMinor={priceMinor ?? null}
+        currency={lot.auction?.currency ?? lot.currency}
+        saleMethod={lot.saleMethod}
+      />
     </div>
   );
 }
