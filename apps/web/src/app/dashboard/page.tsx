@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import { Card, Chip } from '@singha/ui';
 import { SignInPrompt } from '../../components/SignInPrompt';
+import { DashboardInstrumentation } from '../../components/DashboardInstrumentation';
 import {
   apiGetAuthed,
   streamDashboard,
@@ -128,6 +129,8 @@ export default function DashboardPage() {
 
   return (
     <div className="container-page py-14">
+      {/* Privacy-safe pilot instrumentation — no-op unless dashboardV3Beta is on. */}
+      <DashboardInstrumentation />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-serif text-4xl font-bold text-bone">Your command centre</h1>

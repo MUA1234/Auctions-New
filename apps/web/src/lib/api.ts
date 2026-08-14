@@ -692,3 +692,32 @@ async function apiPatchLike<T>(path: string, body: unknown, token: string): Prom
   if (!res.ok) throw new Error(`PUT ${path} -> ${res.status}`);
   return res.json() as Promise<T>;
 }
+
+// --- Dashboard-pilot product analytics (pack doc 09) ------------------------
+// Privacy-safe: surface + action + optional listing/funnel step only. Best-effort
+// (never throws, never blocks UX). Gated on dashboardV3Beta by the caller.
+export async function recordProductEvent(
+  body: {
+    surface: string;
+    action: string;
+    listingId?: string;
+    funnelStep?: string;
+    anonymousSessionId?: string;
+    metadata?: Record<string, string | number | boolean>;
+  },
+  token?: string,
+): Promise<void> {
+  try {
+    await fetch(`${apiV2}/me/analytics`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics is best-effort — a dropped event must never affect the UX */
+  }
+}

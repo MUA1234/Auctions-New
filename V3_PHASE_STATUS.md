@@ -161,9 +161,24 @@ already existed and passed E2E; the gaps were flag enforcement + realtime.
 
 Event/live room/consoles, stream adapter + fakes, simulcast/recording hooks, canonical bid-state channel.
 
-### ⬜ V3-9 — Customer dashboard pilot shell — **NOT STARTED**
+### ✅ V3-9 — Customer dashboard pilot shell + instrumentation — **DONE (core)**
 
-V3 styling + state/action organisation + instrumentation (no category overlays).
+Commits: BE `b06d67e`, FE (this increment). The buyer command-centre dashboard already
+existed (server projection `GET /api/v2/me/dashboard`: urgent strip + Watching/Winning/
+Outbid/Payment status groups, realtime, **no catalogue category overlays** per doc 09).
+This increment adds the pilot **instrumentation** the pack asks for.
+
+- **Backend:** additive append-only `product_event` table + `POST /api/v2/me/analytics`
+  (privacy-safe: surface/action/optional listing+funnel step, primitive metadata, no PII;
+  signed-in or anonymous), gated on `dashboardV3Beta` (404 OFF). Contract with a strict
+  surface enum. Applied to real Postgres.
+- **Frontend:** `lib/analytics.ts` `useAnalytics().track` — a NO-OP until `dashboardV3Beta`
+  is on — and a tiny `DashboardInstrumentation` firing "surface opened" on the command
+  centre. Fire-and-forget (never affects UX). Component test (2).
+- Gates green both repos. Flags default OFF.
+- **Remaining (post-pilot, evidence-led per V3-11):** funnel wiring across Discover→watch→
+  bid + notification return path; attention-state refinement; full browser-matrix visual
+  pass (existing Playwright suite covers the critical flows).
 
 ### ⬜ V3-10 — Production hardening + GO/NO_GO — **NOT STARTED**
 
