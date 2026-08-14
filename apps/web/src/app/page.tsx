@@ -5,6 +5,7 @@ import { apiGet, fetchCatalogueV2, type CatalogueCardV2, type MarketPulse } from
 import { formatMoney } from '../lib/format';
 import { FeaturedSection } from '../components/FeaturedSection';
 import { HeroShowcase } from '../components/HeroShowcase';
+import { HomeHeroBackdrop } from '../components/HomeHeroBackdrop';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,8 @@ export default async function HomePage() {
     <>
       {/* Hero — cinematic, editorial, restrained */}
       <section className="relative overflow-hidden border-b border-white/[0.07]">
-        {/* Sparse atmospheric depth — a single soft radial, not a red grid. */}
+        {/* Sparse atmospheric depth — a single soft radial, not a red grid.
+            (Fallback base; the V3 image backdrop below covers it when enabled.) */}
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden
@@ -88,6 +90,8 @@ export default async function HomePage() {
               'radial-gradient(80% 60% at 78% 8%, rgba(31,160,85,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
           }}
         />
+        {/* V3 cinematic image backdrop — gated on v3VisualArchitecture, CSP-safe (self). */}
+        <HomeHeroBackdrop />
         <div className="container-wide relative py-20 sm:py-28 lg:py-32">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             {/* Left — editorial copy */}
