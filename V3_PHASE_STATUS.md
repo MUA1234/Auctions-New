@@ -117,9 +117,28 @@ Commits: BE `71d1263` (rivalry engine) + `8e6737e` (rivalry endpoint+E2E) + `8a8
 - Gates green both repos: FE typecheck/lint/41 web tests/`next build`; BE domain 78,
   contracts 17, api 21, discovery/bid-battle/engagement E2E on real Postgres. Flags OFF.
 
-### ⬜ V3-7 — Connect / AI / Social / Asset Intelligence — **NOT STARTED**
+### ✅ V3-7 — Connect / AI / Social / Asset Intelligence — **DONE (core)**
 
-Credential-free provider adapters + contract tests first; activate with credentials later.
+Audit-first (extend, not duplicate): Connect, AI, Social and Intelligence modules already
+existed with provider adapters + fakes and passing E2E (connect 11, ai 8→14, social-intel 9).
+The genuine gap was AI prompt-safety, now closed (BE `a885bc2`).
+
+- **Connect:** provider-adapter (`MessageChannelProvider`) + full **BidIntent** (model +
+  contract + service): free text creates a non-binding intent; confirm goes through the
+  authoritative `AuctionService.placeBid` with an idempotency key (rule 11). Already met.
+- **AI Core (new):** Tier-A safety kernel (`packages/domain/.../ai/ai-safety.ts`) —
+  prompt-injection detection, data-boundary context redaction (proxy-max/credit/score never
+  cross), cheapest-capable **model-tier router** + private prompt/policy registry. Wired into
+  `AiService.assist`: injections are refused + audited, never sent to a provider; free text
+  can't place a bid. 12 domain tests + 6 new E2E checks.
+- **Social:** `SocialPublisherProvider` + fake, campaign/publication models, draft→publish
+  with audit + posting history; publish is permissioned (human-gated).
+- **Asset Intelligence:** public `GET /intelligence/market-pulse` (homepage) + permissioned
+  comparables/asset-insights/seller-intel; public vs internal split enforced. No Tier-A in
+  the browser bundle (bundle scan clean).
+- **Remaining refinements (non-blocking):** explicit Social approval state (`pending_approval`
+  → `approved`); materialized/rebuildable Intelligence projections + sell-through; AI
+  translation task. Documented for post-pilot.
 
 ### ⬜ V3-8 — Singha Live V3 — **NOT STARTED**
 
