@@ -121,10 +121,6 @@ Commits: BE `71d1263` (rivalry engine) + `8e6737e` (rivalry endpoint+E2E) + `8a8
 
 Credential-free provider adapters + contract tests first; activate with credentials later.
 
-### ⬜ V3-7 — Connect / AI / Social / Asset Intelligence — **NOT STARTED**
-
-Credential-free provider adapters + contract tests first; activate with credentials later.
-
 ### ⬜ V3-8 — Singha Live V3 — **NOT STARTED**
 
 Event/live room/consoles, stream adapter + fakes, simulcast/recording hooks, canonical bid-state channel.
