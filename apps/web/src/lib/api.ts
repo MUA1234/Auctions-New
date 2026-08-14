@@ -157,6 +157,23 @@ export async function fetchLotDetail(id: string): Promise<LotDetail> {
   return res.json() as Promise<LotDetail>;
 }
 
+export interface PlaceBidResult {
+  youLead: boolean;
+}
+
+/**
+ * Place a proxy bid. `idempotencyKey` makes a duplicate network retry safe — the
+ * server dedups on (auctionId, idempotencyKey) so the same logical bid is never
+ * recorded twice. `source` records how the bid was entered (e.g. gesture vs button).
+ */
+export async function placeBid(
+  auctionId: string,
+  body: { maxAmountMinor: number; idempotencyKey?: string; source?: string },
+  token: string,
+): Promise<PlaceBidResult> {
+  return apiPost<PlaceBidResult>(`/auctions/${auctionId}/bids`, body, token);
+}
+
 export interface MarketPulseCategory {
   category: string;
   salesCount: number;

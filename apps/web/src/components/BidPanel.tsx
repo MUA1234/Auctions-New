@@ -3,9 +3,12 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
-import { apiBase, apiGet, apiPost, type AuctionState } from '../lib/api';
+import { apiBase, apiGet, placeBid, type AuctionState, type PlaceBidResult } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { useFlags } from '../lib/use-flags';
+import { newIntentId } from '../lib/gesture';
 import { formatMoney, timeLeft } from '../lib/format';
+import { GestureBidControl } from './GestureBidControl';
 
 export function BidPanel({
   auctionId,
@@ -18,6 +21,7 @@ export function BidPanel({
 }) {
   const [state, setState] = useState<AuctionState>(initial);
   const { token } = useAuth();
+  const { flags } = useFlags();
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [lead, setLead] = useState<boolean | null>(null);
@@ -67,21 +71,33 @@ export function BidPanel({
 
   const errText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
+  /** Reflect an accepted bid — called by the proxy form and the Gesture Bid. */
+  async function applyResult(r: PlaceBidResult, msg: string) {
+    setLead(r.youLead);
+    setMessage(msg);
+    setState(await apiGet<AuctionState>(`/auctions/${auctionId}/state`));
+  }
+
   async function bid(e: FormEvent) {
     e.preventDefault();
+    if (!token) return;
     setBusy(true);
     setMessage(null);
     try {
-      const r = await apiPost<{ youLead: boolean }>(
-        `/auctions/${auctionId}/bids`,
-        { maxAmountMinor: Math.round(Number(amount) * 100) },
-        token ?? undefined,
+      // Idempotency key so a duplicate network retry never records two bids.
+      const r = await placeBid(
+        auctionId,
+        {
+          maxAmountMinor: Math.round(Number(amount) * 100),
+          idempotencyKey: newIntentId(),
+          source: 'online',
+        },
+        token,
       );
-      setLead(r.youLead);
-      setMessage(
+      await applyResult(
+        r,
         r.youLead ? 'You are the highest bidder.' : 'Bid placed — a proxy max is still ahead.',
       );
-      setState(await apiGet<AuctionState>(`/auctions/${auctionId}/state`));
       setAmount('');
     } catch (err) {
       setLead(null);
@@ -119,26 +135,44 @@ export function BidPanel({
           </Link>
         </div>
       ) : (
-        <form onSubmit={bid} className="flex flex-col gap-3">
-          <label className="text-sm text-bone-400">Your maximum bid ({state.currency})</label>
-          <input
-            className="field tabular"
-            type="number"
-            required
-            min={minNext / 100}
-            step={state.incrementMinor / 100}
-            placeholder={String(minNext / 100)}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <p className="text-xs text-bone-500">
-            Minimum {formatMoney(minNext, state.currency)}. We bid up to your max automatically
-            (proxy).
-          </p>
-          <Button type="submit" variant="primary" disabled={busy}>
-            Place bid
-          </Button>
-        </form>
+        <div className="flex flex-col gap-4">
+          {/* Optional deliberate Gesture Bid (pack doc 12), behind gestureBidV3. */}
+          {flags.gestureBidV3 && (
+            <>
+              <GestureBidControl
+                auctionId={auctionId}
+                state={state}
+                token={token}
+                onPlaced={applyResult}
+              />
+              <div className="flex items-center gap-3 text-[11px] uppercase tracking-wide text-bone-600">
+                <span className="h-px flex-1 bg-white/10" />
+                or set a maximum
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
+            </>
+          )}
+          <form onSubmit={bid} className="flex flex-col gap-3">
+            <label className="text-sm text-bone-400">Your maximum bid ({state.currency})</label>
+            <input
+              className="field tabular"
+              type="number"
+              required
+              min={minNext / 100}
+              step={state.incrementMinor / 100}
+              placeholder={String(minNext / 100)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <p className="text-xs text-bone-500">
+              Minimum {formatMoney(minNext, state.currency)}. We bid up to your max automatically
+              (proxy).
+            </p>
+            <Button type="submit" variant="primary" disabled={busy}>
+              Place bid
+            </Button>
+          </form>
+        </div>
       )}
     </Card>
   );
