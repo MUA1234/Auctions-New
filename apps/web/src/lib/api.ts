@@ -545,3 +545,57 @@ export async function fetchEvents(featuredOnly = false): Promise<EventSummary[]>
 export async function fetchEvent(idOrRef: string): Promise<EventDetail> {
   return apiGet<EventDetail>(`/events/${idOrRef}`);
 }
+
+// --- Singha Discover + Buyer Twin (docs 06/11) ------------------------------
+
+export interface DiscoverFeedItem {
+  listingId: string;
+  reference: string;
+  title: string;
+  category: string;
+  saleMethod: string;
+  currency: string;
+  currentBidMinor: number | null;
+  endsAt: string | null;
+  coverStorageKey: string | null;
+  reason: string | null;
+}
+
+/** Server-ranked Discover feed (public; personalised when signed in). */
+export async function fetchDiscoverFeed(limit = 20): Promise<{ items: DiscoverFeedItem[] }> {
+  return apiGet<{ items: DiscoverFeedItem[] }>(`/discovery/feed?limit=${limit}`);
+}
+
+/** Append a discovery signal. A swipe is NOT a bid/purchase (pack doc 11). */
+export async function recordDiscoveryEvent(
+  body: {
+    listingId: string;
+    eventType: string;
+    sourceSurface?: string;
+    bandContext?: string;
+    anonymousSessionId?: string;
+  },
+  token?: string,
+) {
+  return apiPost('/discovery/events', body, token);
+}
+
+export async function resetDiscoveryPreferences(token: string) {
+  return apiPost('/discovery/preferences/reset', {}, token);
+}
+
+/** Safe Buyer Twin summary — labels + bucketed confidence + explanations, no scores. */
+export interface BuyerTwinSummary {
+  version: number;
+  topCategories: string[];
+  dislikedCategories: string[];
+  priceBandMinor: { min: number; max: number } | null;
+  preferredSaleMethod: string | null;
+  confidence: 'none' | 'low' | 'medium' | 'high';
+  explanations: string[];
+  builtAt: string | null;
+}
+
+export async function fetchBuyerTwin(token: string): Promise<BuyerTwinSummary> {
+  return apiGetAuthed<BuyerTwinSummary>('/discovery/buyer-twin', token);
+}
