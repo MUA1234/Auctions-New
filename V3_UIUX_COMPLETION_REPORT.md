@@ -53,13 +53,16 @@ then complete the genuinely-missing shell and fix the specific defects.
 
 ### Catalogue — Infinite Flow as the dominant experience (**DONE, core**)
 
-- **Legible compact cells** — replaced hairline 9–11px micro-typography with a premium
-  compact cell: title, gold price, a time-remaining chip, a tiny sale-method marker and a
-  watched (♥) indicator, with a gentle hover lift. Still one tap target, never a bid button
-  in a mini-cell.
+- **One horizontal rail per category** (owner feedback): each category is a single
+  horizontal line — a scrollable rail (native touch scroll + hover arrows), cursor-loaded
+  so every lot stays reachable with no fake pages — not a multi-row grid.
+- **Legible compact cells** — replaced hairline micro-typography; the identifier
+  (make/model/year, never the category word) is compact, and the price shows the currency
+  in a smaller font than the amount with the amount on a single non-wrapping line (fits
+  ~10 digits). Time chip, watched (♥) and a tiny sale-method marker on the image. One tap
+  target, never a bid button in a mini-cell.
 - **`categoryOverlayV3` wired** — the floating band label was rendering unconditionally
   (dead flag); it is now gated, themed and can no longer overflow the viewport.
-- Density confirmed on-brief (5–9 across desktop, 4×4≈16 mobile) across 360–1920px.
 
 ### Lot detail (**DONE, core**)
 
@@ -72,10 +75,15 @@ then complete the genuinely-missing shell and fix the specific defects.
 - **AI translation** (BE `ab2b665`, CI green) — `POST /ai/translate` through the Tier-A
   `guardAiRequest('translation', …)` boundary; derived `AiRun`, audited, rule-11 boundary
   held; credential-free fake; AI E2E 19/19.
-- **Social approval lifecycle + Asset-Intelligence sell-through** — in the same pass (see
-  the backend commit referenced at the end); additive migration for the social approval
-  states, a distinct `social:approve` permission, publish gated on `approved`, and a live
-  sell-through metric on Market Pulse.
+- **Social approval lifecycle** (BE `f1676fb`) — additive migration adding
+  `pending_approval`/`approved` states + `approvedBy`/`approvedAt`; a distinct
+  `social:approve` permission (admin-only, separate from the `social:operate` drafter);
+  `publish()`/`publishCampaign()` now hard-require `approved` (rule 12 — a human gates
+  every public post). E2E: draft-can't-publish → 409, operate-can't-approve → 403,
+  reject→draft, approval audited.
+- **Asset-Intelligence sell-through** (BE `f1676fb`) — Market Pulse now returns a live
+  `sellThrough { soldCount, offeredCount, ratio }` (closed auctions with no winner =
+  passed-in). No migration. Social+Intelligence E2E **20/20** on real Postgres.
 
 ## Screenshot evidence matrix
 
@@ -145,6 +153,9 @@ backup + isolated restore drill · external WCAG audit · Hostinger production m
 
 ## Heads
 
-- Frontend `MUA1234/Auctions-New` `main`: **`bbf2063`**
-- Backend `LakshanV/Auctions-Backend` `main`: **`ab2b665`** (+ the social-approval /
-  sell-through commit that follows this report).
+- Frontend `MUA1234/Auctions-New` `main`: **`fa1e0cc`**
+- Backend `LakshanV/Auctions-Backend` `main`: **`f1676fb`**
+
+_Remaining backend gap (largest, carried): Live console roles (auctioneer/clerk/producer) +
+multi-lot current-lot sequencing (`AuctionEventLot`) — it touches the live bidding path and
+warrants a dedicated, carefully-tested pass rather than being rushed._
