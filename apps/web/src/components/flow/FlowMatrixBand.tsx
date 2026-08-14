@@ -7,6 +7,7 @@ import { CompactLotCell } from './CompactLotCell';
 import { CategoryOverlay } from './CategoryOverlay';
 
 const PAGE_FETCH = 18; // cursor slice size
+const LOOP_CAP = 40; // only loop reasonably-sized exhausted rails (doubled = ≤80 cells)
 
 function dedupe(items: CatalogueCardV2[]): CatalogueCardV2[] {
   const seen = new Set<string>();
@@ -18,9 +19,13 @@ function dedupe(items: CatalogueCardV2[]): CatalogueCardV2[] {
  * (never a multi-row grid). The band owns its own cursor so every lot in the category is
  * reachable: it lazy-loads only when scrolled near the viewport (vertical virtualization)
  * and fetches the next cursor slice as the user nears the right end of the rail. It never
- * fakes a next page — the rail simply ends when the cursor is exhausted. The big category
- * name lives IN this band (aligned with its row) and pops in on hover / touch / when the
- * row scrolls into view — there is no small heading at the top. Reduced-motion safe.
+ * fakes a next page — the rail simply ends when the cursor is exhausted, and once exhausted
+ * (and reasonably sized) it LOOPS: the loaded lots are duplicated so touch / trackpad / drag
+ * scrolling wraps seamlessly at the halfway point. The mouse wheel scrolls the row
+ * horizontally while the pointer is over it, releasing to normal page scroll at the ends so
+ * the vertical page is never trapped. The big category name lives IN this band (aligned
+ * with its row) and pops in on mouse-enter / touch, then fades itself out so it never sits
+ * on the lots — there is no small heading at the top. Reduced-motion safe.
  */
 export function FlowMatrixBand({
   category,
@@ -44,15 +49,24 @@ export function FlowMatrixBand({
   const [exhausted, setExhausted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [near, setNear] = useState(false);
-  const [poked, setPoked] = useState(false); // label "pop" on touch / entry
+  const [poked, setPoked] = useState(false); // label "pop" on mouse-enter / touch
   const pokeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheeling = useRef(false); // suppresses the loop-wrap during a wheel run
+  const wheelReset = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Pop the big label in, then fade it out ~1s later so it never sits on top of the lots.
   const poke = useCallback(() => {
     setPoked(true);
     if (pokeTimer.current) clearTimeout(pokeTimer.current);
-    pokeTimer.current = setTimeout(() => setPoked(false), 1400);
+    pokeTimer.current = setTimeout(() => setPoked(false), 1000);
   }, []);
-  useEffect(() => () => void (pokeTimer.current && clearTimeout(pokeTimer.current)), []);
+  useEffect(
+    () => () => {
+      if (pokeTimer.current) clearTimeout(pokeTimer.current);
+      if (wheelReset.current) clearTimeout(wheelReset.current);
+    },
+    [],
+  );
 
   const loadMore = useCallback(async () => {
     if (loading || exhausted) return;
@@ -94,13 +108,44 @@ export function FlowMatrixBand({
     if (near && items.length === 0 && !loading && !exhausted) void loadMore();
   }, [near, items.length, loading, exhausted, loadMore]);
 
-  // Prefetch the next slice as the user scrolls near the right end; pop the label too.
+  // A fully-loaded, reasonably-sized rail loops: render the lots twice and wrap at the
+  // halfway point so touch / trackpad / drag scrolling reads as one endless rail.
+  const loop = exhausted && items.length > 1 && items.length <= LOOP_CAP;
+
   const onScroll = useCallback(() => {
-    if (showLabel) poke();
     const el = railRef.current;
-    if (!el || loading || exhausted) return;
+    if (!el) return;
+    // Seamless forward loop for non-wheel input (the wheel handler manages its own ends).
+    if (loop && !wheeling.current) {
+      const half = el.scrollWidth / 2;
+      if (half > 0 && el.scrollLeft >= half) el.scrollLeft -= half;
+    }
+    // Prefetch the next cursor slice as the user nears the right end (no-op once exhausted).
+    if (loading || exhausted) return;
     if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 320) void loadMore();
-  }, [showLabel, poke, loading, exhausted, loadMore]);
+  }, [loop, loading, exhausted, loadMore]);
+
+  // Mouse wheel over the rail scrolls it horizontally (bound natively so it can be
+  // non-passive and preventDefault). At the true ends it releases to normal page scroll so
+  // the vertical page is never trapped — the duplicated loop content gives a long run first.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return; // nothing to scroll; let the page move
+      if (e.deltaY === 0) return; // native horizontal (trackpad) already scrolls the rail
+      const atStart = el.scrollLeft <= 0;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+      if ((e.deltaY > 0 && atEnd) || (e.deltaY < 0 && atStart)) return; // release to page
+      e.preventDefault();
+      wheeling.current = true;
+      if (wheelReset.current) clearTimeout(wheelReset.current);
+      wheelReset.current = setTimeout(() => (wheeling.current = false), 220);
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   const nudge = useCallback(
     (dir: 1 | -1) => {
@@ -111,10 +156,16 @@ export function FlowMatrixBand({
     [reduced],
   );
 
+  const display = loop ? [...items, ...items] : items;
   const showArrows = items.length > 0 && (!exhausted || items.length > 4);
 
   return (
-    <section ref={rootRef} className="group/band relative py-3" aria-roledescription="Flow band">
+    <section
+      ref={rootRef}
+      className="group/band relative py-3"
+      aria-roledescription="Flow band"
+      onMouseEnter={showLabel ? poke : undefined}
+    >
       {/* Real heading for assistive tech only — the visible name is the pop-in overlay. */}
       <h3 className="sr-only">{label}</h3>
 
@@ -125,11 +176,14 @@ export function FlowMatrixBand({
           ref={railRef}
           data-rail
           onScroll={onScroll}
-          onPointerDown={showLabel ? poke : undefined}
+          onPointerDown={showLabel ? (e) => e.pointerType === 'touch' && poke() : undefined}
           className="no-scrollbar flex gap-2 overflow-x-auto pb-1 [scroll-snap-type:x_proximity]"
         >
-          {items.map((lot) => (
-            <div key={lot.id} className="w-28 shrink-0 [scroll-snap-align:start] sm:w-32 lg:w-36">
+          {display.map((lot, idx) => (
+            <div
+              key={loop ? `${lot.id}-${idx}` : lot.id}
+              className="w-28 shrink-0 [scroll-snap-align:start] sm:w-32 lg:w-36"
+            >
               <CompactLotCell lot={lot} />
             </div>
           ))}
