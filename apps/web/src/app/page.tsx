@@ -4,6 +4,7 @@ import { Button, Card, Chip } from '@singha/ui';
 import { apiGet, fetchCatalogueV2, type CatalogueCardV2, type MarketPulse } from '../lib/api';
 import { formatMoney } from '../lib/format';
 import { FeaturedSection } from '../components/FeaturedSection';
+import { HeroShowcase } from '../components/HeroShowcase';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,34 +88,44 @@ export default async function HomePage() {
               'radial-gradient(80% 60% at 78% 8%, rgba(31,160,85,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
           }}
         />
-        <div className="container-wide relative py-28 sm:py-40">
-          <p className="eyebrow flex items-center gap-2">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(31,160,85,0.8)]" />
-            Live · timed · sealed auctions
-          </p>
-          <h1 className="mt-6 max-w-4xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-7xl">
-            Sri Lanka’s trusted{' '}
-            <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
-              asset exchange
-            </span>
-            .
-          </h1>
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
-            Vehicles, machinery, gems, property and business assets — discovered, inspected and won
-            through transparent, real-time auctions.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link href="/catalogue">
-              <Button variant="primary">Explore catalogue</Button>
-            </Link>
-            <Link href="/live">
-              <Button variant="outline">Watch live</Button>
-            </Link>
+        <div className="container-wide relative py-20 sm:py-28 lg:py-32">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+            {/* Left — editorial copy */}
+            <div>
+              <p className="eyebrow flex items-center gap-2">
+                <span className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-red-500" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                </span>
+                Live · timed · sealed auctions
+              </p>
+              <h1 className="mt-6 max-w-2xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-6xl xl:text-7xl">
+                Sri Lanka’s trusted{' '}
+                <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
+                  asset exchange
+                </span>
+                .
+              </h1>
+              <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
+                Vehicles, machinery, gems, property and business assets — discovered, inspected and
+                won through transparent, real-time auctions.
+              </p>
+              <div className="mt-10 flex flex-wrap items-center gap-4">
+                <Link href="/catalogue">
+                  <Button variant="primary">Explore catalogue</Button>
+                </Link>
+                <Link href="/live">
+                  <Button variant="outline">Watch live</Button>
+                </Link>
+              </div>
+              <div className="mt-10 h-px w-full max-w-md rule-fade" />
+              <p className="mt-5 text-sm text-bone-500">
+                Institutional transparency · Verified sellers · Server-authoritative bidding
+              </p>
+            </div>
+            {/* Right — cinematic featured-lot showcase (desktop; graceful when sparse) */}
+            <HeroShowcase items={featured} />
           </div>
-          <div className="mt-10 h-px w-full max-w-md rule-fade" />
-          <p className="mt-5 text-sm text-bone-500">
-            Institutional transparency · Verified sellers · Server-authoritative bidding
-          </p>
         </div>
       </section>
 
