@@ -13,6 +13,13 @@ import {
 import { SaleCard } from './SaleCard';
 import { FlowCanvas } from './flow/FlowCanvas';
 import { useFlags } from '../lib/use-flags';
+import {
+  categoryMeta,
+  saleMethodIcon,
+  saleMethodLabel,
+  AllCategoriesIcon,
+  AllMethodsIcon,
+} from '../lib/categories';
 
 // Customer-facing view names are Flow | Grid | List (Revision 05 §4). The internal
 // primitives keep their names (CubeRow, AuctionFlowViewport, `flow` id) — only the
@@ -114,18 +121,29 @@ export function CatalogueBrowser({
       {/* Controls */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <FilterChip active={category === ''} onClick={() => setCategory('')}>
+          <FilterLabel>Category</FilterLabel>
+          <FilterChip
+            active={category === ''}
+            onClick={() => setCategory('')}
+            icon={<AllCategoriesIcon className="h-4 w-4" strokeWidth={1.6} />}
+          >
             All
           </FilterChip>
-          {(data?.facets.category ?? []).map((f) => (
-            <FilterChip
-              key={f.value}
-              active={category === f.value}
-              onClick={() => setCategory(f.value)}
-            >
-              {f.value} <span className="text-bone-600">({f.count})</span>
-            </FilterChip>
-          ))}
+          {(data?.facets.category ?? []).map((f) => {
+            const meta = categoryMeta(f.value);
+            return (
+              <FilterChip
+                key={f.value}
+                active={category === f.value}
+                onClick={() => setCategory(f.value)}
+                tint={meta.rgb}
+                count={f.count}
+                icon={<meta.Icon className="h-4 w-4" strokeWidth={1.6} />}
+              >
+                {f.value}
+              </FilterChip>
+            );
+          })}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -165,20 +183,30 @@ export function CatalogueBrowser({
 
       {/* Sale-method sub-filter */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <FilterChip active={saleMethod === ''} onClick={() => setSaleMethod('')} small>
+        <FilterLabel>Sale method</FilterLabel>
+        <FilterChip
+          active={saleMethod === ''}
+          onClick={() => setSaleMethod('')}
+          icon={<AllMethodsIcon className="h-3.5 w-3.5" strokeWidth={1.6} />}
+          small
+        >
           All methods
         </FilterChip>
-        {(data?.facets.saleMethod ?? []).map((f) => (
-          <FilterChip
-            key={f.value}
-            active={saleMethod === f.value}
-            onClick={() => setSaleMethod(f.value)}
-            small
-          >
-            {f.value.replace(/_/g, ' ').toLowerCase()}{' '}
-            <span className="text-bone-600">({f.count})</span>
-          </FilterChip>
-        ))}
+        {(data?.facets.saleMethod ?? []).map((f) => {
+          const Icon = saleMethodIcon(f.value);
+          return (
+            <FilterChip
+              key={f.value}
+              active={saleMethod === f.value}
+              onClick={() => setSaleMethod(f.value)}
+              count={f.count}
+              icon={<Icon className="h-3.5 w-3.5" strokeWidth={1.6} />}
+              small
+            >
+              {saleMethodLabel(f.value)}
+            </FilterChip>
+          );
+        })}
       </div>
 
       <p className="mt-4 text-xs text-bone-500">
@@ -484,28 +512,80 @@ function Pager({
   );
 }
 
+/** Small caps wayfinding label that leads each filter row ("Category", "Sale method"). */
+function FilterLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="mr-0.5 hidden select-none text-[10px] font-semibold uppercase tracking-[0.18em] text-bone-600 sm:inline">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Filter pill (category + sale-method). Each carries a category-tinted line-icon and a count
+ * badge so the row scans at a glance; the selected chip lights up in its own tint (a soft
+ * gradient fill, tinted rim and glow) rather than a flat red, which reads as "professional"
+ * and makes the active filter obvious. `tint` is an "r,g,b" string; it defaults to gold for
+ * the "All" resets and the sale-method row so categories stay the colourful primary axis.
+ */
 function FilterChip({
   active,
   onClick,
   children,
+  icon,
+  tint = '201,162,75',
+  count,
   small,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  icon?: React.ReactNode;
+  tint?: string;
+  count?: number;
   small?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border ${small ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'} font-medium capitalize transition-colors ${
+      aria-pressed={active}
+      style={
         active
-          ? 'border-red-500/50 bg-red-500/10 text-bone'
-          : 'border-white/10 text-bone-400 hover:border-white/20'
+          ? {
+              borderColor: `rgba(${tint},0.55)`,
+              backgroundImage: `linear-gradient(160deg, rgba(${tint},0.24), rgba(${tint},0.08))`,
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 18px -10px rgba(${tint},0.7)`,
+            }
+          : undefined
+      }
+      className={`group inline-flex items-center gap-1.5 rounded-full border font-medium capitalize transition-all duration-200 ${
+        small ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'
+      } ${
+        active
+          ? 'text-white'
+          : 'border-white/10 bg-white/[0.02] text-bone-300 hover:-translate-y-px hover:border-white/25 hover:bg-white/[0.05] hover:text-bone'
       }`}
     >
-      {children}
+      {icon ? (
+        <span
+          aria-hidden
+          className="shrink-0 transition-transform duration-200 group-hover:scale-110"
+          style={{ color: active ? `rgb(${tint})` : `rgba(${tint},0.72)` }}
+        >
+          {icon}
+        </span>
+      ) : null}
+      <span>{children}</span>
+      {typeof count === 'number' ? (
+        <span
+          className={`tabular ml-0.5 rounded-full px-1.5 text-[10px] font-semibold leading-4 ${
+            active ? 'bg-white/20 text-white' : 'bg-white/[0.05] text-bone-500'
+          }`}
+        >
+          {count}
+        </span>
+      ) : null}
     </button>
   );
 }
