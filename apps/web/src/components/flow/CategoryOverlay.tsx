@@ -16,15 +16,17 @@ export function CategoryOverlay({ label, active }: { label: string; active: bool
       className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden"
     >
       <span
-        className={`max-w-full select-none overflow-hidden text-ellipsis whitespace-nowrap font-serif font-black uppercase tracking-tight text-transparent transition-all duration-500 motion-reduce:transition-none ${
-          active ? 'opacity-90 blur-0' : 'opacity-0 blur-sm'
+        className={`max-w-full select-none overflow-hidden text-ellipsis whitespace-nowrap font-display font-extrabold uppercase tracking-[0.02em] text-transparent transition-all duration-500 motion-reduce:transition-none ${
+          active ? 'opacity-80 blur-0' : 'opacity-0 blur-sm'
         }`}
         style={{
-          fontSize: 'clamp(1.4rem, 5.5vw, 4rem)',
-          backgroundImage: 'linear-gradient(180deg,#5fe0a3 0%,#1fa055 55%,#c9a24b 120%)',
+          // Restrained bone→gold wordmark on the house palette (no green), a step
+          // smaller than before so it reads as a refined watermark, not a sign.
+          fontSize: 'clamp(1.1rem, 4vw, 3rem)',
+          backgroundImage: 'linear-gradient(180deg,#f3ecdb 0%,#d9b869 55%,#c29a3f 100%)',
           WebkitBackgroundClip: 'text',
           backgroundClip: 'text',
-          textShadow: '0 0 48px rgba(31,160,85,0.28)',
+          textShadow: '0 0 34px rgba(201,162,75,0.16)',
         }}
       >
         {label}
