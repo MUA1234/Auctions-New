@@ -162,14 +162,18 @@ function EditorialPanel() {
     { k: 'Real-time', v: 'Server-authoritative — the screen is never the record' },
   ];
   return (
-    <div className="relative hidden h-[30rem] w-full overflow-hidden rounded-3xl border border-white/[0.07] lg:block">
+    <div className="relative hidden h-[30rem] w-full overflow-hidden rounded-3xl border border-white/10 bg-coal-950/30 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl lg:block">
+      {/* Frosted-glass surface: subtle brand glows + a soft dark tint that keeps the copy
+          legible, while the backdrop-blur above lets the forest show through the pane. */}
       <div
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(70% 60% at 30% 20%, rgba(31,160,85,0.16), transparent 60%), radial-gradient(60% 55% at 85% 90%, rgba(201,162,75,0.12), transparent 65%), linear-gradient(160deg,#161618,#09090a)',
+            'radial-gradient(70% 60% at 30% 20%, rgba(31,160,85,0.12), transparent 60%), radial-gradient(60% 55% at 85% 90%, rgba(201,162,75,0.09), transparent 65%), linear-gradient(180deg, rgba(255,255,255,0.07), transparent 20%), linear-gradient(160deg, rgba(16,16,18,0.10), rgba(9,9,10,0.24))',
         }}
       />
+      {/* Hairline highlight along the top edge — the classic glass rim. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       <div className="relative flex h-full flex-col justify-center gap-6 p-10">
         {points.map((p) => (
           <div key={p.k} className="flex flex-col gap-1">
