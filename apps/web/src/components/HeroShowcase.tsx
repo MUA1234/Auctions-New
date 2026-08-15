@@ -3,7 +3,9 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useReducedMotion } from '@singha/auctionflow';
 import type { CatalogueCardV2 } from '../lib/api';
+import { coverUrl } from '../lib/media';
 import { formatMoney, timeLeft } from '../lib/format';
+import { LotImage } from './LotImage';
 
 /**
  * Hero showcase (V3 homepage) — a vertical 3D revolving carousel that fills the right half of
@@ -17,31 +19,33 @@ import { formatMoney, timeLeft } from '../lib/format';
  * a static curved stack (no revolve).
  */
 
-type ReelNote = { kind: 'note'; eyebrow: string; text: string };
+/** A Market Pulse "news" entry shown in the reel between the featured lots. */
+export type HeroNews = { eyebrow: string; text: string; image?: string | null };
+
+type ReelNote = { kind: 'note' } & HeroNews;
 type ReelLot = { kind: 'lot'; lot: CatalogueCardV2 };
 type ReelCard = ReelNote | ReelLot;
 
-const EDITORIAL: ReelNote[] = [
-  { kind: 'note', eyebrow: 'Transparent', text: 'Every bid validated, sequenced and recorded' },
-  { kind: 'note', eyebrow: 'Verified', text: 'Banks, corporates & government sellers' },
-  {
-    kind: 'note',
-    eyebrow: 'Real-time',
-    text: 'Server-authoritative — the screen is never the record',
-  },
-];
-
-const TILE_H = 92; // fixed tile height (px) — uniform so the wheel maths stay analytic
-const GAP = 14;
+const TILE_H = 122; // fixed tile height (px) — uniform so the wheel maths stay analytic
+const GAP = 16;
 const STEP = TILE_H + GAP;
 const SPEED_PX_PER_S = 40; // medium crawl — moving, but quick to read
 const MIN_PER_COPY = 6; // repeat the set until one copy overfills the viewport (seamless loop)
 const PERSPECTIVE = 1000;
 const MAX_ANGLE = 56; // degrees a tile is rotated at the top/bottom of the wheel
 
-function buildCards(items: CatalogueCardV2[]): ReelCard[] {
+function buildCards(items: CatalogueCardV2[], news: HeroNews[]): ReelCard[] {
   const lots: ReelCard[] = items.slice(0, 8).map((lot) => ({ kind: 'lot', lot }));
-  return [...lots, ...EDITORIAL];
+  const notes: ReelCard[] = news.map((n) => ({ kind: 'note', ...n }));
+  // Interleave featured lots with the Market Pulse news so the reel mixes both.
+  const out: ReelCard[] = [];
+  for (let i = 0; i < Math.max(lots.length, notes.length); i++) {
+    const l = lots[i];
+    if (l) out.push(l);
+    const n = notes[i];
+    if (n) out.push(n);
+  }
+  return out;
 }
 
 /** Repeat the base set a WHOLE number of times so one copy comfortably fills the viewport. */
@@ -51,16 +55,22 @@ function fill(base: ReelCard[]): ReelCard[] {
   return Array.from({ length: reps }, () => base).flat();
 }
 
-export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
+export function HeroShowcase({
+  items,
+  news = [],
+}: {
+  items: CatalogueCardV2[];
+  news?: HeroNews[];
+}) {
   const reduced = useReducedMotion();
-  const cards = fill(buildCards(items));
+  const cards = fill(buildCards(items, news));
   const copyHeight = cards.length * STEP; // one full loop of the wheel
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
   const pausedRef = useRef(false);
-  const vhRef = useRef(480);
+  const vhRef = useRef(608);
 
   // Place the track + revolve each tile according to its distance from the wheel centre.
   const apply = (offset: number) => {
@@ -81,7 +91,7 @@ export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
   };
 
   useLayoutEffect(() => {
-    if (viewportRef.current) vhRef.current = viewportRef.current.clientHeight || 480;
+    if (viewportRef.current) vhRef.current = viewportRef.current.clientHeight || 608;
     apply(offsetRef.current); // paint the curved stack immediately (also the reduced-motion view)
   }, [cards.length, reduced]);
 
@@ -106,7 +116,7 @@ export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
 
   return (
     <div
-      className="relative hidden h-[30rem] w-full overflow-hidden lg:block"
+      className="relative hidden h-[38rem] w-full overflow-hidden lg:block"
       style={{
         maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
         WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
@@ -132,39 +142,64 @@ export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
 }
 
 function ReelTile({ card, muted }: { card: ReelCard; muted?: boolean }) {
+  // Lots always show media (real cover or the house fallback); news only when it has a pic.
+  const image = card.kind === 'lot' ? coverUrl(card.lot.media.cover) : (card.image ?? null);
+  const withMedia = card.kind === 'lot' || !!image;
   return (
     <div
       aria-hidden={muted || undefined}
       style={{
         height: TILE_H,
         // Frosted-glass tile. `backdrop-filter` can't be used here — it doesn't compose with
-        // the 3D wheel transform — so the glass is a translucent dark gradient instead; it
-        // still floats over the forest, with an inset top highlight for the glass rim and a
-        // drop shadow for depth.
-        background: 'linear-gradient(157deg, rgba(14,16,20,0.78), rgba(6,7,9,0.88))',
+        // the 3D wheel transform — so the glass is a translucent dark scrim over the item
+        // image (or a dark gradient when there's no picture), with an inset top highlight for
+        // the glass rim and a drop shadow for depth.
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 18px 40px -16px rgba(0,0,0,0.82)',
       }}
-      className="flex shrink-0 flex-col items-center justify-center rounded-2xl border border-white/[0.14] px-5 text-center will-change-transform"
+      className="relative shrink-0 overflow-hidden rounded-2xl border border-white/[0.14] text-center will-change-transform"
     >
-      {card.kind === 'note' ? (
-        <>
-          <p className="eyebrow">{card.eyebrow}</p>
-          <p className="mt-1 line-clamp-2 font-serif text-[0.95rem] font-semibold leading-snug text-bone">
-            {card.text}
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="eyebrow">{card.lot.category}</p>
-          <p className="mt-0.5 line-clamp-1 font-display text-sm font-semibold text-bone">
-            {card.lot.title}
-          </p>
-          <p className="mt-1 text-[11px]">
-            <span className="tabular font-semibold text-gold-400">{commercialValue(card.lot)}</span>
-            <span className="text-bone-400"> · {commercialMeta(card.lot)}</span>
-          </p>
-        </>
-      )}
+      {/* Item image where available — lots always show media (cover or the house fallback),
+          editorial notes only when they carry a picture. */}
+      {withMedia ? (
+        <div className="absolute inset-0">
+          <LotImage src={image} alt="" aspect="" className="h-full" />
+        </div>
+      ) : null}
+      {/* Dark glass scrim — keeps the copy legible and holds the dark look over the photo. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: withMedia
+            ? 'linear-gradient(180deg, rgba(6,8,11,0.4) 0%, rgba(6,8,11,0.54) 50%, rgba(6,8,11,0.74) 100%)'
+            : 'linear-gradient(157deg, rgba(14,16,20,0.78), rgba(6,7,9,0.88))',
+        }}
+      />
+      <div
+        className="relative flex h-full flex-col items-center justify-center px-5"
+        style={{ textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}
+      >
+        {card.kind === 'note' ? (
+          <>
+            <p className="eyebrow">{card.eyebrow}</p>
+            <p className="mt-2.5 line-clamp-2 font-serif text-lg font-semibold leading-snug text-bone">
+              {card.text}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">{card.lot.category}</p>
+            <p className="mt-2 line-clamp-1 font-display text-lg font-semibold text-bone">
+              {card.lot.title}
+            </p>
+            <p className="mt-2 text-sm">
+              <span className="tabular font-semibold text-gold-400">
+                {commercialValue(card.lot)}
+              </span>
+              <span className="text-bone-300"> · {commercialMeta(card.lot)}</span>
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

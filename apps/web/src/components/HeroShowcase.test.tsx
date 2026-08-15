@@ -29,19 +29,26 @@ function lot(id: string, title: string): CatalogueCardV2 {
   } as unknown as CatalogueCardV2;
 }
 
+const news = [
+  { eyebrow: 'Market Pulse', text: '42 lots sold in the last 30 days' },
+  { eyebrow: 'Total cleared', text: 'LKR 1.2B across recent sales' },
+];
+
 afterEach(cleanup);
 
 describe('HeroShowcase 3D revolving reel', () => {
-  it('shows both featured lots and the editorial notes', () => {
-    const { container } = render(<HeroShowcase items={[lot('1', '2018 Toyota Prado')]} />);
-    expect(container.textContent).toContain('Every bid validated, sequenced and recorded'); // note
+  it('mixes featured lots with Market Pulse news', () => {
+    const { container } = render(
+      <HeroShowcase items={[lot('1', '2018 Toyota Prado')]} news={news} />,
+    );
     expect(container.textContent).toContain('2018 Toyota Prado'); // featured lot
+    expect(container.textContent).toContain('42 lots sold in the last 30 days'); // pulse news
   });
 
   it('duplicates the set for a seamless loop, with the duplicate hidden from assistive tech', () => {
-    const { container } = render(<HeroShowcase items={[]} />);
-    const occurrences = (container.textContent?.match(/Server-authoritative/g) ?? []).length;
+    const { container } = render(<HeroShowcase items={[]} news={news} />);
+    const occurrences = (container.textContent?.match(/42 lots sold/g) ?? []).length;
     expect(occurrences).toBeGreaterThanOrEqual(2); // set rendered at least twice
-    expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull(); // duplicate is hidden
+    expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();
   });
 });

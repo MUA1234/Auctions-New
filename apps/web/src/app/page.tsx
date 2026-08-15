@@ -76,6 +76,25 @@ export default async function HomePage() {
     apiGet<MarketPulse>('/intelligence/market-pulse').catch(() => null),
   ]);
 
+  // Market Pulse "news" for the hero reel — live figures when available, else editorial fallbacks.
+  const pulseNews =
+    pulse && pulse.salesCount > 0
+      ? [
+          {
+            eyebrow: 'Market Pulse',
+            text: `${pulse.salesCount} lots sold in the last ${pulse.windowDays} days`,
+          },
+          {
+            eyebrow: 'Total cleared',
+            text: `${formatMoney(pulse.totalMinor)} across recent sales`,
+          },
+          ...pulse.categories.slice(0, 3).map((c) => ({
+            eyebrow: c.category,
+            text: `${formatMoney(c.avgMinor)} average — recent results`,
+          })),
+        ]
+      : PULSE_FALLBACK.map((p) => ({ eyebrow: p.tag, text: p.text }));
+
   return (
     <>
       {/* Hero — cinematic, editorial, restrained */}
@@ -127,8 +146,8 @@ export default async function HomePage() {
                 Institutional transparency · Verified sellers · Server-authoritative bidding
               </p>
             </div>
-            {/* Right — cinematic featured-lot showcase (desktop; graceful when sparse) */}
-            <HeroShowcase items={featured} />
+            {/* Right — auto-scrolling 3D reel: featured lots mixed with Market Pulse news */}
+            <HeroShowcase items={featured} news={pulseNews} />
           </div>
         </div>
       </section>
