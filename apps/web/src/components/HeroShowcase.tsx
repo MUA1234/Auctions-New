@@ -11,11 +11,12 @@ import { LotImage } from './LotImage';
  * Hero showcase (V3 homepage) — a vertical 3D revolving carousel that fills the right half of
  * the desktop hero. Individual frosted-glass tiles ride a virtual wheel: the tile at the
  * centre faces the viewer, and tiles above/below rotate away (rotateX) with perspective, so
- * the column reads as a slowly-revolving cylinder. The tiles combine the featured lots
- * ("what's open now") with the editorial "why Singha" notes as centre-aligned ~2-line cards,
- * and the set loops seamlessly. Desktop-only (`hidden lg:block`); the mobile hero stays
- * copy-first. Constant medium-speed crawl via requestAnimationFrame (speed independent of
- * item count); pauses on hover so the copy is readable; under prefers-reduced-motion it holds
+ * the column reads as a slowly-revolving cylinder. The tiles interleave the featured lots
+ * ("what's open now") with Market Pulse news as centre-aligned ~2-line cards, each showing
+ * the item image where available (dark glass scrim over the photo), and the set loops
+ * seamlessly. Desktop-only (`hidden lg:block`); the mobile hero stays copy-first. A gentle,
+ * constant crawl via requestAnimationFrame (speed independent of item count) keeps each item
+ * near the centre long enough to read; pauses on hover; under prefers-reduced-motion it holds
  * a static curved stack (no revolve).
  */
 
@@ -29,7 +30,7 @@ type ReelCard = ReelNote | ReelLot;
 const TILE_H = 122; // fixed tile height (px) — uniform so the wheel maths stay analytic
 const GAP = 16;
 const STEP = TILE_H + GAP;
-const SPEED_PX_PER_S = 40; // medium crawl — moving, but quick to read
+const SPEED_PX_PER_S = 28; // gentle crawl — each item dwells longer near the centre
 const MIN_PER_COPY = 6; // repeat the set until one copy overfills the viewport (seamless loop)
 const PERSPECTIVE = 1000;
 const MAX_ANGLE = 56; // degrees a tile is rotated at the top/bottom of the wheel
@@ -70,7 +71,7 @@ export function HeroShowcase({
   const trackRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
   const pausedRef = useRef(false);
-  const vhRef = useRef(608);
+  const vhRef = useRef(704);
 
   // Place the track + revolve each tile according to its distance from the wheel centre.
   const apply = (offset: number) => {
@@ -91,7 +92,7 @@ export function HeroShowcase({
   };
 
   useLayoutEffect(() => {
-    if (viewportRef.current) vhRef.current = viewportRef.current.clientHeight || 608;
+    if (viewportRef.current) vhRef.current = viewportRef.current.clientHeight || 704;
     apply(offsetRef.current); // paint the curved stack immediately (also the reduced-motion view)
   }, [cards.length, reduced]);
 
@@ -116,7 +117,7 @@ export function HeroShowcase({
 
   return (
     <div
-      className="relative hidden h-[38rem] w-full overflow-hidden lg:block"
+      className="relative hidden h-[44rem] w-full overflow-hidden lg:block"
       style={{
         maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
         WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
@@ -170,8 +171,8 @@ function ReelTile({ card, muted }: { card: ReelCard; muted?: boolean }) {
         className="absolute inset-0"
         style={{
           background: withMedia
-            ? 'linear-gradient(180deg, rgba(6,8,11,0.4) 0%, rgba(6,8,11,0.54) 50%, rgba(6,8,11,0.74) 100%)'
-            : 'linear-gradient(157deg, rgba(14,16,20,0.78), rgba(6,7,9,0.88))',
+            ? 'linear-gradient(180deg, rgba(6,8,11,0.32) 0%, rgba(6,8,11,0.46) 50%, rgba(6,8,11,0.66) 100%)'
+            : 'linear-gradient(157deg, rgba(22,25,31,0.6), rgba(10,12,15,0.72))',
         }}
       />
       <div
