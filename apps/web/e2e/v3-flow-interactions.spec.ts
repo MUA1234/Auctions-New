@@ -86,9 +86,12 @@ async function mockCatalogue(page: Page, perCat: number) {
 }
 
 const overlayOpacity = (page: Page) =>
-  page.locator('[data-band] [aria-hidden] span').first().evaluate((el) => {
-    return Number(getComputedStyle(el as HTMLElement).opacity);
-  });
+  page
+    .locator('[data-band] [aria-hidden] span')
+    .first()
+    .evaluate((el) => {
+      return Number(getComputedStyle(el as HTMLElement).opacity);
+    });
 
 test.describe('V3 Flow interactions — label pop-then-fade + looping rail', () => {
   test('category label is hidden at rest, pops on hover, then fades out', async ({ page }) => {
