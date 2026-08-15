@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Chip } from '@singha/ui';
 import { useReducedMotion } from '@singha/auctionflow';
 import type { CatalogueCardV2 } from '../lib/api';
 import { coverUrl } from '../lib/media';
@@ -10,121 +9,175 @@ import { formatMoney, timeLeft } from '../lib/format';
 import { LotImage } from './LotImage';
 
 /**
- * Cinematic hero showcase (V3 homepage). Fills the right half of the desktop hero with a
- * layered, gently parallaxed stack of real featured lots — depth and motion communicate
- * "a live marketplace", not decoration. It is desktop-only (`hidden lg:block`): the mobile
- * hero stays copy-first and fast per the brief. Honours prefers-reduced-motion (no tilt),
- * has no layout shift (fixed plate sizes), and degrades to an editorial panel when there
- * are no featured lots. Media is CSP-safe (LotImage → Supabase cover or house gradient).
+ * Hero showcase (V3 homepage) — a frosted-glass, auto-scrolling reel that fills the right
+ * half of the desktop hero. It scrolls a single continuous, seamlessly-looping column of
+ * ~2-line cards combining the featured lots ("what's open now") with the editorial "why
+ * Singha" notes, in the style of a news reel. Desktop-only (`hidden lg:block`) — the mobile
+ * hero stays copy-first. The motion is a constant, medium-speed vertical crawl driven by
+ * requestAnimationFrame (so the loop speed is independent of item count); it pauses on hover
+ * / keyboard focus so the copy is readable and lots are clickable, and honours
+ * prefers-reduced-motion (no crawl — a static, top-anchored list). Media is CSP-safe
+ * (LotImage → Supabase cover or house gradient).
  */
+
+type ReelNote = { kind: 'note'; eyebrow: string; text: string };
+type ReelLot = { kind: 'lot'; lot: CatalogueCardV2 };
+type ReelCard = ReelNote | ReelLot;
+
+/** The editorial "why Singha" notes, shown in the reel alongside live lots. */
+const EDITORIAL: ReelNote[] = [
+  { kind: 'note', eyebrow: 'Transparent', text: 'Every bid validated, sequenced and recorded' },
+  { kind: 'note', eyebrow: 'Verified', text: 'Banks, corporates & government sellers' },
+  {
+    kind: 'note',
+    eyebrow: 'Real-time',
+    text: 'Server-authoritative — the screen is never the record',
+  },
+];
+
+const SPEED_PX_PER_S = 40; // medium crawl — moving, but quick to read
+const MIN_PER_COPY = 8; // repeat the set until one copy overfills the panel (seamless loop)
+
+/** Featured lots first (the "news"), then the editorial notes. */
+function buildCards(items: CatalogueCardV2[]): ReelCard[] {
+  const lots: ReelCard[] = items.slice(0, 8).map((lot) => ({ kind: 'lot', lot }));
+  return [...lots, ...EDITORIAL];
+}
+
+/** Repeat the base set a WHOLE number of times so one copy comfortably fills the viewport
+ *  (prevents a blank gap at the loop seam when there are only a few items). */
+function fill(base: ReelCard[]): ReelCard[] {
+  if (base.length === 0) return base;
+  const reps = Math.max(1, Math.ceil(MIN_PER_COPY / base.length));
+  return Array.from({ length: reps }, () => base).flat();
+}
+
 export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
   const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const raf = useRef<number | null>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const cards = fill(buildCards(items));
 
-  const onMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (reduced) return;
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width - 0.5;
-      const py = (e.clientY - r.top) / r.height - 0.5;
-      if (raf.current) cancelAnimationFrame(raf.current);
-      raf.current = requestAnimationFrame(() => setTilt({ x: px, y: py }));
-    },
-    [reduced],
-  );
+  const trackRef = useRef<HTMLDivElement>(null);
+  const seamRef = useRef<HTMLDivElement>(null); // top of the 2nd (duplicate) copy
+  const wrapRef = useRef(0); // px to travel before the loop resets
+  const offsetRef = useRef(0);
+  const pausedRef = useRef(false);
 
-  const reset = useCallback(() => {
-    if (raf.current) cancelAnimationFrame(raf.current);
-    setTilt({ x: 0, y: 0 });
-  }, []);
+  // Measure the loop distance (height of one copy incl. the gap to the next), and keep it
+  // fresh as fonts/sizes settle or the viewport resizes.
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (seamRef.current) wrapRef.current = seamRef.current.offsetTop;
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined' || !trackRef.current) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(trackRef.current);
+    return () => ro.disconnect();
+  }, [cards.length]);
 
-  const lots = items.slice(0, 3);
+  // Constant-speed vertical crawl, seamless wrap. Skipped entirely under reduced motion.
+  useEffect(() => {
+    if (reduced) return;
+    let raf = 0;
+    let last = 0;
+    const step = (t: number) => {
+      if (!last) last = t;
+      const dt = Math.min(0.05, (t - last) / 1000); // clamp tab-switch jumps
+      last = t;
+      const wrap = wrapRef.current;
+      const el = trackRef.current;
+      if (el && wrap > 0 && !pausedRef.current) {
+        offsetRef.current += SPEED_PX_PER_S * dt;
+        if (offsetRef.current >= wrap) offsetRef.current -= wrap;
+        el.style.transform = `translateY(${-offsetRef.current}px)`;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [reduced, cards.length]);
 
-  if (lots.length === 0) return <EditorialPanel />;
+  const pause = () => (pausedRef.current = true);
+  const resume = () => (pausedRef.current = false);
 
   return (
     <div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={reset}
-      className="relative hidden h-[30rem] w-full select-none lg:block"
-      style={{ perspective: '1400px' }}
-      aria-hidden
+      className="relative hidden h-[30rem] w-full overflow-hidden rounded-3xl border border-white/10 bg-coal-950/30 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl lg:block"
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onFocusCapture={pause}
+      onBlurCapture={resume}
+      role="group"
+      aria-label="Featured lots and why Singha"
     >
+      {/* Frosted-glass surface: subtle brand glows + a soft dark tint for legibility. */}
       <div
-        className="absolute inset-0 transition-transform duration-300 ease-out"
+        className="pointer-events-none absolute inset-0"
         style={{
-          transform: reduced ? undefined : `rotateY(${tilt.x * 7}deg) rotateX(${-tilt.y * 7}deg)`,
-          transformStyle: 'preserve-3d',
+          background:
+            'radial-gradient(70% 60% at 30% 20%, rgba(31,160,85,0.12), transparent 60%), radial-gradient(60% 55% at 85% 90%, rgba(201,162,75,0.09), transparent 65%), linear-gradient(180deg, rgba(255,255,255,0.07), transparent 20%), linear-gradient(160deg, rgba(16,16,18,0.10), rgba(9,9,10,0.24))',
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+      {/* Reel viewport — cards fade in/out at the top and bottom edges. */}
+      <div
+        className="relative h-full overflow-hidden"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
+          WebkitMaskImage:
+            'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
         }}
       >
-        {lots.map((lot, i) => (
-          <Plate key={lot.id} lot={lot} index={i} tilt={tilt} reduced={reduced} />
-        ))}
+        <div ref={trackRef} className="relative flex flex-col gap-3 px-7 will-change-transform">
+          <div className="flex flex-col gap-3">
+            {cards.map((c, i) => (
+              <ReelCardView key={`a-${i}`} card={c} />
+            ))}
+          </div>
+          {/* Seamless-loop duplicate — hidden from assistive tech and the tab order. */}
+          <div ref={seamRef} aria-hidden className="flex flex-col gap-3">
+            {cards.map((c, i) => (
+              <ReelCardView key={`b-${i}`} card={c} muted />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-const LAYOUT = [
-  // front, then two receding plates — deliberate asymmetry, no fake symmetry
-  { top: '14%', left: '18%', w: '17rem', rot: -4, z: 30, depth: 60, dim: '' },
-  { top: '4%', left: '46%', w: '14rem', rot: 5, z: 20, depth: 20, dim: 'opacity-90' },
-  { top: '52%', left: '48%', w: '13rem', rot: 3, z: 10, depth: -20, dim: 'opacity-80' },
-] as const;
+function ReelCardView({ card, muted }: { card: ReelCard; muted?: boolean }) {
+  if (card.kind === 'note') {
+    return (
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+        <p className="eyebrow">{card.eyebrow}</p>
+        <p className="mt-1 line-clamp-2 font-serif text-[0.95rem] font-semibold leading-snug text-bone">
+          {card.text}
+        </p>
+      </div>
+    );
+  }
 
-function Plate({
-  lot,
-  index,
-  tilt,
-  reduced,
-}: {
-  lot: CatalogueCardV2;
-  index: number;
-  tilt: { x: number; y: number };
-  reduced: boolean;
-}) {
-  const l = LAYOUT[index] ?? LAYOUT[0];
-  const parallax = reduced ? 0 : (l.depth / 60) * tilt.x * 18;
+  const { lot } = card;
   return (
     <Link
       href={`/lot/${lot.id}`}
-      className={`group pointer-events-auto absolute block ${l.dim}`}
-      style={{
-        top: l.top,
-        left: l.left,
-        width: l.w,
-        transform: `translateX(${parallax}px) translateZ(${l.depth}px) rotate(${l.rot}deg)`,
-        zIndex: l.z,
-      }}
+      tabIndex={muted ? -1 : undefined}
+      className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 transition-colors hover:border-gold-400/30 hover:bg-white/[0.06]"
     >
-      <div className="card-premium overflow-hidden p-2.5 shadow-card-lg">
-        <div className="relative overflow-hidden rounded-lg">
-          <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-[5/4]" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-coal-950/90 via-coal-950/20 to-transparent" />
-          <div className="absolute left-2 top-2">
-            <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-          </div>
-          {lot.featured && (
-            <span className="absolute right-2 top-2 text-sm text-gold-300" aria-hidden>
-              ★
-            </span>
-          )}
-        </div>
-        <div className="mt-2.5">
-          <h3 className="line-clamp-1 font-display text-sm font-semibold text-bone">{lot.title}</h3>
-          <p className="mt-0.5 text-[11px] capitalize text-bone-500">{lot.category}</p>
-          <div className="mt-2 flex items-end justify-between border-t border-white/[0.06] pt-2">
-            <span className="tabular font-display text-base font-bold text-gold-400">
-              {commercialValue(lot)}
-            </span>
-            <span className="text-[11px] text-bone-400">{commercialMeta(lot)}</span>
-          </div>
-        </div>
+      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
+        <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-square" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow truncate">{lot.category}</p>
+        <p className="line-clamp-2 font-display text-sm font-semibold leading-snug text-bone group-hover:text-white">
+          {lot.title}
+        </p>
+        <p className="mt-0.5 truncate text-[11px]">
+          <span className="tabular font-semibold text-gold-400">{commercialValue(lot)}</span>
+          <span className="text-bone-500"> · {commercialMeta(lot)}</span>
+        </p>
       </div>
     </Link>
   );
@@ -152,36 +205,4 @@ function commercialMeta(lot: CatalogueCardV2): string {
   if ((c.kind === 'eoi' || c.kind === 'sealed_tender') && c.closesAt)
     return `Closes ${timeLeft(c.closesAt)}`;
   return lot.saleMethod.replace(/_/g, ' ').toLowerCase();
-}
-
-/** Fallback when there are no featured lots — an editorial depth panel, never a blank half. */
-function EditorialPanel() {
-  const points = [
-    { k: 'Transparent', v: 'Every bid validated, sequenced and recorded' },
-    { k: 'Verified', v: 'Banks, corporates & government sellers' },
-    { k: 'Real-time', v: 'Server-authoritative — the screen is never the record' },
-  ];
-  return (
-    <div className="relative hidden h-[30rem] w-full overflow-hidden rounded-3xl border border-white/10 bg-coal-950/30 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl lg:block">
-      {/* Frosted-glass surface: subtle brand glows + a soft dark tint that keeps the copy
-          legible, while the backdrop-blur above lets the forest show through the pane. */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(70% 60% at 30% 20%, rgba(31,160,85,0.12), transparent 60%), radial-gradient(60% 55% at 85% 90%, rgba(201,162,75,0.09), transparent 65%), linear-gradient(180deg, rgba(255,255,255,0.07), transparent 20%), linear-gradient(160deg, rgba(16,16,18,0.10), rgba(9,9,10,0.24))',
-        }}
-      />
-      {/* Hairline highlight along the top edge — the classic glass rim. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-      <div className="relative flex h-full flex-col justify-center gap-6 p-10">
-        {points.map((p) => (
-          <div key={p.k} className="flex flex-col gap-1">
-            <span className="eyebrow">{p.k}</span>
-            <span className="font-serif text-xl font-semibold text-bone">{p.v}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
