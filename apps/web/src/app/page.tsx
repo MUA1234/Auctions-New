@@ -6,6 +6,7 @@ import { formatMoney } from '../lib/format';
 import { FeaturedSection } from '../components/FeaturedSection';
 import { HeroShowcase } from '../components/HeroShowcase';
 import { HomeHeroBackdrop } from '../components/HomeHeroBackdrop';
+import { CategoryCards } from '../components/CategoryCards';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,17 +30,6 @@ export const metadata: Metadata = {
  * premium dark base, sparing red/gold accents, generous space — not the gaming
  * HUD used on operator surfaces.
  */
-
-const CATEGORIES = [
-  { label: 'Vehicles', slug: 'vehicles' },
-  { label: 'Machinery & Equipment', slug: 'machinery' },
-  { label: 'Gems & Jewellery', slug: 'gems' },
-  { label: 'Property', slug: 'property' },
-  { label: 'Business Assets', slug: 'business' },
-  { label: 'Stock & Bulk', slug: 'bulk' },
-  { label: 'Agriculture', slug: 'agriculture' },
-  { label: 'General Assets', slug: 'general' },
-];
 
 const PULSE_FALLBACK = [
   {
@@ -214,22 +204,7 @@ export default async function HomePage() {
           <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
             Explore categories
           </h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {CATEGORIES.map((category) => (
-              <Link
-                key={category.slug}
-                href={`/catalogue?category=${category.slug}`}
-                className="card-premium group flex items-center justify-between p-5"
-              >
-                <span className="font-display text-sm font-semibold text-bone-200 transition-colors group-hover:text-bone">
-                  {category.label}
-                </span>
-                <span className="text-gold-400 transition-transform group-hover:translate-x-1">
-                  →
-                </span>
-              </Link>
-            ))}
-          </div>
+          <CategoryCards />
         </div>
       </section>
 
