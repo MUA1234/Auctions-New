@@ -29,8 +29,27 @@ export interface FeatureFlags {
   dashboardV3Beta: boolean;
   liveV3: boolean;
   // Singha Evolution (geography-/category-neutral platform). Own preview channel
-  // (`?evo=on`) so these never entangle with the V3 visual preview switch.
+  // (`?evo=on`) so these never entangle with the V3 visual preview switch. Each key
+  // mirrors the backend capability flag of the same name (source of truth
+  // `GET /api/v1/feature-flags`), so a surface is shown only when its backend
+  // capability is enabled; the `?evo=on` preview overlays them ON for pilot review.
   neutralIaV1: boolean;
+  commercialOffersV2: boolean; // E4 — Commercial Offer Engine V2 UX
+  sealedOffers: boolean; // E4 — sealed offer seller comparison/selection
+  multiCurrency: boolean; // E5 — currency selection
+  fxDisplay: boolean; // E5 — informational display-currency conversion
+  logistics: boolean; // E7 — Incoterms/ports/quote/booking/tracking
+  procurement: boolean; // E9 — RFQ / Request Supply / reverse tender
+  supplyProgrammes: boolean; // E10 — recurring supply programmes + matching
+  perishableGoods: boolean; // E10 — perishable metadata
+  singhaId: boolean; // E11 — unified Singha ID profile + capabilities
+  dashboard: boolean; // E11 — cross-domain customer dashboard sections
+  controlCentre: boolean; // E11 — operator Control Centre
+  transactionRouting: boolean; // E6 — routing/terms preview (operator)
+  feesEngine: boolean; // E8 — fee/tax compute (operator)
+  operatorPayments: boolean; // E8b — payment route resolution (operator)
+  insightEngine: boolean; // E12 — deterministic intelligence surfaces
+  satelliteNodes: boolean; // E13 — Satellite Market Node + local site
 }
 
 /** The eleven V3 experience flags, in review order (the preview switch flips all of them). */
@@ -77,6 +96,22 @@ export function v3PreviewEnvOn(): boolean {
  */
 export const EVOLUTION_FLAG_KEYS = [
   'neutralIaV1',
+  'commercialOffersV2',
+  'sealedOffers',
+  'multiCurrency',
+  'fxDisplay',
+  'logistics',
+  'procurement',
+  'supplyProgrammes',
+  'perishableGoods',
+  'singhaId',
+  'dashboard',
+  'controlCentre',
+  'transactionRouting',
+  'feesEngine',
+  'operatorPayments',
+  'insightEngine',
+  'satelliteNodes',
 ] as const satisfies readonly (keyof FeatureFlags)[];
 
 /** Overlay every Evolution flag to ON (review/preview switch; never turns anything off). */
@@ -112,6 +147,22 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   dashboardV3Beta: false,
   liveV3: false,
   neutralIaV1: false,
+  commercialOffersV2: false,
+  sealedOffers: false,
+  multiCurrency: false,
+  fxDisplay: false,
+  logistics: false,
+  procurement: false,
+  supplyProgrammes: false,
+  perishableGoods: false,
+  singhaId: false,
+  dashboard: false,
+  controlCentre: false,
+  transactionRouting: false,
+  feesEngine: false,
+  operatorPayments: false,
+  insightEngine: false,
+  satelliteNodes: false,
 };
 
 /**

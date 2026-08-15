@@ -7,6 +7,7 @@ import { BrandLogo } from './BrandLogo';
 import { AuthNav, SellCta } from './AuthNav';
 import { DiscoverNavLink } from './DiscoverNavLink';
 import { MobileNav } from './MobileNav';
+import { DisplayCurrencySelector } from './evolution/DisplayCurrencySelector';
 import { NAV_ITEMS, NEUTRAL_NAV_ITEMS } from '../lib/nav';
 import { useFlags } from '../lib/use-flags';
 
@@ -71,6 +72,10 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Flag-gated (multiCurrency): informational display-currency picker; never binding. */}
+          <div className="hidden sm:block">
+            <DisplayCurrencySelector />
+          </div>
           <AuthNav />
           <div className="hidden sm:block">
             <SellCta />

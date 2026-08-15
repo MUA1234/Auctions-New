@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
+import { EvolutionEntryLinks } from '../../components/evolution/EvolutionEntryLinks';
 
 export const metadata: Metadata = {
   title: 'Wanted — post what you need, suppliers respond',
@@ -76,6 +77,20 @@ export default function WantedPage() {
           </Card>
         ))}
       </div>
+
+      <EvolutionEntryLinks
+        eyebrow="Start sourcing"
+        intro="Post a structured requirement and compare priced supplier proposals side by side, or match against standing supply programmes — you always choose the winner; nothing is awarded automatically."
+        links={[
+          {
+            href: '/wanted/procurement',
+            label: 'Post a request for quote',
+            flag: 'procurement',
+            variant: 'primary',
+          },
+          { href: '/wanted/supply', label: 'Find recurring supply', flag: 'supplyProgrammes' },
+        ]}
+      />
 
       <p className="mt-10 max-w-2xl text-sm leading-relaxed text-bone-500">
         Buyer-side sourcing is rolling out progressively. If you’d like to post a requirement or

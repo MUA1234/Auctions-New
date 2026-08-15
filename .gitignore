@@ -20,6 +20,9 @@ coverage/
 test-results/
 playwright-report/
 .playwright/
+# Screenshot-matrix output (visual QA artifacts, not source)
+v3-screens/
+evo-screens/
 
 # Prisma generated client
 database/generated/

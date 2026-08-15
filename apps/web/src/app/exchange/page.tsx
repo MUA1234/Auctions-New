@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
+import { EvolutionEntryLinks } from '../../components/evolution/EvolutionEntryLinks';
 
 export const metadata: Metadata = {
   title: 'Singha Exchange — ways to trade assets & commodities',
@@ -86,6 +87,22 @@ export default function ExchangePage() {
           </Card>
         ))}
       </div>
+
+      <EvolutionEntryLinks
+        eyebrow="Open now"
+        intro="These commercial surfaces are live for your account. Auctions, offers and buy-now open from each listing in the catalogue."
+        links={[
+          {
+            href: '/wanted/procurement',
+            label: 'Post an RFQ',
+            flag: 'procurement',
+            variant: 'primary',
+          },
+          { href: '/sell/supply', label: 'List recurring supply', flag: 'supplyProgrammes' },
+          { href: '/wanted/supply', label: 'Find recurring supply', flag: 'supplyProgrammes' },
+          { href: '/services/logistics', label: 'Logistics & freight', flag: 'logistics' },
+        ]}
+      />
 
       <p className="mt-10 max-w-2xl text-sm leading-relaxed text-bone-500">
         Sale methods are enabled progressively and vary by location, category and operator. Where a

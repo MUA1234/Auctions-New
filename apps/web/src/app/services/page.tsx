@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button, Card } from '@singha/ui';
+import { EvolutionEntryLinks } from '../../components/evolution/EvolutionEntryLinks';
 
 export const metadata: Metadata = {
   title: 'Services — inspection, logistics, export & settlement',
@@ -80,6 +81,19 @@ export default function ServicesPage() {
           </Card>
         ))}
       </div>
+
+      <EvolutionEntryLinks
+        eyebrow="Open now"
+        intro="Reference Incoterms and ports, request an indicative freight quote, book it and track the shipment on an append-only timeline."
+        links={[
+          {
+            href: '/services/logistics',
+            label: 'Logistics: Incoterms, quotes & tracking',
+            flag: 'logistics',
+            variant: 'primary',
+          },
+        ]}
+      />
 
       <p className="mt-10 max-w-2xl text-sm leading-relaxed text-bone-500">
         Services are provided by Singha and its local operators, and are enabled per market and

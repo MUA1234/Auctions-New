@@ -7,7 +7,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 /** Route prefixes that require a signed-in session (enforced server-side here). */
-const PROTECTED = ['/dashboard', '/account', '/admin', '/sell/new'];
+const PROTECTED = [
+  '/dashboard',
+  '/account',
+  '/admin',
+  '/sell/new',
+  '/sell/offers',
+  '/sell/supply',
+  '/exchange/offer',
+  '/wanted/procurement',
+  '/wanted/supply',
+  '/control-centre',
+];
 
 /**
  * Keep the Supabase auth session fresh on every request AND gate protected
