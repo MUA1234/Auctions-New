@@ -13,7 +13,7 @@ export function BrandLogo({ className }: { className?: string }) {
     // eslint-disable-next-line @next/next/no-img-element -- animated SVG, must not be optimised
     <img
       src="/images/singha-logo.svg"
-      alt="Singha Auctions"
+      alt="Singha"
       width={913}
       height={183}
       draggable={false}

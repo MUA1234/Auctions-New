@@ -1,8 +1,8 @@
 import { Card } from '@singha/ui';
 
 export const metadata = {
-  title: 'Terms · Singha Auctions',
-  description: 'Terms of use for the Singha Auctions platform.',
+  title: 'Terms · Singha',
+  description: 'Terms of use for the Singha platform.',
 };
 
 /**
@@ -17,13 +17,13 @@ export default function TermsPage() {
       <h1 className="font-serif text-4xl font-bold text-bone">Terms of use</h1>
       <Card className="mt-6 max-w-2xl">
         <p className="text-sm text-bone-300">
-          The full terms and conditions for participating in Singha Auctions — bidder obligations,
+          The full terms and conditions for participating on Singha — buyer and bidder obligations,
           buyer&apos;s premium, payment and settlement, collection and dispute handling — are being
           finalised with our legal team and will be published here before public launch.
         </p>
         <p className="mt-4 text-sm text-bone-300">
-          Until then, every sale is governed by the written terms provided with each auction event.
-          For questions, please contact Singha Auctions directly.
+          Until then, every sale is governed by the written terms provided with each listing or sale
+          event. For questions, please contact Singha directly.
         </p>
       </Card>
       <p className="mt-6 text-xs text-bone-500">

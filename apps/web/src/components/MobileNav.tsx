@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button, Sheet } from '@singha/ui';
 import { BrandLogo } from './BrandLogo';
-import { NAV_ITEMS } from '../lib/nav';
+import { NAV_ITEMS, NEUTRAL_NAV_ITEMS } from '../lib/nav';
 import { useFlags } from '../lib/use-flags';
 import { signOut, useAuth } from '../lib/auth';
 
@@ -27,7 +27,7 @@ export function MobileNav() {
   }, [pathname]);
 
   const links = [
-    ...NAV_ITEMS,
+    ...(flags.neutralIaV1 ? NEUTRAL_NAV_ITEMS : NAV_ITEMS),
     ...(flags.discoverV3 ? [{ href: '/discover', label: 'Discover' }] : []),
   ];
 
@@ -54,7 +54,7 @@ export function MobileNav() {
       <Sheet open={open} onClose={() => setOpen(false)} label="Main menu" side="left">
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
-            <Link href="/" aria-label="Singha Auctions home" onClick={() => setOpen(false)}>
+            <Link href="/" aria-label="Singha home" onClick={() => setOpen(false)}>
               <BrandLogo className="h-9 w-auto" />
             </Link>
             <button

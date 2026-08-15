@@ -1,10 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiBase } from './api';
-import { DEFAULT_FLAGS, type FeatureFlags, v3PreviewEnvOn, withV3Preview } from './flags';
+import {
+  DEFAULT_FLAGS,
+  type FeatureFlags,
+  evolutionPreviewEnvOn,
+  v3PreviewEnvOn,
+  withEvolutionPreview,
+  withV3Preview,
+} from './flags';
 
 const PREVIEW_COOKIE = 'singha_v3_preview';
+const EVO_COOKIE = 'singha_evo_preview';
+
+/** Read a `?<param>=on|off` override, persisting/clearing a 30-day cookie (client only). */
+function readPreviewOverride(param: string, cookie: string, envOn: boolean): boolean {
+  if (envOn) return true;
+  if (typeof document === 'undefined') return false;
+  try {
+    const value = new URLSearchParams(window.location.search).get(param);
+    if (value === 'on' || value === 'off') {
+      document.cookie = `${cookie}=${value === 'on' ? '1' : ''};path=/;max-age=${
+        value === 'on' ? 60 * 60 * 24 * 30 : 0
+      };samesite=lax`;
+      return value === 'on';
+    }
+    return document.cookie.split('; ').some((c) => c === `${cookie}=1`);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Read the per-viewer V3 preview override (client only). A staging deployment can set
@@ -13,20 +39,15 @@ const PREVIEW_COOKIE = 'singha_v3_preview';
  * Production with neither set resolves flags from the backend — all V3 OFF.
  */
 function previewOverrideOn(): boolean {
-  if (v3PreviewEnvOn()) return true;
-  if (typeof document === 'undefined') return false;
-  try {
-    const param = new URLSearchParams(window.location.search).get('v3');
-    if (param === 'on' || param === 'off') {
-      document.cookie = `${PREVIEW_COOKIE}=${param === 'on' ? '1' : ''};path=/;max-age=${
-        param === 'on' ? 60 * 60 * 24 * 30 : 0
-      };samesite=lax`;
-      return param === 'on';
-    }
-    return document.cookie.split('; ').some((c) => c === `${PREVIEW_COOKIE}=1`);
-  } catch {
-    return false;
-  }
+  return readPreviewOverride('v3', PREVIEW_COOKIE, v3PreviewEnvOn());
+}
+
+/**
+ * Singha Evolution preview (`?evo=on`, cookie `singha_evo_preview`, or `NEXT_PUBLIC_EVO_PREVIEW`).
+ * Independent of the V3 visual preview so the neutral platform can be reviewed on its own.
+ */
+function evolutionOverrideOn(): boolean {
+  return readPreviewOverride('evo', EVO_COOKIE, evolutionPreviewEnvOn());
 }
 
 /**
@@ -36,7 +57,12 @@ function previewOverrideOn(): boolean {
  */
 export function useFlags(): { flags: FeatureFlags; loading: boolean } {
   const [preview] = useState(previewOverrideOn);
-  const [flags, setFlags] = useState<FeatureFlags>(() => withV3Preview(DEFAULT_FLAGS, preview));
+  const [evo] = useState(evolutionOverrideOn);
+  const applyPreviews = useCallback(
+    (f: FeatureFlags) => withEvolutionPreview(withV3Preview(f, preview), evo),
+    [preview, evo],
+  );
+  const [flags, setFlags] = useState<FeatureFlags>(() => applyPreviews(DEFAULT_FLAGS));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,14 +71,14 @@ export function useFlags(): { flags: FeatureFlags; loading: boolean } {
       .then((r) => (r.ok ? r.json() : null))
       .then((body: { features?: Partial<FeatureFlags> } | null) => {
         if (active && body?.features)
-          setFlags(withV3Preview({ ...DEFAULT_FLAGS, ...body.features }, preview));
+          setFlags(applyPreviews({ ...DEFAULT_FLAGS, ...body.features }));
       })
       .catch(() => undefined)
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [preview]);
+  }, [applyPreviews]);
 
   return { flags, loading };
 }

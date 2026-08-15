@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { Card } from '@singha/ui';
 
 export const metadata = {
-  title: 'How it works · Singha Auctions',
-  description: 'How buying and selling works on Singha Auctions.',
+  title: 'How it works · Singha',
+  description: 'How buying, selling and sourcing works on Singha.',
 };
 
 /**
@@ -14,9 +14,10 @@ export const metadata = {
 export default function HowItWorksPage() {
   return (
     <div className="container-page py-14">
-      <h1 className="font-serif text-4xl font-bold text-bone">How Singha Auctions works</h1>
+      <h1 className="font-serif text-4xl font-bold text-bone">How Singha works</h1>
       <p className="mt-2 max-w-2xl text-bone-400">
-        Singha is a timed-auction and asset-exchange platform. The auction engine is the single
+        Singha is an exchange for valuable assets and commodities — transacted through offers, buy
+        now, tenders and auctions. Where a sale is an auction, the auction engine is the single
         source of truth for every bid, extension and result.
       </p>
 

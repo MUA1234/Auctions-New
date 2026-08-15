@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Singha Live — live & hybrid auctions',
   description:
-    'Live and hybrid auction events on Singha Auctions — bid in real time against the room. The auction engine is always the source of truth.',
+    'Live and hybrid auction events on Singha — bid in real time against the room. The auction engine is always the source of truth.',
 };
 
 /**

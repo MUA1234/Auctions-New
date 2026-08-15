@@ -28,6 +28,9 @@ export interface FeatureFlags {
   engagementV3: boolean;
   dashboardV3Beta: boolean;
   liveV3: boolean;
+  // Singha Evolution (geography-/category-neutral platform). Own preview channel
+  // (`?evo=on`) so these never entangle with the V3 visual preview switch.
+  neutralIaV1: boolean;
 }
 
 /** The eleven V3 experience flags, in review order (the preview switch flips all of them). */
@@ -67,6 +70,29 @@ export function v3PreviewEnvOn(): boolean {
   return v === '1' || v === 'true';
 }
 
+/**
+ * Singha Evolution preview flags (E1+). A dedicated channel, separate from the V3 visual
+ * preview, so the geography-/category-neutral platform can be previewed independently and
+ * grow phase by phase without re-flipping V3 visuals.
+ */
+export const EVOLUTION_FLAG_KEYS = [
+  'neutralIaV1',
+] as const satisfies readonly (keyof FeatureFlags)[];
+
+/** Overlay every Evolution flag to ON (review/preview switch; never turns anything off). */
+export function withEvolutionPreview(flags: FeatureFlags, on: boolean): FeatureFlags {
+  if (!on) return flags;
+  const next = { ...flags };
+  for (const key of EVOLUTION_FLAG_KEYS) next[key] = true;
+  return next;
+}
+
+/** Evolution preview via env — `NEXT_PUBLIC_EVO_PREVIEW=1` on a staging/review deploy only. */
+export function evolutionPreviewEnvOn(): boolean {
+  const v = process.env.NEXT_PUBLIC_EVO_PREVIEW;
+  return v === '1' || v === 'true';
+}
+
 export const DEFAULT_FLAGS: FeatureFlags = {
   timedAuctions: true,
   eoi: true,
@@ -85,6 +111,7 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   engagementV3: false,
   dashboardV3Beta: false,
   liveV3: false,
+  neutralIaV1: false,
 };
 
 /**
@@ -94,12 +121,14 @@ export const DEFAULT_FLAGS: FeatureFlags = {
  * down a public page, but we also never fabricate an "on" state.
  */
 export async function getFeatureFlags(): Promise<FeatureFlags> {
+  const withPreviews = (f: FeatureFlags) =>
+    withEvolutionPreview(withV3Preview(f, v3PreviewEnvOn()), evolutionPreviewEnvOn());
   try {
     const res = await fetch(`${apiBase}/feature-flags`, { next: { revalidate: 30 } });
-    if (!res.ok) return withV3Preview(DEFAULT_FLAGS, v3PreviewEnvOn());
+    if (!res.ok) return withPreviews(DEFAULT_FLAGS);
     const body = (await res.json()) as { features?: Partial<FeatureFlags> };
-    return withV3Preview({ ...DEFAULT_FLAGS, ...(body.features ?? {}) }, v3PreviewEnvOn());
+    return withPreviews({ ...DEFAULT_FLAGS, ...(body.features ?? {}) });
   } catch {
-    return withV3Preview(DEFAULT_FLAGS, v3PreviewEnvOn());
+    return withPreviews(DEFAULT_FLAGS);
   }
 }

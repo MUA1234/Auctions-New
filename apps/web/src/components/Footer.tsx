@@ -3,7 +3,7 @@ import { BrandLogo } from './BrandLogo';
 
 const FOOTER_NAV: { heading: string; links: { href: string; label: string }[] }[] = [
   {
-    heading: 'Marketplace',
+    heading: 'Explore',
     links: [
       { href: '/catalogue', label: 'Catalogue' },
       { href: '/live', label: 'Singha Live' },
@@ -30,8 +30,8 @@ export function Footer() {
         <div className="space-y-3">
           <BrandLogo className="h-11 w-auto" />
           <p className="max-w-xs text-sm leading-relaxed text-bone-500">
-            Sri Lanka’s trusted asset exchange. Serious commerce, beautifully presented — with a
-            server-authoritative auction engine and immutable records at its core.
+            The trusted exchange for valuable assets and commodities. Serious commerce, beautifully
+            presented — with server-authoritative, immutable records at its core.
           </p>
         </div>
         {FOOTER_NAV.map((col) => (
@@ -51,8 +51,8 @@ export function Footer() {
       </div>
       <div className="border-t border-white/[0.05]">
         <div className="container-wide flex flex-col gap-2 py-5 text-xs text-bone-600 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Singha Auctions. All rights reserved.</p>
-          <p className="text-bone-600">Transparent · timed · live · sealed</p>
+          <p>© {new Date().getFullYear()} Singha. All rights reserved.</p>
+          <p className="text-bone-600">Offers · buy now · tenders · auctions</p>
         </div>
       </div>
     </footer>

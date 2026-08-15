@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe('BrandLogo (header brand mark)', () => {
   it('renders the self-hosted logo image with an accessible name', () => {
     const { getByAltText } = render(<BrandLogo />);
-    const img = getByAltText('Singha Auctions');
+    const img = getByAltText('Singha');
     expect(img.tagName).toBe('IMG');
     // Own-origin asset (satisfies CSP `img-src 'self'`) — never an external hotlink.
     expect(img.getAttribute('src')).toBe('/images/singha-logo.svg');
@@ -17,6 +17,6 @@ describe('BrandLogo (header brand mark)', () => {
 
   it('accepts a size-override className', () => {
     const { getByAltText } = render(<BrandLogo className="h-8 w-auto" />);
-    expect(getByAltText('Singha Auctions').className).toContain('h-8');
+    expect(getByAltText('Singha').className).toContain('h-8');
   });
 });

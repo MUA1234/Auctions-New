@@ -20,12 +20,12 @@ const display = Manrope({
   weight: ['500', '600', '700', '800'],
 });
 
-const TITLE = 'Singha Auctions — Trusted asset auctions for Sri Lanka';
+const TITLE = 'Singha — Find, sell and source valuable assets & commodities';
 const DESCRIPTION =
-  'A world-class multi-category asset exchange: vehicles, machinery, gems, property and business assets. Transparent, professional, real-time.';
+  'Singha is where valuable physical assets and commodities are discovered, sold, sourced and settled — through offers, buy now, tenders and auctions, with transparent, server-authoritative records.';
 
 export const metadata: Metadata = {
-  title: { default: TITLE, template: '%s · Singha Auctions' },
+  title: { default: TITLE, template: '%s · Singha' },
   description: DESCRIPTION,
 };
 

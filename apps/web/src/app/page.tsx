@@ -11,13 +11,13 @@ import { CategoryCards } from '../components/CategoryCards';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Singha Auctions — Sri Lanka’s trusted asset exchange',
+  title: 'Singha — the trusted exchange for assets & commodities',
   description:
-    'Vehicles, machinery, gems, property and business assets — discovered, inspected and won through transparent, server-authoritative auctions.',
+    'Vehicles, machinery, gems, property, produce and commodities — discovered, inspected and transacted through offers, buy now, tenders and auctions, on transparent, server-authoritative records.',
   openGraph: {
-    title: 'Singha Auctions — Sri Lanka’s trusted asset exchange',
+    title: 'Singha — the trusted exchange for assets & commodities',
     description:
-      'Transparent timed, live and sealed auctions for vehicles, machinery, gems and property.',
+      'Transparent offers, buy now, tenders and auctions for vehicles, machinery, gems, property, produce and commodities.',
     type: 'website',
   },
 };
@@ -110,18 +110,18 @@ export default async function HomePage() {
                   <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-red-500" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
                 </span>
-                Live · timed · sealed auctions
+                Offers · buy now · tenders · live auctions
               </p>
               <h1 className="mt-6 max-w-2xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-6xl xl:text-7xl">
-                Sri Lanka’s trusted{' '}
+                The trusted exchange for{' '}
                 <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
-                  asset exchange
+                  assets &amp; commodities
                 </span>
                 .
               </h1>
               <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
-                Vehicles, machinery, gems, property and business assets — discovered, inspected and
-                won through transparent, real-time auctions.
+                Vehicles, machinery, gems, property, produce and commodities — discovered, inspected
+                and transacted through offers, buy now, tenders and auctions.
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <Link href="/catalogue">
@@ -133,7 +133,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-10 h-px w-full max-w-md rule-fade" />
               <p className="mt-5 text-sm text-bone-500">
-                Institutional transparency · Verified sellers · Server-authoritative bidding
+                Institutional transparency · Verified sellers · Server-authoritative records
               </p>
             </div>
             {/* Right — auto-scrolling 3D reel: featured lots mixed with Market Pulse news */}

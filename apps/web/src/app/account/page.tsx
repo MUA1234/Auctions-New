@@ -3,7 +3,7 @@ import { AccountNav } from '../../components/AccountNav';
 import { MemberArea } from '../../components/member/MemberArea';
 
 export const metadata: Metadata = {
-  title: 'My membership · Singha Auctions',
+  title: 'My membership · Singha',
   description: 'Your Singha Client ID, membership, Bid Capacity and security.',
 };
 
