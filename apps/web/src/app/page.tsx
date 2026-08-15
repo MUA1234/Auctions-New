@@ -92,7 +92,7 @@ export default async function HomePage() {
         />
         {/* V3 cinematic image backdrop — gated on v3VisualArchitecture, CSP-safe (self). */}
         <HomeHeroBackdrop />
-        <div className="container-wide relative py-20 sm:py-28 lg:py-32">
+        <div className="container-wide relative flex min-h-[85vh] flex-col justify-center py-20 sm:py-24 lg:min-h-[90vh]">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             {/* Left — editorial copy */}
             <div>

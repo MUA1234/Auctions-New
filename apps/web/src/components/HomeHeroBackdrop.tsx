@@ -43,10 +43,11 @@ export function HomeHeroBackdrop() {
         className="absolute inset-0"
         style={{
           background: [
-            // Horizontal: dark under the left-hand copy, opening up over the glow.
-            'linear-gradient(90deg, rgba(9,9,10,0.92) 0%, rgba(9,9,10,0.66) 30%, rgba(9,9,10,0.22) 56%, rgba(9,9,10,0.5) 100%)',
+            // Horizontal: lightly dark under the left-hand copy, opening up over the glow
+            // (kept just enough for headline contrast — the artwork stays clearly visible).
+            'linear-gradient(90deg, rgba(9,9,10,0.7) 0%, rgba(9,9,10,0.38) 32%, rgba(9,9,10,0.06) 58%, rgba(9,9,10,0.28) 100%)',
             // Vertical: soften the top under the header, fade the foot into the page base.
-            'linear-gradient(180deg, rgba(9,9,10,0.72) 0%, rgba(9,9,10,0) 26%, rgba(9,9,10,0) 52%, #09090a 100%)',
+            'linear-gradient(180deg, rgba(9,9,10,0.5) 0%, rgba(9,9,10,0) 22%, rgba(9,9,10,0) 62%, #09090a 100%)',
           ].join(','),
         }}
       />
