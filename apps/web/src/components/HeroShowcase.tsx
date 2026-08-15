@@ -1,30 +1,26 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import Link from 'next/link';
 import { useReducedMotion } from '@singha/auctionflow';
 import type { CatalogueCardV2 } from '../lib/api';
-import { coverUrl } from '../lib/media';
 import { formatMoney, timeLeft } from '../lib/format';
-import { LotImage } from './LotImage';
 
 /**
- * Hero showcase (V3 homepage) — a frosted-glass, auto-scrolling reel that fills the right
- * half of the desktop hero. It scrolls a single continuous, seamlessly-looping column of
- * ~2-line cards combining the featured lots ("what's open now") with the editorial "why
- * Singha" notes, in the style of a news reel. Desktop-only (`hidden lg:block`) — the mobile
- * hero stays copy-first. The motion is a constant, medium-speed vertical crawl driven by
- * requestAnimationFrame (so the loop speed is independent of item count); it pauses on hover
- * / keyboard focus so the copy is readable and lots are clickable, and honours
- * prefers-reduced-motion (no crawl — a static, top-anchored list). Media is CSP-safe
- * (LotImage → Supabase cover or house gradient).
+ * Hero showcase (V3 homepage) — a vertical 3D revolving carousel that fills the right half of
+ * the desktop hero. Individual frosted-glass tiles ride a virtual wheel: the tile at the
+ * centre faces the viewer, and tiles above/below rotate away (rotateX) with perspective, so
+ * the column reads as a slowly-revolving cylinder. The tiles combine the featured lots
+ * ("what's open now") with the editorial "why Singha" notes as centre-aligned ~2-line cards,
+ * and the set loops seamlessly. Desktop-only (`hidden lg:block`); the mobile hero stays
+ * copy-first. Constant medium-speed crawl via requestAnimationFrame (speed independent of
+ * item count); pauses on hover so the copy is readable; under prefers-reduced-motion it holds
+ * a static curved stack (no revolve).
  */
 
 type ReelNote = { kind: 'note'; eyebrow: string; text: string };
 type ReelLot = { kind: 'lot'; lot: CatalogueCardV2 };
 type ReelCard = ReelNote | ReelLot;
 
-/** The editorial "why Singha" notes, shown in the reel alongside live lots. */
 const EDITORIAL: ReelNote[] = [
   { kind: 'note', eyebrow: 'Transparent', text: 'Every bid validated, sequenced and recorded' },
   { kind: 'note', eyebrow: 'Verified', text: 'Banks, corporates & government sellers' },
@@ -35,17 +31,20 @@ const EDITORIAL: ReelNote[] = [
   },
 ];
 
+const TILE_H = 92; // fixed tile height (px) — uniform so the wheel maths stay analytic
+const GAP = 14;
+const STEP = TILE_H + GAP;
 const SPEED_PX_PER_S = 40; // medium crawl — moving, but quick to read
-const MIN_PER_COPY = 8; // repeat the set until one copy overfills the panel (seamless loop)
+const MIN_PER_COPY = 6; // repeat the set until one copy overfills the viewport (seamless loop)
+const PERSPECTIVE = 1000;
+const MAX_ANGLE = 56; // degrees a tile is rotated at the top/bottom of the wheel
 
-/** Featured lots first (the "news"), then the editorial notes. */
 function buildCards(items: CatalogueCardV2[]): ReelCard[] {
   const lots: ReelCard[] = items.slice(0, 8).map((lot) => ({ kind: 'lot', lot }));
   return [...lots, ...EDITORIAL];
 }
 
-/** Repeat the base set a WHOLE number of times so one copy comfortably fills the viewport
- *  (prevents a blank gap at the loop seam when there are only a few items). */
+/** Repeat the base set a WHOLE number of times so one copy comfortably fills the viewport. */
 function fill(base: ReelCard[]): ReelCard[] {
   if (base.length === 0) return base;
   const reps = Math.max(1, Math.ceil(MIN_PER_COPY / base.length));
@@ -55,27 +54,37 @@ function fill(base: ReelCard[]): ReelCard[] {
 export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
   const reduced = useReducedMotion();
   const cards = fill(buildCards(items));
+  const copyHeight = cards.length * STEP; // one full loop of the wheel
 
+  const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const seamRef = useRef<HTMLDivElement>(null); // top of the 2nd (duplicate) copy
-  const wrapRef = useRef(0); // px to travel before the loop resets
   const offsetRef = useRef(0);
   const pausedRef = useRef(false);
+  const vhRef = useRef(480);
 
-  // Measure the loop distance (height of one copy incl. the gap to the next), and keep it
-  // fresh as fonts/sizes settle or the viewport resizes.
+  // Place the track + revolve each tile according to its distance from the wheel centre.
+  const apply = (offset: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.style.transform = `translateY(${-offset}px)`;
+    const vh = vhRef.current;
+    const kids = track.children;
+    for (let j = 0; j < kids.length; j++) {
+      const el = kids[j] as HTMLElement;
+      const centre = j * STEP + TILE_H / 2 - offset; // tile centre, relative to viewport top
+      const n = Math.max(-1.6, Math.min(1.6, (centre - vh / 2) / (vh / 2)));
+      const angle = -n * MAX_ANGLE;
+      const scale = 1 - Math.min(0.34, Math.abs(n) * 0.26);
+      el.style.transform = `rotateX(${angle}deg) scale(${scale})`;
+      el.style.opacity = String(Math.max(0.18, 1 - Math.abs(n) * 0.72));
+    }
+  };
+
   useLayoutEffect(() => {
-    const measure = () => {
-      if (seamRef.current) wrapRef.current = seamRef.current.offsetTop;
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined' || !trackRef.current) return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(trackRef.current);
-    return () => ro.disconnect();
-  }, [cards.length]);
+    if (viewportRef.current) vhRef.current = viewportRef.current.clientHeight || 480;
+    apply(offsetRef.current); // paint the curved stack immediately (also the reduced-motion view)
+  }, [cards.length, reduced]);
 
-  // Constant-speed vertical crawl, seamless wrap. Skipped entirely under reduced motion.
   useEffect(() => {
     if (reduced) return;
     let raf = 0;
@@ -84,102 +93,79 @@ export function HeroShowcase({ items }: { items: CatalogueCardV2[] }) {
       if (!last) last = t;
       const dt = Math.min(0.05, (t - last) / 1000); // clamp tab-switch jumps
       last = t;
-      const wrap = wrapRef.current;
-      const el = trackRef.current;
-      if (el && wrap > 0 && !pausedRef.current) {
+      if (!pausedRef.current) {
         offsetRef.current += SPEED_PX_PER_S * dt;
-        if (offsetRef.current >= wrap) offsetRef.current -= wrap;
-        el.style.transform = `translateY(${-offsetRef.current}px)`;
+        if (offsetRef.current >= copyHeight) offsetRef.current -= copyHeight;
+        apply(offsetRef.current);
       }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [reduced, cards.length]);
-
-  const pause = () => (pausedRef.current = true);
-  const resume = () => (pausedRef.current = false);
+  }, [reduced, copyHeight]);
 
   return (
     <div
-      className="relative hidden h-[30rem] w-full overflow-hidden rounded-3xl border border-white/10 bg-coal-950/30 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl lg:block"
-      onMouseEnter={pause}
-      onMouseLeave={resume}
-      onFocusCapture={pause}
-      onBlurCapture={resume}
+      className="relative hidden h-[30rem] w-full overflow-hidden lg:block"
+      style={{
+        maskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent)',
+      }}
+      onMouseEnter={() => (pausedRef.current = true)}
+      onMouseLeave={() => (pausedRef.current = false)}
       role="group"
       aria-label="Featured lots and why Singha"
     >
-      {/* Frosted-glass surface: subtle brand glows + a soft dark tint for legibility. */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(70% 60% at 30% 20%, rgba(31,160,85,0.12), transparent 60%), radial-gradient(60% 55% at 85% 90%, rgba(201,162,75,0.09), transparent 65%), linear-gradient(180deg, rgba(255,255,255,0.07), transparent 20%), linear-gradient(160deg, rgba(16,16,18,0.10), rgba(9,9,10,0.24))',
-        }}
-      />
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-
-      {/* Reel viewport — cards fade in/out at the top and bottom edges. */}
-      <div
-        className="relative h-full overflow-hidden"
-        style={{
-          maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
-          WebkitMaskImage:
-            'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
-        }}
-      >
-        <div ref={trackRef} className="relative flex flex-col gap-3 px-7 will-change-transform">
-          <div className="flex flex-col gap-3">
-            {cards.map((c, i) => (
-              <ReelCardView key={`a-${i}`} card={c} />
-            ))}
-          </div>
-          {/* Seamless-loop duplicate — hidden from assistive tech and the tab order. */}
-          <div ref={seamRef} aria-hidden className="flex flex-col gap-3">
-            {cards.map((c, i) => (
-              <ReelCardView key={`b-${i}`} card={c} muted />
-            ))}
-          </div>
+      <div ref={viewportRef} className="h-full" style={{ perspective: `${PERSPECTIVE}px` }}>
+        <div
+          ref={trackRef}
+          className="flex flex-col px-3 will-change-transform"
+          style={{ gap: `${GAP}px`, transformStyle: 'preserve-3d' }}
+        >
+          {[...cards, ...cards].map((c, i) => (
+            <ReelTile key={i} card={c} muted={i >= cards.length} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function ReelCardView({ card, muted }: { card: ReelCard; muted?: boolean }) {
-  if (card.kind === 'note') {
-    return (
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
-        <p className="eyebrow">{card.eyebrow}</p>
-        <p className="mt-1 line-clamp-2 font-serif text-[0.95rem] font-semibold leading-snug text-bone">
-          {card.text}
-        </p>
-      </div>
-    );
-  }
-
-  const { lot } = card;
+function ReelTile({ card, muted }: { card: ReelCard; muted?: boolean }) {
   return (
-    <Link
-      href={`/lot/${lot.id}`}
-      tabIndex={muted ? -1 : undefined}
-      className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5 transition-colors hover:border-gold-400/30 hover:bg-white/[0.06]"
+    <div
+      aria-hidden={muted || undefined}
+      style={{
+        height: TILE_H,
+        // Frosted-glass tile. `backdrop-filter` can't be used here — it doesn't compose with
+        // the 3D wheel transform — so the glass is a translucent dark gradient instead; it
+        // still floats over the forest, with an inset top highlight for the glass rim and a
+        // drop shadow for depth.
+        background: 'linear-gradient(157deg, rgba(14,16,20,0.78), rgba(6,7,9,0.88))',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 18px 40px -16px rgba(0,0,0,0.82)',
+      }}
+      className="flex shrink-0 flex-col items-center justify-center rounded-2xl border border-white/[0.14] px-5 text-center will-change-transform"
     >
-      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-1 ring-white/10">
-        <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-square" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="eyebrow truncate">{lot.category}</p>
-        <p className="line-clamp-2 font-display text-sm font-semibold leading-snug text-bone group-hover:text-white">
-          {lot.title}
-        </p>
-        <p className="mt-0.5 truncate text-[11px]">
-          <span className="tabular font-semibold text-gold-400">{commercialValue(lot)}</span>
-          <span className="text-bone-500"> · {commercialMeta(lot)}</span>
-        </p>
-      </div>
-    </Link>
+      {card.kind === 'note' ? (
+        <>
+          <p className="eyebrow">{card.eyebrow}</p>
+          <p className="mt-1 line-clamp-2 font-serif text-[0.95rem] font-semibold leading-snug text-bone">
+            {card.text}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="eyebrow">{card.lot.category}</p>
+          <p className="mt-0.5 line-clamp-1 font-display text-sm font-semibold text-bone">
+            {card.lot.title}
+          </p>
+          <p className="mt-1 text-[11px]">
+            <span className="tabular font-semibold text-gold-400">{commercialValue(card.lot)}</span>
+            <span className="text-bone-400"> · {commercialMeta(card.lot)}</span>
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 
