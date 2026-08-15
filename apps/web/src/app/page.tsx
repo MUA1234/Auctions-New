@@ -153,7 +153,7 @@ export default async function HomePage() {
       </section>
 
       {/* Featured items — real media, sale-aware cards */}
-      <section className="container-page py-20">
+      <section className="container-wide py-20">
         <div className="mb-9 flex items-end justify-between">
           <div>
             <p className="eyebrow">Open now</p>
@@ -187,7 +187,7 @@ export default async function HomePage() {
       </section>
 
       {/* Featured event */}
-      <section className="container-page pb-20">
+      <section className="container-wide pb-20">
         <Card className="relative overflow-hidden p-8 sm:p-12">
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -209,7 +209,7 @@ export default async function HomePage() {
 
       {/* Explore categories */}
       <section className="border-y border-white/[0.07] bg-coal-950/40">
-        <div className="container-page py-20">
+        <div className="container-wide py-20">
           <p className="eyebrow">Browse by type</p>
           <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
             Explore categories
@@ -234,7 +234,7 @@ export default async function HomePage() {
       </section>
 
       {/* Market Pulse */}
-      <section className="container-page py-20">
+      <section className="container-wide py-20">
         <div className="mb-9 flex items-center gap-3">
           <h2 className="font-serif text-3xl font-bold text-bone">Market Pulse</h2>
           <Chip tone="gold">Editorial</Chip>
@@ -300,7 +300,7 @@ export default async function HomePage() {
 
       {/* Trust & transparency */}
       <section className="border-t border-white/10 bg-coal-950/40">
-        <div className="container-page py-20">
+        <div className="container-wide py-20">
           <h2 className="mb-9 font-serif text-3xl font-bold text-bone">
             Built for institutional trust
           </h2>
@@ -317,7 +317,7 @@ export default async function HomePage() {
 
       {/* Sell with Singha */}
       <section className="border-t border-white/10">
-        <div className="container-page flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-wide flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-serif text-3xl font-bold text-bone">Sell with Singha</h2>
             <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
