@@ -103,8 +103,17 @@ export default async function HomePage() {
         <HomeHeroBackdrop />
         <div className="container-wide relative flex min-h-[85vh] flex-col justify-center py-20 sm:py-24 lg:min-h-[90vh]">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-            {/* Left — editorial copy */}
-            <div>
+            {/* Left — editorial copy. A drop-shadow filter lifts every line of copy off the
+                untinted hero image (the darkening scrim was removed). It must be drop-shadow, not
+                text-shadow: text-shadow breaks the gradient-clipped headline ("assets & commodities",
+                background-clip:text + transparent fill), whereas drop-shadow shadows the rendered
+                gold pixels and leaves the fill intact — and it still shadows the plain copy below. */}
+            <div
+              style={{
+                filter:
+                  'drop-shadow(0 1px 1px rgba(0,0,0,0.85)) drop-shadow(0 2px 12px rgba(0,0,0,0.6))',
+              }}
+            >
               <p className="eyebrow flex items-center gap-2">
                 <span className="relative inline-flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-red-500" />

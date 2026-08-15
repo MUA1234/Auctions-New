@@ -10,11 +10,10 @@ import { useFlags } from '../lib/use-flags';
  * `?v3=on` review session). The image is served from our own origin (`/images/...`), so it
  * satisfies the strict `img-src 'self'` CSP — no external hotlink.
  *
- * Two scrims keep the light hero copy legible over the artwork and blend the image into the
- * page's black base: a horizontal wash that is darkest on the left (where the headline and
- * CTAs sit) and a vertical wash that fades the foot of the hero into coal-950. Decorative
- * only (`aria-hidden`, never a tap target) and reduced-motion safe — the sole motion is a
- * one-shot opacity fade-in, which is disabled under `prefers-reduced-motion`.
+ * The artwork is shown clean — no darkening scrim or tint over it; hero-copy legibility comes
+ * from text shadows on the copy itself (see the hero in `app/page.tsx`). Decorative only
+ * (`aria-hidden`, never a tap target) and reduced-motion safe — the sole motion is a one-shot
+ * opacity fade-in, which is disabled under `prefers-reduced-motion`.
  */
 export function HomeHeroBackdrop() {
   const { flags } = useFlags();
@@ -30,26 +29,12 @@ export function HomeHeroBackdrop() {
       className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-700 ease-out motion-reduce:transition-none"
       style={{ opacity: shown ? 1 : 0 }}
     >
-      {/* The artwork — cover-fit, anchored slightly low so the glow sits near the fold. */}
+      {/* The artwork — cover-fit. Shown clean: no tint/scrim overlay (hero-copy legibility comes
+          from text shadows). On mobile the frame is shifted left so the bright glow sits away from
+          the full-width, left-aligned copy; from md up it re-centres for the two-column layout. */}
       <div
-        className="absolute inset-0 bg-cover"
-        style={{
-          backgroundImage: "url('/images/home-hero.webp')",
-          backgroundPosition: 'center 62%',
-        }}
-      />
-      {/* Legibility + blend scrims (kept in one layer as stacked gradients). */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: [
-            // Horizontal: lightly dark under the left-hand copy, opening up over the glow
-            // (kept just enough for headline contrast — the artwork stays clearly visible).
-            'linear-gradient(90deg, rgba(9,9,10,0.7) 0%, rgba(9,9,10,0.38) 32%, rgba(9,9,10,0.06) 58%, rgba(9,9,10,0.28) 100%)',
-            // Vertical: soften the top under the header, fade the foot into the page base.
-            'linear-gradient(180deg, rgba(9,9,10,0.5) 0%, rgba(9,9,10,0) 22%, rgba(9,9,10,0) 62%, #09090a 100%)',
-          ].join(','),
-        }}
+        className="absolute inset-0 bg-cover [background-position:28%_60%] md:[background-position:center_62%]"
+        style={{ backgroundImage: "url('/images/home-hero.webp')" }}
       />
     </div>
   );
