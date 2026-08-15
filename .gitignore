@@ -23,6 +23,10 @@ playwright-report/
 # Screenshot-matrix output (visual QA artifacts, not source)
 v3-screens/
 evo-screens/
+review-shots/
+# Local Evolution-preview review harnesses (require a local API+auth stub; not for CI)
+apps/web/e2e/review-shots.spec.ts
+apps/web/e2e/review-authed.spec.ts
 
 # Prisma generated client
 database/generated/
