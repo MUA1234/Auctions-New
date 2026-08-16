@@ -11,6 +11,7 @@ import {
   withdrawCommercialOffer,
   type OfferView,
 } from '../../lib/evolution-api';
+import { friendlyMessage } from './evo-api-error';
 
 /**
  * Commercial Offer V2 (E4) — the buyer's "my offers" console. Lists every commercial offer the
@@ -36,7 +37,7 @@ export function MyCommercialOffers() {
         if (alive) setRows(data);
       })
       .catch((err) => {
-        if (alive) setError(err instanceof Error ? err.message : 'Failed to load your offers.');
+        if (alive) setError(friendlyMessage(err, 'Failed to load your offers.'));
       });
     return () => {
       alive = false;
@@ -51,7 +52,7 @@ export function MyCommercialOffers() {
       await withdrawCommercialOffer(id, token);
       setReload((n) => n + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not withdraw the offer.');
+      setError(friendlyMessage(err, 'Could not withdraw the offer.'));
     } finally {
       setBusy(null);
     }

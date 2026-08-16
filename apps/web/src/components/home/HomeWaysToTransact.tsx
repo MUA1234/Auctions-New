@@ -74,7 +74,9 @@ export function HomeWaysToTransact() {
                 className="group mt-3 inline-flex items-center gap-1 text-sm font-medium text-gold-300 transition-colors hover:text-gold-200"
               >
                 {m.cta}
-                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                  →
+                </span>
               </Link>
             </div>
           ))}

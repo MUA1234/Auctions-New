@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Chip } from '@singha/ui';
 import { fetchLotDetail, type LotDetail } from '../../../lib/api';
 import { mediaUrl } from '../../../lib/media';
+import { humanize } from '../../../lib/format';
 import { BidPanel } from '../../../components/BidPanel';
 import { BidBattle } from '../../../components/BidBattle';
 import { SalePanel } from '../../../components/SalePanel';
@@ -32,7 +33,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
 
   const attrs = lot.attributes ?? {};
   const place = [lot.location?.city, lot.location?.region].filter(Boolean).join(', ');
-  const method = SALE_METHOD_LABEL[lot.saleMethod] ?? lot.saleMethod.replace(/_/g, ' ');
+  const method = SALE_METHOD_LABEL[lot.saleMethod] ?? humanize(lot.saleMethod);
   const priceMinor = lot.auction?.currentBidMinor ?? lot.currentBidMinor;
   // Supporting documents (contracts, certificates, reports) are just another `media` kind
   // (`packages/contracts/src/commands.ts` `mediaKindValues`) — the gallery already keeps
@@ -102,7 +103,7 @@ export default async function LotPage({ params }: { params: { id: string } }) {
                     key={k}
                     className="flex justify-between gap-4 border-b border-white/[0.06] py-2.5 text-sm"
                   >
-                    <dt className="capitalize text-bone-500">{k.replace(/([A-Z])/g, ' $1')}</dt>
+                    <dt className="text-bone-500">{humanize(k)}</dt>
                     <dd className="text-right text-bone-200">{String(v)}</dd>
                   </div>
                 ))}
@@ -204,5 +205,5 @@ function StatusChip({ status }: { status: string }) {
   const s = status.toLowerCase();
   const tone =
     s === 'live' || s === 'open' || s === 'active' ? 'win' : s === 'sold' ? 'neutral' : 'gold';
-  return <Chip tone={tone}>{status.replace(/_/g, ' ')}</Chip>;
+  return <Chip tone={tone}>{humanize(status)}</Chip>;
 }

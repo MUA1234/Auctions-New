@@ -41,6 +41,13 @@ export function friendlyMessage(err: unknown, fallback: string): string {
   if (status === 429) return 'Too many attempts — please wait a moment and try again.';
   if (status != null && status >= 500) return 'Something went wrong on our side. Please try again.';
   const message = err instanceof Error ? err.message : String(err);
-  if (!message || RAW_API_ERROR.test(message.trim())) return fallback;
+  if (!message || RAW_API_ERROR.test(message.trim())) {
+    // (CX11) 400/422/409 usually carry a legible backend `message` (handled above, unchanged) —
+    // this only fires when one wasn't sent, so the customer still gets a status-appropriate line
+    // instead of the generic caller fallback.
+    if (status === 409) return 'This may have changed since you loaded it — refresh and try again.';
+    if (status === 400 || status === 422) return 'Please check the details and try again.';
+    return fallback;
+  }
   return message;
 }

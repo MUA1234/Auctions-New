@@ -8,7 +8,7 @@ import { SignInPrompt } from '../../../components/SignInPrompt';
 import { StatusChip } from '../../../components/StatusChip';
 import { fetchMyWatch, removeWatch, type WatchedLot } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
-import { formatMoney, timeLeft } from '../../../lib/format';
+import { formatMoney, humanize, timeLeft } from '../../../lib/format';
 
 export default function WatchlistPage() {
   const { token, loading } = useAuth();
@@ -74,7 +74,7 @@ export default function WatchlistPage() {
                     {lot.title}
                   </Link>
                   <p className="text-xs capitalize text-bone-500">
-                    {lot.category} · {lot.saleMethod.replace(/_/g, ' ').toLowerCase()}
+                    {lot.category} · {humanize(lot.saleMethod)}
                     {lot.endsAt ? ` · ends in ${timeLeft(lot.endsAt)}` : ''}
                   </p>
                 </div>

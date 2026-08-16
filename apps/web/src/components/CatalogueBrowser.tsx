@@ -20,6 +20,7 @@ import {
   AllCategoriesIcon,
   AllMethodsIcon,
 } from '../lib/categories';
+import { humanize } from '../lib/format';
 
 // Customer-facing view names are Flow | Grid | List (Revision 05 §4). The internal
 // primitives keep their names (CubeRow, AuctionFlowViewport, `flow` id) — only the
@@ -578,7 +579,7 @@ function ListView({ items }: { items: CatalogueCardV2[] }) {
               {lot.category} · {lot.reference}
             </p>
           </div>
-          <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
+          <Chip>{humanize(lot.saleMethod)}</Chip>
         </Link>
       ))}
     </div>
@@ -621,7 +622,7 @@ function Pager({
 /** Small caps wayfinding label that leads each filter row ("Category", "Sale method"). */
 function FilterLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mr-0.5 hidden select-none text-[10px] font-semibold uppercase tracking-[0.18em] text-bone-600 sm:inline">
+    <span className="sr-only mr-0.5 select-none text-[10px] font-semibold uppercase tracking-[0.18em] text-bone-600 sm:not-sr-only sm:inline">
       {children}
     </span>
   );

@@ -18,6 +18,7 @@ import {
   type SealedListingView,
   type SealedRankedOffer,
 } from '../../lib/evolution-api';
+import { friendlyMessage } from './evo-api-error';
 
 /**
  * Sealed Offer (E4) seller console — compare and select the winning commercial offer for a listing.
@@ -38,7 +39,7 @@ interface ConsoleRow {
 }
 
 function errMsg(e: unknown, fallback: string): string {
-  return e instanceof Error ? e.message : fallback;
+  return friendlyMessage(e, fallback);
 }
 
 export function SellerOffersConsole({ listingId }: { listingId: string }) {

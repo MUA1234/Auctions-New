@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card } from '@singha/ui';
 import { createClient } from '../../utils/supabase/client';
+import { friendlyMessage } from '../../components/evolution/evo-api-error';
 
 type Mode = 'signin' | 'signup' | 'magic' | 'reset';
 
@@ -93,7 +94,7 @@ function LoginInner() {
         setNotice('Password reset link sent — check your email.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Card } from '@singha/ui';
 import { fetchEvents, type EventSummary } from '../../lib/api';
 import { StatusChip } from '../../components/StatusChip';
+import { humanize } from '../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,8 +61,8 @@ export default async function EventsPage() {
                 <h2 className="mt-3 font-display text-xl font-bold text-bone group-hover:text-white">
                   {e.title}
                 </h2>
-                <p className="mt-1 text-sm capitalize text-bone-500">
-                  {e.eventType.replace(/_/g, ' ')}
+                <p className="mt-1 text-sm text-bone-500">
+                  {humanize(e.eventType)}
                   {e.locationCity ? ` · ${e.locationCity}` : ''}
                 </p>
                 <p className="mt-4 text-sm text-bone-300">{eventDate(e.startsAt)}</p>

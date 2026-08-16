@@ -5,6 +5,7 @@ import { useReducedMotion } from '@singha/auctionflow';
 import { placeBid, type AuctionState, type PlaceBidResult } from '../lib/api';
 import { formatMoney } from '../lib/format';
 import { isRepriced, newIntentId, nextBidMinor, shouldCommitGesture } from '../lib/gesture';
+import { friendlyMessage } from './evolution/evo-api-error';
 
 const ACK_KEY = 'singha_gesture_ack';
 const HANDLE = 64; // px
@@ -67,9 +68,7 @@ export function GestureBidControl({
         r.youLead ? 'You are the highest bidder.' : 'Bid placed — a proxy max is still ahead.',
       );
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Bid was not accepted — the price may have moved.',
-      );
+      setError(friendlyMessage(err, 'Bid was not accepted — the price may have moved.'));
     } finally {
       setBusy(false);
       snapBack();

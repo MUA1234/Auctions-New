@@ -1,4 +1,5 @@
 import { Chip, type ChipTone } from '@singha/ui';
+import { humanize } from '../lib/format';
 
 const WIN = ['won', 'winning', 'accepted', 'active', 'live', 'open', 'verified', 'paid', 'settled'];
 const BAD = ['outbid', 'declined', 'rejected', 'withdrawn', 'expired', 'lapsed', 'cancelled'];
@@ -19,5 +20,5 @@ export function StatusChip({ status }: { status: string }) {
   if (WIN.includes(s)) tone = 'win';
   else if (BAD.includes(s)) tone = 'outbid';
   else if (PENDING.includes(s)) tone = 'gold';
-  return <Chip tone={tone}>{status.replace(/_/g, ' ')}</Chip>;
+  return <Chip tone={tone}>{humanize(status)}</Chip>;
 }

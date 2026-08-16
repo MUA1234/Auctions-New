@@ -31,6 +31,7 @@ import { formatDateTime, humanize, incotermName } from '../../lib/format';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { StatusChip } from '../../components/StatusChip';
 import { Price } from './Price';
+import { friendlyMessage } from './evo-api-error';
 
 /**
  * Singha Logistics (E7). One flag-gated buyer surface with three tabs:
@@ -69,7 +70,7 @@ function modeLabel(mode: string | undefined): string {
 const SIGN_IN_NEXT = '/services/logistics';
 
 function errMsg(e: unknown, fallback: string): string {
-  return e instanceof Error && e.message ? e.message : fallback;
+  return friendlyMessage(e, fallback);
 }
 
 export function LogisticsCentre() {

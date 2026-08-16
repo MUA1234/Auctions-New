@@ -7,6 +7,7 @@ import { buyNow, makeOffer, submitEoi, submitTender } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { formatMoney, parseMoneyToMinor } from '../lib/format';
 import { Price } from './evolution/Price';
+import { friendlyMessage } from './evolution/evo-api-error';
 
 /**
  * Buyer action panel for every NON-auction sale method (Singha Exchange, docs/07):
@@ -132,7 +133,8 @@ function Done({ title, body, cta }: { title: string; body: string; cta: ReactNod
   );
 }
 
-const errText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const errText = (err: unknown) =>
+  friendlyMessage(err, 'That did not go through. Please try again.');
 
 function BuyNowPanel({
   listingId,
@@ -265,8 +267,11 @@ function OfferPanel({
     <Card className="flex flex-col gap-4">
       <PriceHeader saleMethod="MAKE_OFFER" currency={currency} priceMinor={priceMinor} />
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <label className="text-sm text-bone-400">Your offer ({currency})</label>
+        <label htmlFor="offer-amount" className="text-sm text-bone-400">
+          Your offer ({currency})
+        </label>
         <input
+          id="offer-amount"
           className="field tabular"
           type="number"
           required
@@ -275,8 +280,11 @@ function OfferPanel({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <label className="text-sm text-bone-400">Note to seller (optional)</label>
+        <label htmlFor="offer-note" className="text-sm text-bone-400">
+          Note to seller (optional)
+        </label>
         <textarea
+          id="offer-note"
           className="field"
           rows={3}
           maxLength={2000}
@@ -351,8 +359,11 @@ function TenderPanel({
     <Card className="flex flex-col gap-4">
       <PriceHeader saleMethod="SEALED_TENDER" currency={currency} priceMinor={priceMinor} />
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <label className="text-sm text-bone-400">Your sealed bid ({currency})</label>
+        <label htmlFor="tender-amount" className="text-sm text-bone-400">
+          Your sealed bid ({currency})
+        </label>
         <input
+          id="tender-amount"
           className="field tabular"
           type="number"
           required
@@ -437,8 +448,11 @@ function EoiPanel({
         <p className="mt-1 font-display text-xl font-semibold text-bone">Register your interest</p>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <label className="text-sm text-bone-400">Indicative amount ({currency}, optional)</label>
+        <label htmlFor="eoi-amount" className="text-sm text-bone-400">
+          Indicative amount ({currency}, optional)
+        </label>
         <input
+          id="eoi-amount"
           className="field tabular"
           type="number"
           min={1}
@@ -446,8 +460,11 @@ function EoiPanel({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <label className="text-sm text-bone-400">Message (optional)</label>
+        <label htmlFor="eoi-message" className="text-sm text-bone-400">
+          Message (optional)
+        </label>
         <textarea
+          id="eoi-message"
           className="field"
           rows={3}
           maxLength={2000}
@@ -455,8 +472,11 @@ function EoiPanel({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
-        <label className="text-sm text-bone-400">Conditions (optional)</label>
+        <label htmlFor="eoi-conditions" className="text-sm text-bone-400">
+          Conditions (optional)
+        </label>
         <textarea
+          id="eoi-conditions"
           className="field"
           rows={2}
           maxLength={2000}

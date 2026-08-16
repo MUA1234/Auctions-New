@@ -12,6 +12,7 @@ import {
 } from '../../../lib/api';
 import { getAccessToken } from '../../../lib/auth';
 import { createClient } from '../../../utils/supabase/client';
+import { friendlyMessage } from '../../../components/evolution/evo-api-error';
 
 const DRAFT_KEY = 'singha_listing_draft_v1';
 const MEDIA_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_MEDIA_BUCKET ?? 'singha-media';
@@ -345,7 +346,11 @@ export default function ListingStudio() {
           closesAt: draft.sale.closesAt ? new Date(draft.sale.closesAt).toISOString() : undefined,
         },
         token,
-      ).catch(() => notes.push('Rich content not stored (endpoint unavailable).'));
+      ).catch(() =>
+        notes.push(
+          "Some listing details (description, location, guide price) weren't saved. Contact Singha support to add them before this listing goes live.",
+        ),
+      );
 
       // Buy-now price has its own authoritative endpoint.
       const buyNowMinor = toMinor(draft.sale.buyNowPrice);
@@ -354,7 +359,11 @@ export default function ListingStudio() {
           `/listings/${listing.id}/buy-now-price`,
           { amountMinor: buyNowMinor, currency: 'LKR' },
           token,
-        ).catch(() => notes.push('Buy-now price not stored (endpoint unavailable).'));
+        ).catch(() =>
+          notes.push(
+            "Your buy-now price wasn't saved. Contact Singha support to add it before this listing goes live.",
+          ),
+        );
 
       // Photos: upload the immutable original through the signed pipeline and
       // register it with the REAL, backend-issued storage key (cover first).
@@ -384,7 +393,9 @@ export default function ListingStudio() {
         }
       }
       if (draft.photos.length > 0 && uploaded === 0)
-        notes.push('No photos were uploaded (storage not reachable from this session).');
+        notes.push(
+          'No photos were uploaded. Contact Singha support to add photos before this listing goes live.',
+        );
 
       // Documents/video require the real signed-upload pipeline before they can be
       // registered (pack FIX-06/07). We do NOT register them by name/URL here.
@@ -416,7 +427,7 @@ export default function ListingStudio() {
       localStorage.removeItem(DRAFT_KEY);
       setDone({ ref: draft.publicRef, notes });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Could not submit this listing. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -430,9 +441,7 @@ export default function ListingStudio() {
           <h1 className="mt-4 font-serif text-3xl font-bold text-bone">
             Listing {done.ref} submitted for review
           </h1>
-          <p className="mt-2 text-bone-400">
-            Staff will review and approve before it goes live (pack doc 16 approval workflow).
-          </p>
+          <p className="mt-2 text-bone-400">Staff will review and approve before it goes live.</p>
           {done.notes.length > 0 && (
             <ul className="mt-4 list-disc space-y-1 pl-5 text-xs text-bone-500">
               {done.notes.map((n, i) => (
@@ -704,7 +713,7 @@ export default function ListingStudio() {
                 onChange={(e) => set('videoUrl', e.target.value)}
               />
             </Field>
-            {draft.videoUrl && <Chip>State: PROCESSING (mock)</Chip>}
+            {draft.videoUrl && <Chip>Pending secure upload</Chip>}
           </div>
         )}
 
@@ -903,8 +912,7 @@ export default function ListingStudio() {
               />
             </Field>
             <p className="text-xs text-bone-600">
-              Fee/tax defaults are configurable business values (pack doc 28) — confirm with staff
-              before publish.
+              Fee/tax defaults are configurable business values — confirm with staff before publish.
             </p>
             <Check
               label="Seller accepts the Singha auction terms & conditions."

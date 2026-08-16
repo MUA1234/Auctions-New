@@ -82,10 +82,21 @@ export function formatLocation(parts: {
   return place || parts.country || '—';
 }
 
-/** Title-case a snake/kebab status token, e.g. "manual_review" → "Manual review". */
+/**
+ * Sentence-case any enum-ish token into customer-safe copy, e.g. "manual_review" →
+ * "Manual review", "REQUEST_SUPPLY" → "Request supply", "buyerPremium" → "Buyer premium".
+ * (CX11/X3): the backend mixes lower_snake, UPPER_SNAKE and camelCase across enums — this
+ * normalizes all three to one consistent sentence-case reading instead of leaving UPPER_SNAKE
+ * shouting or camelCase unspaced.
+ */
 export function humanize(token: string | null | undefined): string {
   if (!token) return '—';
-  const s = token.replace(/[_-]+/g, ' ').trim();
+  const s = token
+    .replace(/[_-]+/g, ' ') // snake_case / kebab-case -> spaces
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // camelCase -> spaced words
+    .trim()
+    .toLowerCase();
+  if (!s) return '—';
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 

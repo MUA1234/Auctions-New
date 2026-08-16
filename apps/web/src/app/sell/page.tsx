@@ -6,7 +6,9 @@ import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, type SellerListing } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { useFlags } from '../../lib/use-flags';
+import { humanize } from '../../lib/format';
 import { SignInPrompt } from '../../components/SignInPrompt';
+import { friendlyMessage } from '../../components/evolution/evo-api-error';
 
 /** Seller dashboard (docs/05, Phase 5): the seller's own listings + wizard CTA. */
 export default function SellerDashboard() {
@@ -24,7 +26,7 @@ export default function SellerDashboard() {
     try {
       setListings(await apiGetAuthed<SellerListing[]>('/listings/mine', t));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Could not load your listings.'));
     }
   }, []);
 
@@ -78,7 +80,7 @@ export default function SellerDashboard() {
                   {l.title ?? l.publicRef}
                 </p>
                 <p className="text-xs capitalize text-bone-500">
-                  {l.category} · {l.saleMethod.replace(/_/g, ' ')} · {l.publicRef}
+                  {l.category} · {humanize(l.saleMethod)} · {l.publicRef}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -91,7 +93,7 @@ export default function SellerDashboard() {
                   </Link>
                 ) : null}
                 <Chip tone={l.status === 'scheduled' || l.status === 'live' ? 'gold' : undefined}>
-                  {l.status.replace(/_/g, ' ')}
+                  {humanize(l.status)}
                 </Chip>
               </div>
             </div>

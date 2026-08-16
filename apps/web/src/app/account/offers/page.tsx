@@ -56,7 +56,7 @@ export default function OffersPage() {
         <Card className="mt-8 text-center">
           <p className="text-bone-300">You haven't made any offers yet.</p>
           <Link
-            href="/catalogue?saleMethod=MAKE_OFFER"
+            href="/catalogue?method=MAKE_OFFER"
             className="mt-3 inline-block text-sm text-gold-400"
           >
             Find lots open to offers →

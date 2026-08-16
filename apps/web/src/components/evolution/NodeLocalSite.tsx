@@ -10,6 +10,7 @@ import {
   type NodeDiscovery,
   type NodePresentation,
 } from '../../lib/evolution-api';
+import { friendlyMessage } from './evo-api-error';
 
 /**
  * Public local-site for a Satellite Market Node (E13). A marketing-style storefront for one node
@@ -43,7 +44,7 @@ export function NodeLocalSite() {
           setError(null);
         }
       })
-      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)))
+      .catch((e) => alive && setError(friendlyMessage(e, 'This local market is unavailable.')))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -67,9 +68,9 @@ export function NodeLocalSite() {
     return (
       <div className="container-page py-16">
         <Card className="mx-auto max-w-lg py-12 text-center">
-          <p className="font-serif text-xl text-bone-200">This market node is unavailable</p>
+          <p className="font-serif text-xl text-bone-200">This local market is unavailable</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-bone-500">
-            {error ?? 'We couldn’t find a market node for this address.'}
+            {error ?? 'We couldn’t find a local market at this address.'}
           </p>
           <div className="mt-5 flex justify-center gap-3">
             <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
@@ -131,8 +132,8 @@ export function NodeLocalSite() {
         <Card className="mt-5 py-12 text-center">
           <p className="font-serif text-lg text-bone-200">Nothing listed for this market yet</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-bone-500">
-            Inventory is drawn live from the central Singha marketplace and appears here as it is
-            attributed to this node.
+            Inventory is drawn live from the central Singha marketplace and appears here for this
+            local market.
           </p>
         </Card>
       ) : (

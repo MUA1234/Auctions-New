@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card } from '@singha/ui';
 import { fetchEvent, type EventDetail } from '../../../lib/api';
 import { StatusChip } from '../../../components/StatusChip';
-import { formatMoney } from '../../../lib/format';
+import { formatMoney, humanize } from '../../../lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,7 @@ export default async function EventDetailPage({ params }: { params: { ref: strin
       <div className="mt-6 flex flex-wrap items-center gap-2.5">
         <StatusChip status={event.status} />
         <span className="text-xs uppercase tracking-wide text-bone-500">
-          {event.eventType.replace(/_/g, ' ')}
+          {humanize(event.eventType)}
         </span>
         {event.liveEnabled && (
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-300">

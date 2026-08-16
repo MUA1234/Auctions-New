@@ -180,7 +180,10 @@ export default async function HomePage() {
                 className="group text-sm font-medium text-gold-300 transition-colors hover:text-gold-200"
               >
                 View all{' '}
-                <span className="inline-block transition-transform group-hover:translate-x-0.5">
+                <span
+                  aria-hidden
+                  className="inline-block transition-transform group-hover:translate-x-0.5"
+                >
                   →
                 </span>
               </Link>

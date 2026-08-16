@@ -7,9 +7,10 @@ import { apiBase, apiGet, placeBid, type AuctionState, type PlaceBidResult } fro
 import { useAuth } from '../lib/auth';
 import { useFlags } from '../lib/use-flags';
 import { newIntentId } from '../lib/gesture';
-import { formatMoney, timeLeft } from '../lib/format';
+import { formatMoney, humanize, timeLeft } from '../lib/format';
 import { GestureBidControl } from './GestureBidControl';
 import { Price } from './evolution/Price';
+import { friendlyMessage } from './evolution/evo-api-error';
 
 export function BidPanel({
   auctionId,
@@ -70,7 +71,8 @@ export function BidPanel({
   const minNext =
     state.currentBidMinor == null ? state.openingBidMinor : current + state.incrementMinor;
 
-  const errText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+  const errText = (err: unknown) =>
+    friendlyMessage(err, 'Your bid was not accepted. Please try again.');
 
   /** Reflect an accepted bid — called by the proxy form and the Gesture Bid. */
   async function applyResult(r: PlaceBidResult, msg: string) {
@@ -121,7 +123,7 @@ export function BidPanel({
         <p className="mt-1 text-sm text-bone-400">
           {state.status === 'open'
             ? `Ends in ${timeLeft(state.endsAt)}`
-            : `Status: ${state.status}`}
+            : `Status: ${humanize(state.status)}`}
         </p>
       </div>
 
@@ -157,8 +159,11 @@ export function BidPanel({
             </>
           )}
           <form onSubmit={bid} className="flex flex-col gap-3">
-            <label className="text-sm text-bone-400">Your maximum bid ({state.currency})</label>
+            <label htmlFor="bid-amount" className="text-sm text-bone-400">
+              Your maximum bid ({state.currency})
+            </label>
             <input
+              id="bid-amount"
               className="field tabular"
               type="number"
               required

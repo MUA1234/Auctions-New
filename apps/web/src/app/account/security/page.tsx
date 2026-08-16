@@ -14,6 +14,7 @@ import {
   type MfaFactor,
   type TotpEnrollment,
 } from '../../../lib/mfa';
+import { friendlyMessage } from '../../../components/evolution/evo-api-error';
 
 /**
  * Account security (pack doc 09 "MFA privileged staff"). Enroll and manage TOTP
@@ -39,7 +40,7 @@ export default function SecurityPage() {
       setFactors(f);
       setAal(a);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Could not load your security settings.'));
     }
   }, []);
 
@@ -76,7 +77,7 @@ export default function SecurityPage() {
     try {
       setEnrollment(await enrollTotp());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Could not start authenticator setup.'));
     } finally {
       setBusy(false);
     }
@@ -94,7 +95,7 @@ export default function SecurityPage() {
       setNotice('Authenticator verified. Your account is now protected by MFA.');
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That code was not accepted. Try again.');
+      setError(friendlyMessage(err, 'That code was not accepted. Try again.'));
     } finally {
       setBusy(false);
     }
@@ -109,7 +110,7 @@ export default function SecurityPage() {
       await refresh();
       setNotice('Authenticator removed.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyMessage(err, 'Could not remove that authenticator.'));
     } finally {
       setBusy(false);
     }

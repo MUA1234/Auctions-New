@@ -13,6 +13,7 @@ import {
   type OfferProposalInput,
   type OfferView,
 } from '../../lib/evolution-api';
+import { friendlyMessage } from './evo-api-error';
 
 /**
  * Commercial Offer V2 (E4) — full-terms offer form. The buyer proposes a complete commercial
@@ -88,7 +89,7 @@ export function CommercialOfferForm({ listingId }: { listingId: string }) {
       const offer = await submitCommercialOffer({ listingId, sealed, proposal }, token);
       setSubmitted(offer);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit your offer.');
+      setError(friendlyMessage(err, 'Could not submit your offer.'));
     } finally {
       setBusy(false);
     }

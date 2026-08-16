@@ -20,7 +20,8 @@ import {
   type WatchedLot,
 } from '../../lib/api';
 import { signOut, useAuth } from '../../lib/auth';
-import { formatMoney, timeLeft } from '../../lib/format';
+import { formatMoney, humanize, timeLeft } from '../../lib/format';
+import { friendlyMessage } from '../../components/evolution/evo-api-error';
 
 /**
  * Buyer command centre (pack doc 05). Prefers the server projection
@@ -56,7 +57,7 @@ export default function DashboardPage() {
       ]);
       setProjection(deriveProjection(watch, eois, offers));
     } catch (err) {
-      if (!quiet) setError(err instanceof Error ? err.message : String(err));
+      if (!quiet) setError(friendlyMessage(err, 'Could not load your command centre.'));
     }
   }, []);
 
@@ -238,7 +239,7 @@ function deriveProjection(
       items: eois.map((e) => ({
         listingId: e.listingId,
         reference: e.listingId.slice(-6),
-        title: `Listing ${e.listingId.slice(-6)}`,
+        title: 'Expression of interest',
         category: '',
         saleMethod: 'EXPRESSION_OF_INTEREST',
         status: e.status,
@@ -252,7 +253,7 @@ function deriveProjection(
       items: offers.map((o) => ({
         listingId: o.listingId,
         reference: o.listingId.slice(-6),
-        title: `Listing ${o.listingId.slice(-6)}`,
+        title: 'Commercial offer',
         category: '',
         saleMethod: 'MAKE_OFFER',
         status: o.status,
@@ -278,14 +279,14 @@ function StatusCard({ lot, groupKey }: { lot: DashboardLot; groupKey: string }) 
     <Link href={`/lot/${lot.listingId}`} className="block h-full">
       <Card className="flex h-full flex-col gap-2 transition-colors hover:border-red-500/30">
         <div className="flex items-center justify-between">
-          <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
+          <Chip>{humanize(lot.saleMethod)}</Chip>
           <StatusPill groupKey={groupKey} status={lot.status} />
         </div>
         <h3 className="font-display text-sm font-semibold text-bone">{lot.title}</h3>
         {lot.category && <p className="text-xs capitalize text-bone-500">{lot.category}</p>}
         <div className="mt-auto flex items-end justify-between">
           <span className="tabular font-display text-base font-bold text-gold-400">
-            {money ?? lot.status.replace(/_/g, ' ')}
+            {money ?? humanize(lot.status)}
           </span>
           {deadline && <span className="text-xs text-bone-400">{timeLeft(deadline)}</span>}
         </div>
@@ -305,11 +306,7 @@ const GROUP_TONE: Record<string, string> = {
 
 function StatusPill({ groupKey, status }: { groupKey: string; status: string }) {
   const tone = GROUP_TONE[groupKey] ?? 'text-bone-500';
-  return (
-    <span className={`text-[11px] capitalize ${tone}`}>
-      {status.replace(/_/g, ' ').toLowerCase()}
-    </span>
-  );
+  return <span className={`text-[11px] ${tone}`}>{humanize(status)}</span>;
 }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
