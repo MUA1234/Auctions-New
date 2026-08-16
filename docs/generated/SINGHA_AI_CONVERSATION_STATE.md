@@ -96,9 +96,23 @@ no rate-limiting on `/ai/*` or `/connect/*`; no voice channel in `ChannelType`; 
 
 ## Done
 - **AIC-0** — recon complete (above). Backend branch restarted from `origin/main`.
-- **AIC-1** — customer AI assistant vertical slice (in progress): new least-privilege `AiConverse`
-  permission, `FEATURE_AI_CONVERSATION` flag (enforced), server-side customer-safe `ItemContext`
-  from `catalogue-v2.get()`, `AssistantService` (guard→MockAiProvider→AiRun, non-binding,
-  ownership-scoped, rate-limited), `/assistant/*` endpoints, **no schema migration** (reuses
-  `Message.payload` + `AiRun.subject`). Security tests: privacy / injection / non-binding / flag-off
-  / cross-customer denial.
+- **AIC-1 — DONE** (backend `ee7fe92`). Customer AI assistant vertical slice: new least-privilege
+  `AiConverse` permission (Customer + Seller/SellerStaff; staff `AiUse`/`ConnectOperate` untouched),
+  `FEATURE_AI_CONVERSATION` flag (default off, **enforced** before any DB access), server-side
+  customer-safe `ItemContext` from `catalogue-v2.get()` via an explicit per-sale-kind allowlist
+  (closed a real gap — the generic redactContext regex wouldn't strip sellerFloor/staffNote/
+  competitor by name), `AssistantService` (guard→MockAiProvider→audited `AiRun`, **non-binding**,
+  ownership-scoped 404-not-403, transactional), `/assistant/message` + `/assistant/conversations/:id`
+  (`@Throttle` rate-limited). **No schema migration** (rides `Message.payload` + `AiRun.subject`).
+  Lead-reviewed all five security invariants in-code. Gates green: `pnpm check` 13/13 (74 API unit
+  tests, 17 new); contract clean (the apparent drift when run against the seeded preview DB is a
+  data/formatting artifact — AIC-1 never touched `public-api.contract.json`); new live `e2e-assistant`
+  suite (27 checks, flag on + off).
+
+## Next
+- **AIC-2** — channels + continuity: add `voice` to `ChannelType` (additive), cross-channel
+  continuity (one logical conversation across webchat→WhatsApp→voice, preserving identity/context/
+  history/language/intent/stage/next-action), the "Chat now / WhatsApp / Call me" channel-request
+  flow (capability-driven, deep-link + callback request, non-binding, fake providers), and
+  human-handoff context (extend the existing `setMode`). Model-provider abstraction already exists
+  (`AiProvider`/`MockAiProvider`, used by AIC-1).
