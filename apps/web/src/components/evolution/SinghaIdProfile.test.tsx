@@ -62,10 +62,10 @@ describe('SinghaIdProfile (E11 Singha ID)', () => {
     // Profile fields render from the loaded profile.
     expect(await screen.findByDisplayValue('Asia/Colombo')).toBeTruthy();
     expect(screen.getByDisplayValue('buyer, seller')).toBeTruthy();
-    // Every capability is listed by name (also offered in the request Select);
-    // the verified grant shows its status via StatusChip.
+    // Every capability is offered by name in the request Select (raw enum never shown — CX7);
+    // the verified grant's passport row shows the friendly state, not the raw backend status.
     expect(screen.getAllByText('Place bid').length).toBeGreaterThan(0);
-    expect(screen.getByText('verified')).toBeTruthy();
+    expect(screen.getByText('Verified')).toBeTruthy();
   });
 
   it('requesting a capability calls requestCapability with the chosen capability', async () => {

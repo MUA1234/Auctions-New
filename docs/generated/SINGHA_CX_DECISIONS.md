@@ -3,6 +3,107 @@
 Meaningful, reversible-internal decisions taken autonomously during the Customer Experience
 Overhaul and the Living Background work. Newest first.
 
+## D-CX-4 · CX7 Command Centre + Singha ID passport: combining two read-models, an honest passport-state vocabulary, and what stayed out of scope
+
+**The Command Centre's "Needs your attention" needed two data sources, not one — the aggregate
+alone cannot express deadlines.** `EvoDashboard` (`GET /dashboard`, E11, the pre-existing
+`ExchangeActivity` data source) is COUNTS ONLY — `{total, byStatus}` per section, no dates, no
+per-lot detail. "Payment required", "closing soon" and "shipment/collection" (three of the pack's
+own example attention items) are structurally impossible to derive from that shape alone. The
+buyer command-centre projection (`fetchDashboard`/`DashboardProjection`, `lib/api.ts` — the same
+read model `app/dashboard/page.tsx` already renders as its top strip + Rubik bands) has exactly
+the missing typed fields: `strip.outbid`/`paymentDueMinor`/`readyForPickup` and per-lot `endsAt`.
+CX7's brief explicitly pointed at reading `dashboard/page.tsx` + `streamDashboard` "to understand
+what read-model fields exist before designing" — read as an instruction to consume that
+projection here, not merely to study it. `fetchDashboard` already resolves `null` (never throws)
+when the projection isn't shipped, so it was added as a second, purely additive `Promise.all`
+member; the aggregate remains the one call whose failure still surfaces the page-level error
+state, unchanged from before. The SSE half (`streamDashboard`) was deliberately NOT wired in here
+— realtime per-lot deep-dive is `/dashboard`'s own job; duplicating it would risk two surfaces
+drifting out of sync for no requirement this pack states. `fetchCapabilities` was added as a
+third, best-effort (`.catch(() => [])`) source so "verification needed" can name the actual
+capability instead of only a count — reusing the exact call `SinghaIdProfile` already made.
+
+**Auction "stage" is read off real group membership, never guessed from a status string.** The
+five-stage stepper (Bidding → Won → Payment → Collection → Complete) needed an authoritative
+notion of "which stage is this lot at" per buyer-projection group. Rather than pattern-match an
+unenumerated per-lot `status` string (real risk of inventing meaning the API never asserted),
+`auctionStage()` classifies the GROUP's own `key`/label against the vocabulary
+`app/dashboard/page.tsx` already treats as real and shipped (`GROUP_TONE`'s
+WINNING/WON/OUTBID/LOST/PAYMENT_DUE, `deriveProjection`'s WATCHING/EOI_SUBMITTED/OFFERS_ACTIVE) —
+an item's stage is simply the group it already sits in, which the backend (or the existing
+fallback) put it in. An unrecognised key returns `null` and renders as a plain chip instead of
+being force-fit onto a stage; a "closing soon" attention count is likewise computed purely from
+each lot's own `endsAt` being a real future timestamp inside 48h (mirroring the catalogue's
+existing `endingSoon` window) — self-limiting, since an ended/won lot's `endsAt` is already in
+the past and drops out on its own, with no group-key guesswork required for that count.
+
+**"Wanted" became its own lane, pulling `procurementRequests`/`procurementResponses` out of
+Buying/Selling.** The pack's five named lanes (Buying · Selling · Wanted · Logistics · Documents)
+don't map 1:1 onto `EvoDashboard`'s two top-level keys (`buying`/`selling`); Wanted/RFQ is already
+a first-class, separate top-level concept in this product's own IA (the mobile dock reads Explore
+| **Wanted** | Sell | Activity | Account; `/wanted` already presents buyer-demand and
+supplier-response as two explicit cards — CX6). Splitting the request/response pair out of
+Buying/Selling into their own Wanted lane matches how the rest of the app already talks about
+this flow, rather than inventing a new grouping.
+
+**Logistics is the one lane gated strictly on the optional projection — the aggregate has no
+shipment field at all.** Buying/Selling/Wanted/Documents can always render (worst case, an
+`EmptyState`) because they lean on `EvoDashboard`, which is required for the page to reach its
+success state in the first place. Logistics has no aggregate fallback whatsoever — its only
+possible data point is `buyer.strip.readyForPickup` — so it is the one lane that disappears
+entirely (not just empty-states) when `fetchDashboard` resolves `null`, taking "only render a
+lane if the API can populate it" at its most literal for the one lane where that's the honest
+answer.
+
+**Identity/Company use "Complete"/"Not started", not the passport's "Verified" vocabulary — no
+one verifies a self-declared country or company-roles field.** The brief's four states
+(Verified / Under review / Action needed / Not started) map cleanly onto `CapabilityGrant.status`
+— a real, backend-tracked review state — for the three capability sections (Seller readiness /
+Bidder & buyer readiness / Trade capabilities & licences). Identity (country/language/timezone/
+currency) and Company (`companyRoles`) are plain preference fields nobody reviews; labelling a
+filled-in country field "Verified" would be a false claim no operator ever made. Both instead get
+an honest completeness chip (`Complete` vs `Add your details`/`Not started`) in the same visual
+language, keeping the passport framing without fabricating a verification that didn't happen.
+
+**`passportState()` defaults an unrecognised status to "Under review", and demotes an expired
+"verified" grant to "Action needed" using the same `expiresAt` already shown today.** Only
+`verified` maps to Verified and only a short, deliberate list
+(rejected/declined/expired/revoked/lapsed/cancelled) maps to Action needed; every other token —
+including any future backend status this pack hasn't seen — lands on "Under review" rather than
+being silently promoted to Verified (would overclaim a capability) or alarmingly flagged Action
+needed (would falsely tell a customer something is wrong). A `verified` grant whose `expiresAt`
+has already passed is reclassified to Action needed — not a new field, just honestly reading the
+one `expiresAt` `SinghaIdProfile` already displayed as "Expires …" before this phase.
+
+**Two existing test assertions were intentionally changed, both because CX7 intentionally changed
+the UI text they were asserting on — no other assertion in either file was touched.**
+`SinghaIdProfile.test`'s `getByText('verified')` (the raw lowercase `StatusChip` status word) is
+now `getByText('Verified')` (the friendly passport-state label) — asserting on the raw status
+verbatim would contradict this very phase's "map any enum/status to friendly labels" instruction.
+`ExchangeActivity.test`'s `getByText('Verification')` heading is now `getByText('Documents')` —
+the pack names "Documents" as one of the five required lanes, replacing the old "Verification"
+section outright. Every numeric assertion in both files (5/3/2/4/6/7, the profile/timezone/
+company-roles field values, the capability-request interaction) is byte-for-byte unchanged. Two
+new focused test files were added rather than folded into existing ones:
+`ExchangeActivity.test.tsx` gained two `it()`s (the empty "all caught up" state, and a populated
+"Needs your attention" derived from all three read-models together, scoped with `within()` to the
+attention `<section>` so it can't collide with an identically-worded lane heading elsewhere on
+the page); `capability-state.test.ts` is a new pure-unit-test file (14 tests) for the shared
+mapping, matching this repo's existing convention of unit-testing pure `lib`-style modules
+(`flags.test.ts`, `passport.test.ts`).
+
+**Known gap, not built: a buyer can't actually action a "counter-offer to respond to" from
+`/account/commercial-offers` today — only Withdraw exists there.** `acceptCommercialOffer` /
+`rejectCommercialOffer` / `counterCommercialOffer` are real, existing exports, but every current
+call site is the SELLER console (`SellerOffersConsole.tsx`); `MyCommercialOffers.tsx` (the
+buyer's own offers list, CX7's attention link target) only wires `withdrawCommercialOffer`. This
+is not a missing backend field — the API shapes exist — it's a buyer-facing accept/counter UI
+that was never built on that page, and building it is a `MyCommercialOffers` enhancement in its
+own right, not part of recomposing `account/activity`/`SinghaIdProfile` (this phase's named
+files). Left as a real, reported gap rather than silently building a same-page workaround that
+would duplicate what belongs on the offers console.
+
 ## D-CX-2 · CX6 Wanted/RFQ + Supply: read-model ceilings, two newly-wired existing endpoints, and a cross-cutting date-format fix
 
 **The buyer's comparison view can only show price, incoterm and rank — verified against

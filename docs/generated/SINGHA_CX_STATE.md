@@ -80,11 +80,37 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
   assertions — only extended `SupplyProgrammes.test`'s `vi.mock` factory with the two newly-wired
   read calls); `next build` succeeds. Full findings: `SINGHA_CX_DECISIONS.md` D-CX-2.
 
+- **CX7 (Command Centre + Singha ID passport)** — `account/activity`/`ExchangeActivity`
+  recomposed into an attention-led Command Centre: a "Needs your attention" triage (outbid,
+  payment due, ready for pickup, closing within 48h, counter-offers to respond to, verification
+  action needed/expiring) derived only from typed fields already on `EvoDashboard` (`/dashboard`,
+  E11) and, where available, the richer per-lot buyer command-centre projection (`fetchDashboard`
+  — the same read model `app/dashboard/page.tsx` already uses) — no new backend calls, no
+  invented data. Activity below it is grouped into five lanes — Buying · Selling · Wanted ·
+  Logistics · Documents — each rendered only when its data source can populate it (Logistics only
+  appears once the buyer projection resolves), each with an `EmptyState` instead of a raw error;
+  Buying additionally shows a five-stage auction stepper (Bidding → Won → Payment → Collection →
+  Complete) built from the buyer projection's real group keys (grounded in the same
+  WATCHING/WINNING/OUTBID/WON/PAYMENT_DUE vocabulary `app/dashboard/page.tsx` already relies on).
+  `SinghaIdProfile`/`account/singha-id` reframed as a transaction passport: Identity / Company /
+  Seller readiness / Bidder & buyer readiness / Trade capabilities & licences, each capability row
+  showing one of four customer-safe states (Verified / Under review / Action needed / Not started
+  — new shared `capability-state.tsx`) with a plain next step and a per-row request action, never
+  a raw capability enum code or backend status string. Shared
+  `components/evolution/capability-state.tsx` (passport-state mapping + friendly capability
+  labels) is consumed by both surfaces so a grant reads identically everywhere; `evo-api-error`'s
+  `friendlyMessage` applied to every error surface touched. No backend change, no new deps, no
+  CSS Modules. Gates: typecheck,
+  eslint, prettier all clean; vitest 29/29 files, 105/105 tests (16 new: 2 focused "Needs your
+  attention" tests + 14 `capability-state` unit tests; two pre-existing assertions intentionally
+  updated to the new friendly/renamed UI text, no other assertions touched);
+  `check-routes`/`check-contracts`/`next build` all green. Full findings: `SINGHA_CX_DECISIONS.md`
+  D-CX-4.
+
 ## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
 - **CX4** — Listing detail as a transaction workspace (sticky rail desktop / dock mobile).
 - **CX5 (cont.)** — offer form plain-English summary + negotiation-timeline polish.
-- **CX7** — Customer Command Centre (attention-led) + Singha ID as transaction passport.
 - **CX8** — Logistics woven into the transaction journey.
 - **CX9** — Sri Lanka/local-market natural language (no "Satellite Node" vocabulary).
 - **CX10** — visual hierarchy/motion refinement (fewer cards/borders, larger media).
@@ -94,5 +120,5 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 - **CX14** — controlled-preview handoff (env names, flag values, seed/deploy/smoke steps).
 
 ## Gates status
-Every increment ships only after: typecheck · vitest (89 passing) · `next build` · eslint ·
+Every increment ships only after: typecheck · vitest (105 passing) · `next build` · eslint ·
 prettier. Backend authority, immutable ledgers, sealed privacy, MFA/RBAC untouched.
