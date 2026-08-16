@@ -1,25 +1,21 @@
 'use client';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Button,
-  Card,
-  Chip,
-  DataTable,
-  Field,
-  Skeleton,
-  Stat,
-  TextInput,
-  Textarea,
-  type Column,
-} from '@singha/ui';
+import { Button, Card, Chip, Field, Select, Skeleton, Stat, Textarea } from '@singha/ui';
 import { Price } from './Price';
 import { CurrencyAmountInput } from './CurrencyAmountInput';
 import { QuantityUnitInput } from './QuantityUnitInput';
+import { friendlyMessage } from './evo-api-error';
 import { StatusChip } from '../../components/StatusChip';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { useAuth } from '../../lib/auth';
-import { humanize, parseMoneyToMinor } from '../../lib/format';
+import {
+  humanize,
+  incotermName,
+  INCOTERM_OPTIONS,
+  parseMoneyToMinor,
+  procurementTypeLabel,
+} from '../../lib/format';
 import {
   awardProcurementRequest,
   closeProcurementRequest,
@@ -32,17 +28,28 @@ import {
 } from '../../lib/evolution-api';
 
 /**
- * Procurement request detail (E9 · §09/D4). Shows a request and its RANKED proposals. Ranking is a
- * recommendation only: the lowest price sits at rank #1, but the buyer must explicitly select and
- * confirm a specific proposal to award — nothing is ever auto-awarded (rule 2/11: the UI is not the
- * source of truth and an accepted deal requires explicit confirmation + engine validation). Any
- * signed-in supplier may submit a priced proposal while the window is open.
+ * Procurement request detail (E9 · §09/D4, CX6 pack docs 04/05/07). Shows a request and its
+ * RANKED proposals as a readable COMMERCIAL COMPARISON — price and incoterm side by side, stacked
+ * comparison cards on mobile / aligned columns on desktop (doc 07), one shared row per proposal so
+ * there is never a duplicate control at any width. Ranking is a recommendation only: the lowest
+ * price sits at rank #1, but the buyer must explicitly select and confirm a specific proposal to
+ * award — nothing is ever auto-awarded (rule 2/11: the UI is not the source of truth and an
+ * accepted deal requires explicit confirmation + engine validation). Any signed-in supplier may
+ * submit a priced proposal while the window is open.
+ *
+ * Read-model note (verified against `Auctions-Backend`): `GET /procurement/requests/:id/proposals`
+ * returns only `{rank, proposalId, supplierCustomerId, totalPriceMinor, currency, incoterm}` — a
+ * supplier's quantity/delivery-date/payment-terms/validity/notes are accepted and stored on
+ * submission but not returned here, so this comparison can only show price, incoterm and rank
+ * until that read model is enriched (out of scope: backend, frozen for this task).
  */
 
 function shortId(id: string | null | undefined): string {
   if (!id) return '—';
   return id.length > 10 ? `${id.slice(0, 8)}…` : id;
 }
+
+const ROW_COLS = 'md:grid-cols-[3.5rem_7rem_1fr_1fr_9rem]';
 
 export function ProcurementDetail() {
   const params = useParams();
@@ -83,7 +90,7 @@ export function ProcurementDetail() {
       setView(proposals);
       setRequest(mine.find((r) => r.id === id) ?? null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not load this request.');
+      setError(friendlyMessage(e, 'Could not load this request.'));
     } finally {
       setLoaded(true);
     }
@@ -103,7 +110,7 @@ export function ProcurementDetail() {
       setConfirming(null);
       await reload();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not award this request.');
+      setError(friendlyMessage(e, 'Could not award this request.'));
     } finally {
       setAwarding(false);
     }
@@ -117,7 +124,7 @@ export function ProcurementDetail() {
       await closeProcurementRequest(id, token);
       await reload();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not close the window.');
+      setError(friendlyMessage(e, 'Could not close the window.'));
     } finally {
       setClosing(false);
     }
@@ -157,7 +164,7 @@ export function ProcurementDetail() {
       setNotes('');
       await reload();
     } catch (err: unknown) {
-      setProposalErr(err instanceof Error ? err.message : 'Could not submit your proposal.');
+      setProposalErr(friendlyMessage(err, 'Could not submit your proposal. Please try again.'));
     } finally {
       setProposing(false);
     }
@@ -208,63 +215,31 @@ export function ProcurementDetail() {
   const isOpen = status.toLowerCase() === 'open';
   const ranked: RankedProposal[] = view?.ranked ?? [];
 
-  const columns: Column<RankedProposal>[] = [
-    {
-      key: 'rank',
-      header: 'Rank',
-      render: (p) => (
+  function renderAction(p: RankedProposal) {
+    if (awardedId === p.proposalId) return <Chip tone="win">Awarded</Chip>;
+    if (!isOwner || isAwarded) return <span className="text-bone-600">—</span>;
+    if (confirming === p.proposalId) {
+      return (
         <span className="inline-flex items-center gap-2">
-          <span className="font-display font-bold text-bone">#{p.rank}</span>
-          {p.rank === 1 ? <Chip tone="gold">Lowest price</Chip> : null}
-        </span>
-      ),
-    },
-    {
-      key: 'supplier',
-      header: 'Supplier',
-      render: (p) => <span className="text-bone-400">{shortId(p.supplierCustomerId)}</span>,
-    },
-    {
-      key: 'price',
-      header: 'Price',
-      render: (p) => <Price minor={p.totalPriceMinor} currency={p.currency ?? 'LKR'} />,
-    },
-    {
-      key: 'incoterm',
-      header: 'Incoterm',
-      render: (p) => <span className="text-bone-300">{p.incoterm ?? '—'}</span>,
-    },
-    {
-      key: 'action',
-      header: '',
-      align: 'right',
-      render: (p) => {
-        if (awardedId === p.proposalId) return <Chip tone="win">Awarded</Chip>;
-        if (!isOwner || isAwarded) return <span className="text-bone-600">—</span>;
-        if (confirming === p.proposalId) {
-          return (
-            <span className="inline-flex items-center gap-2">
-              <Button variant="gold" onClick={() => void doAward(p.proposalId)} disabled={awarding}>
-                Confirm award
-              </Button>
-              <Button variant="ghost" onClick={() => setConfirming(null)} disabled={awarding}>
-                Cancel
-              </Button>
-            </span>
-          );
-        }
-        return (
-          <Button
-            variant="outline"
-            aria-label={`Award to rank ${p.rank}`}
-            onClick={() => setConfirming(p.proposalId)}
-          >
-            Award
+          <Button variant="gold" onClick={() => void doAward(p.proposalId)} disabled={awarding}>
+            Confirm award
           </Button>
-        );
-      },
-    },
-  ];
+          <Button variant="ghost" onClick={() => setConfirming(null)} disabled={awarding}>
+            Cancel
+          </Button>
+        </span>
+      );
+    }
+    return (
+      <Button
+        variant="outline"
+        aria-label={`Award to rank ${p.rank}`}
+        onClick={() => setConfirming(p.proposalId)}
+      >
+        Award
+      </Button>
+    );
+  }
 
   return (
     <div className="container-page py-10 sm:py-14">
@@ -274,7 +249,7 @@ export function ProcurementDetail() {
 
       <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="eyebrow text-gold-300">{humanize(request?.type ?? 'Request')}</p>
+          <p className="eyebrow text-gold-300">{procurementTypeLabel(request?.type)}</p>
           <h1 className="mt-2 font-serif text-3xl font-bold text-bone sm:text-4xl">
             {request?.title ?? `Request ${shortId(id)}`}
           </h1>
@@ -298,7 +273,12 @@ export function ProcurementDetail() {
 
       <section className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold text-bone">Ranked proposals</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display text-lg font-semibold text-bone">Compare proposals</h2>
+            <span className="w-fit rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gold-300/80">
+              Advisory only
+            </span>
+          </div>
           {isOwner && isOpen && !isAwarded ? (
             <Button variant="dark" onClick={() => void doClose()} disabled={closing}>
               {closing ? 'Closing…' : 'Close window'}
@@ -306,22 +286,66 @@ export function ProcurementDetail() {
           ) : null}
         </div>
 
-        {isOwner ? (
-          <p className="mt-1 max-w-2xl text-sm text-bone-500">
-            Ranking is a recommendation; you choose the winner. The lowest price is ranked #1, but
-            nothing is awarded until you select and confirm a specific proposal.
-          </p>
-        ) : null}
+        <p className="mt-1 max-w-2xl text-sm text-bone-500">
+          {isOwner
+            ? 'Ranking is a recommendation; you choose the winner. The lowest price is ranked #1, but nothing is awarded until you select and confirm a specific proposal.'
+            : 'Comparing price and incoterm across every priced proposal. Ranking is advisory — the buyer chooses the winner explicitly; nothing is auto-awarded.'}
+        </p>
 
-        <Card className="mt-4 p-2">
-          <DataTable
-            columns={columns}
-            rows={ranked}
-            rowKey={(p) => p.proposalId}
-            minWidth={560}
-            empty="No priced proposals yet."
-          />
-        </Card>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-b from-coal-800/50 to-coal-900/75 backdrop-blur">
+          <div
+            className={`hidden border-b border-white/10 bg-white/[0.02] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-bone-500 md:grid md:items-center md:gap-4 ${ROW_COLS}`}
+          >
+            <span>Rank</span>
+            <span>Supplier ref</span>
+            <span>Price</span>
+            <span>Incoterm</span>
+            <span className="text-right">Action</span>
+          </div>
+          {ranked.length === 0 ? (
+            <p className="px-4 py-8 text-center text-bone-500">No priced proposals yet.</p>
+          ) : (
+            <ul className="divide-y divide-white/[0.06]">
+              {ranked.map((p) => (
+                <li
+                  key={p.proposalId}
+                  className={`p-4 md:grid md:items-center md:gap-4 md:px-4 md:py-3 ${ROW_COLS}`}
+                >
+                  <div className="flex items-center justify-between md:block">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-bone-500 md:hidden">
+                      Rank
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="font-display font-bold text-bone">#{p.rank}</span>
+                      {p.rank === 1 ? <Chip tone="gold">Lowest price</Chip> : null}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between md:mt-0 md:block">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-bone-500 md:hidden">
+                      Supplier ref
+                    </span>
+                    <span className="text-bone-400">{shortId(p.supplierCustomerId)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between md:mt-0 md:block">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-bone-500 md:hidden">
+                      Price
+                    </span>
+                    <Price minor={p.totalPriceMinor} currency={p.currency ?? 'LKR'} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between md:mt-0 md:block">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-bone-500 md:hidden">
+                      Incoterm
+                    </span>
+                    <span className="text-bone-300" title={incotermName(p.incoterm) ?? undefined}>
+                      {p.incoterm ?? '—'}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex justify-end md:mt-0">{renderAction(p)}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {error && view ? <p className="mt-3 text-sm text-outbid">{error}</p> : null}
       </section>
 
@@ -351,15 +375,24 @@ export function ProcurementDetail() {
                   onUnitChange={setPUnit}
                 />
               </Field>
-              <Field label="Incoterm" htmlFor="pp-incoterm">
-                <TextInput
+              <Field
+                label="Incoterm"
+                htmlFor="pp-incoterm"
+                hint="How you'll deliver, in standard trade terms."
+              >
+                <Select
                   id="pp-incoterm"
-                  placeholder="e.g. CIF Colombo"
+                  options={INCOTERM_OPTIONS}
+                  placeholder="Select incoterm"
                   value={incoterm}
                   onChange={(e) => setIncoterm(e.target.value)}
                 />
               </Field>
-              <Field label="Notes" htmlFor="pp-notes">
+              <Field
+                label="Notes"
+                htmlFor="pp-notes"
+                hint="Lead time, packing, how long this price is valid — anything that helps the buyer compare beyond price."
+              >
                 <Textarea
                   id="pp-notes"
                   rows={3}

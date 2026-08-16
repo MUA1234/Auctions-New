@@ -53,12 +53,37 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
   now shows the real title + reference + location instead of the raw listing CUID, with a
   regression test. (Sealed-offer comparison UX already exists from E4b; further offer-form
   "plain-English summary / negotiation timeline" polish tracked under CX-cont.)
+- **CX6 (Wanted/RFQ + Supply first-class flows)** — frontend only (`Auctions-New`), no backend
+  change. `ProcurementHub` (post an RFQ): the create form is grouped into plain-English
+  `FormSection`s (What do you need → Quantity → Specification & quality → Where & when →
+  Budget & payment) and ends with a live plain-English "What suppliers will see" summary before
+  submit; the "My requests" type column uses a real label lookup instead of `humanize()` on the
+  UPPER_SNAKE enum (X3). `ProcurementDetail` (compare & award): the ranked list is now ONE
+  responsive row per proposal (CSS Grid `md:` columns / stacked labelled rows below `md:` — no
+  duplicated DOM, so there's never two controls with the same accessible name at any width),
+  with an explicit "Advisory only" badge and unchanged award/confirm semantics; the incoterm
+  free-text input became a `Select` of standard codes. `SupplyProgrammes` (seller programmes):
+  reframed as a commercial programme (cadence/volume/term sections); a new lazy "View programme
+  terms" disclosure calls `GET /supply/programmes/:id` (already existed on the backend, never
+  called from the frontend) for cadence/volume/price/lead-time, and a perishable summary calls
+  `GET /supply/perishable/:subjectType/:subjectId` (same situation) for a plain-English
+  shelf-life/cold-chain readout once metadata is saved. `SupplyMatch` (buyer search) gained a
+  proper quantity+unit input (`quantityUnitCode` was already accepted by
+  `recommendSupplySchema` but not sent). `/wanted` now presents buyer and supplier sides as two
+  explicit cards and adds `/sell/supply` to its entry links. Fixed a real, latent bug hit by
+  every date field this phase touched: `<input type="date">` sends `"YYYY-MM-DD"`, but every
+  relevant backend field is Zod `.datetime()` (requires a `T`/`Z`-qualified timestamp) — added
+  `toApiDateTime()` and used it wherever this pack sends a date. Added `friendlyMessage()`
+  (`evo-api-error.ts`) so a bare `METHOD /path -> status` never reaches these forms (X7); operator
+  `friendlyError()` untouched. Gates: typecheck, eslint, prettier all clean; vitest 28/28 files,
+  89/89 tests (existing `ProcurementDetail.test`/`SupplyProgrammes.test` unmodified in their
+  assertions — only extended `SupplyProgrammes.test`'s `vi.mock` factory with the two newly-wired
+  read calls); `next build` succeeds. Full findings: `SINGHA_CX_DECISIONS.md` D-CX-2.
 
 ## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
 - **CX4** — Listing detail as a transaction workspace (sticky rail desktop / dock mobile).
 - **CX5 (cont.)** — offer form plain-English summary + negotiation-timeline polish.
-- **CX6** — Wanted/RFQ + Supply first-class flows.
 - **CX7** — Customer Command Centre (attention-led) + Singha ID as transaction passport.
 - **CX8** — Logistics woven into the transaction journey.
 - **CX9** — Sri Lanka/local-market natural language (no "Satellite Node" vocabulary).
@@ -69,5 +94,5 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 - **CX14** — controlled-preview handoff (env names, flag values, seed/deploy/smoke steps).
 
 ## Gates status
-Every increment ships only after: typecheck · vitest (85 passing) · `next build` · eslint ·
+Every increment ships only after: typecheck · vitest (89 passing) · `next build` · eslint ·
 prettier. Backend authority, immutable ledgers, sealed privacy, MFA/RBAC untouched.

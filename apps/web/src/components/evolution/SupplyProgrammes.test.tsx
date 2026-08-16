@@ -8,6 +8,8 @@ const h = vi.hoisted(() => ({
   create: vi.fn(),
   setStatus: vi.fn(),
   attach: vi.fn(),
+  fetchDetail: vi.fn(),
+  fetchPerishableSummary: vi.fn(),
 }));
 
 vi.mock('../../lib/auth', () => ({
@@ -24,6 +26,9 @@ vi.mock('../../lib/evolution-api', () => ({
   createSupplyProgramme: h.create,
   setSupplyProgrammeStatus: h.setStatus,
   attachPerishable: h.attach,
+  // Read-only "View programme terms" disclosure (CX6) — lazy, fetched only if a test opens it.
+  fetchSupplyProgramme: h.fetchDetail,
+  fetchPerishable: h.fetchPerishableSummary,
 }));
 
 import { SupplyProgrammes } from './SupplyProgrammes';
@@ -42,6 +47,24 @@ beforeEach(() => {
   h.attach
     .mockReset()
     .mockResolvedValue({ id: 'per-1', subjectType: 'supply_programme', subjectId: 'sp-1' });
+  h.fetchDetail.mockReset().mockResolvedValue({
+    id: 'sp-1',
+    product: 'Ceylon Tea',
+    category: 'Beverages',
+    originCountry: 'Sri Lanka',
+    availableQuantity: '500',
+    minOrderQuantity: '50',
+    maxOrderQuantity: '500',
+    quantityUnitCode: 'kg',
+    indicativePriceMinor: 150000,
+    currency: 'LKR',
+    frequency: 'monthly',
+    leadTimeDays: 14,
+    status: 'active',
+  });
+  h.fetchPerishableSummary
+    .mockReset()
+    .mockRejectedValue(new Error('GET /supply/perishable -> 404'));
 });
 afterEach(cleanup);
 

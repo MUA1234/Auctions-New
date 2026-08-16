@@ -1,27 +1,43 @@
 'use client';
 import { type FormEvent, useEffect, useState } from 'react';
-import { Button, Card, Field, Select, Skeleton, TextInput } from '@singha/ui';
+import { Button, Card, Field, Select, Skeleton, TextInput, cn } from '@singha/ui';
 import { CurrencyAmountInput } from './CurrencyAmountInput';
 import { QuantityUnitInput } from './QuantityUnitInput';
+import { FormSection } from './FormSection';
+import { Price } from './Price';
+import { friendlyMessage } from './evo-api-error';
 import { StatusChip } from '../../components/StatusChip';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { useAuth } from '../../lib/auth';
 import { useFlags } from '../../lib/use-flags';
-import { parseMoneyToMinor } from '../../lib/format';
+import {
+  formatDate,
+  formatQuantity,
+  humanize,
+  INCOTERM_OPTIONS,
+  parseMoneyToMinor,
+  toApiDateTime,
+} from '../../lib/format';
 import {
   attachPerishable,
   createSupplyProgramme,
   fetchMySupplyProgrammes,
+  fetchPerishable,
+  fetchSupplyProgramme,
   setSupplyProgrammeStatus,
+  type PerishableSummary,
+  type SupplyProgrammeDetail,
   type SupplyProgrammeSummary,
 } from '../../lib/evolution-api';
 
 /**
- * Supply programmes (E10 · seller). A supplier publishes what they can supply — recurring or on
- * demand — with capacity, order sizes, indicative pricing and lead time; buyers are matched to
- * ACTIVE programmes. Includes status transitions (activate/pause/withdraw) and, when the
- * `perishableGoods` capability is on, an inline panel to attach perishable metadata (harvest/expiry,
- * cold-chain, temperature band, shipment window) as a derived record on the programme.
+ * Supply programmes (E10 · seller, CX6 pack docs 04/05). A supplier publishes a recurring
+ * commercial PROGRAMME — not a one-off technical record — described by its cadence (how often),
+ * volume (how much per order) and term (how long the arrangement runs), plus indicative pricing
+ * and lead time; buyers are matched to ACTIVE programmes. Includes status transitions
+ * (activate/pause/withdraw) and, when the `perishableGoods` capability is on, an inline panel to
+ * attach perishable metadata (harvest/expiry, cold-chain, temperature band, shipment window) as a
+ * derived record on the programme, plus a plain-English shelf-life/cold-chain summary once saved.
  */
 
 const FREQUENCY_OPTIONS = [
@@ -99,7 +115,7 @@ export function SupplyProgrammes() {
       .catch((e: unknown) => {
         if (alive) {
           setRows([]);
-          setListError(e instanceof Error ? e.message : 'Could not load your programmes.');
+          setListError(friendlyMessage(e, 'Could not load your programmes.'));
         }
       });
     return () => {
@@ -143,11 +159,14 @@ export function SupplyProgrammes() {
         currency,
         incoterm: incoterm.trim() || undefined,
         leadTimeDays: lead != null && Number.isFinite(lead) ? lead : undefined,
-        validFrom: validFrom || undefined,
-        validUntil: validUntil || undefined,
+        validFrom: toApiDateTime(validFrom),
+        validUntil: toApiDateTime(validUntil),
       };
       const res = await createSupplyProgramme(body, token);
-      setCreated(res.product || product.trim());
+      const cadence =
+        FREQUENCY_OPTIONS.find((f) => f.value === frequency)?.label ?? humanize(frequency);
+      const term = validFrom ? ` from ${formatDate(toApiDateTime(validFrom))}` : '';
+      setCreated(`${res.product || product.trim()} — ${cadence.toLowerCase()}${term}`);
       setProduct('');
       setCategory('');
       setQuantity('');
@@ -160,7 +179,7 @@ export function SupplyProgrammes() {
       setValidUntil('');
       await refresh(token);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not create the programme.');
+      setError(friendlyMessage(err, 'Could not create the programme. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -207,76 +226,63 @@ export function SupplyProgrammes() {
       <header className="max-w-2xl">
         <p className="eyebrow text-gold-300">Supply programmes</p>
         <h1 className="mt-2 font-serif text-3xl font-bold text-bone sm:text-4xl">
-          Publish what you can supply.
+          Turn recurring supply into a commercial programme.
         </h1>
         <p className="mt-3 text-bone-400">
-          List recurring or on-demand supply — product, capacity, order sizes, indicative pricing
-          and lead time. Buyers searching the market are matched to your active programmes.
+          Not a one-off listing — a standing arrangement with its own cadence (how often you can
+          supply), volume (order sizes) and term (how long it runs), plus indicative pricing and
+          lead time. Buyers searching the market are matched to your active programmes.
         </p>
       </header>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <Card className="p-6">
           <h2 className="font-display text-lg font-semibold text-bone">New programme</h2>
-          <form className="mt-5 space-y-4" onSubmit={submit}>
-            <Field label="Product" htmlFor="sp-product" required>
-              <TextInput
-                id="sp-product"
-                aria-label="Product"
-                placeholder="e.g. Ceylon black tea, BOPF"
-                value={product}
-                onChange={(e) => setProduct(e.target.value)}
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Category" htmlFor="sp-category">
+          <form className="mt-5 space-y-7" onSubmit={submit}>
+            <FormSection title="What you supply">
+              <Field label="Product" htmlFor="sp-product" required>
                 <TextInput
-                  id="sp-category"
-                  placeholder="e.g. Beverages"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  id="sp-product"
+                  aria-label="Product"
+                  placeholder="e.g. Ceylon black tea, BOPF"
+                  value={product}
+                  onChange={(e) => setProduct(e.target.value)}
                 />
               </Field>
-              <Field label="Origin country" htmlFor="sp-origin">
-                <TextInput
-                  id="sp-origin"
-                  placeholder="e.g. LK"
-                  value={originCountry}
-                  onChange={(e) => setOriginCountry(e.target.value)}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Category" htmlFor="sp-category">
+                  <TextInput
+                    id="sp-category"
+                    placeholder="e.g. Beverages"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  />
+                </Field>
+                <Field label="Origin country" htmlFor="sp-origin">
+                  <TextInput
+                    id="sp-origin"
+                    placeholder="e.g. Sri Lanka"
+                    value={originCountry}
+                    onChange={(e) => setOriginCountry(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <FormSection
+              title="Cadence & volume"
+              hint="How often you can supply, and how much per order."
+            >
+              <Field label="Available quantity" htmlFor="sp-qty">
+                <QuantityUnitInput
+                  id="sp-qty"
+                  quantity={quantity}
+                  unit={unit}
+                  onQuantityChange={setQuantity}
+                  onUnitChange={setUnit}
                 />
               </Field>
-            </div>
-            <Field label="Available quantity" htmlFor="sp-qty">
-              <QuantityUnitInput
-                id="sp-qty"
-                quantity={quantity}
-                unit={unit}
-                onQuantityChange={setQuantity}
-                onUnitChange={setUnit}
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Min order qty" htmlFor="sp-min">
-                <TextInput
-                  id="sp-min"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={minOrder}
-                  onChange={(e) => setMinOrder(e.target.value.replace(/[^\d.]/g, ''))}
-                />
-              </Field>
-              <Field label="Max order qty" htmlFor="sp-max">
-                <TextInput
-                  id="sp-max"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={maxOrder}
-                  onChange={(e) => setMaxOrder(e.target.value.replace(/[^\d.]/g, ''))}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Frequency" htmlFor="sp-freq">
+              <Field label="How often can you supply?" htmlFor="sp-freq">
                 <Select
                   id="sp-freq"
                   options={FREQUENCY_OPTIONS}
@@ -284,6 +290,29 @@ export function SupplyProgrammes() {
                   onChange={(e) => setFrequency(e.target.value)}
                 />
               </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Min order qty" htmlFor="sp-min">
+                  <TextInput
+                    id="sp-min"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={minOrder}
+                    onChange={(e) => setMinOrder(e.target.value.replace(/[^\d.]/g, ''))}
+                  />
+                </Field>
+                <Field label="Max order qty" htmlFor="sp-max">
+                  <TextInput
+                    id="sp-max"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={maxOrder}
+                    onChange={(e) => setMaxOrder(e.target.value.replace(/[^\d.]/g, ''))}
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <FormSection title="Pricing">
               <Field label="Pricing basis" htmlFor="sp-basis">
                 <Select
                   id="sp-basis"
@@ -292,57 +321,64 @@ export function SupplyProgrammes() {
                   onChange={(e) => setPricingBasis(e.target.value)}
                 />
               </Field>
-            </div>
-            <Field
-              label="Indicative price"
-              htmlFor="sp-price"
-              hint="Non-binding — a guide for matching."
-            >
-              <CurrencyAmountInput
-                id="sp-price"
-                amount={price}
-                currency={currency}
-                onAmountChange={setPrice}
-                onCurrencyChange={setCurrency}
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Incoterm" htmlFor="sp-incoterm">
-                <TextInput
-                  id="sp-incoterm"
-                  placeholder="e.g. FOB Colombo"
-                  value={incoterm}
-                  onChange={(e) => setIncoterm(e.target.value)}
+              <Field
+                label="Indicative price"
+                htmlFor="sp-price"
+                hint="Non-binding — a guide for matching."
+              >
+                <CurrencyAmountInput
+                  id="sp-price"
+                  amount={price}
+                  currency={currency}
+                  onAmountChange={setPrice}
+                  onCurrencyChange={setCurrency}
                 />
               </Field>
-              <Field label="Lead time (days)" htmlFor="sp-lead">
-                <TextInput
-                  id="sp-lead"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={leadTimeDays}
-                  onChange={(e) => setLeadTimeDays(e.target.value.replace(/[^\d]/g, ''))}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Valid from" htmlFor="sp-from">
-                <TextInput
-                  id="sp-from"
-                  type="date"
-                  value={validFrom}
-                  onChange={(e) => setValidFrom(e.target.value)}
-                />
-              </Field>
-              <Field label="Valid until" htmlFor="sp-until">
-                <TextInput
-                  id="sp-until"
-                  type="date"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                />
-              </Field>
-            </div>
+            </FormSection>
+
+            <FormSection title="Commercial terms">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Incoterm" htmlFor="sp-incoterm">
+                  <Select
+                    id="sp-incoterm"
+                    options={INCOTERM_OPTIONS}
+                    placeholder="Select incoterm"
+                    value={incoterm}
+                    onChange={(e) => setIncoterm(e.target.value)}
+                  />
+                </Field>
+                <Field label="Lead time (days)" htmlFor="sp-lead">
+                  <TextInput
+                    id="sp-lead"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={leadTimeDays}
+                    onChange={(e) => setLeadTimeDays(e.target.value.replace(/[^\d]/g, ''))}
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <FormSection title="Programme term" hint="How long this standing arrangement runs for.">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Valid from" htmlFor="sp-from">
+                  <TextInput
+                    id="sp-from"
+                    type="date"
+                    value={validFrom}
+                    onChange={(e) => setValidFrom(e.target.value)}
+                  />
+                </Field>
+                <Field label="Valid until" htmlFor="sp-until">
+                  <TextInput
+                    id="sp-until"
+                    type="date"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </FormSection>
 
             {error ? <p className="text-sm text-outbid">{error}</p> : null}
             {created ? (
@@ -412,6 +448,11 @@ export function SupplyProgrammes() {
                         <span className="text-xs text-bone-600">No further actions.</span>
                       ) : null}
                     </div>
+                    <ProgrammeTermsPanel
+                      programmeId={p.id}
+                      token={token}
+                      showPerishable={Boolean(flags.perishableGoods)}
+                    />
                     {flags.perishableGoods ? (
                       <PerishablePanel programmeId={p.id} token={token} />
                     ) : null}
@@ -422,6 +463,149 @@ export function SupplyProgrammes() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function orderSizeLabel(d: SupplyProgrammeDetail): string {
+  const { minOrderQuantity: min, maxOrderQuantity: max, quantityUnitCode: unit } = d;
+  if (!min && !max) return '—';
+  if (min && max) return `${formatQuantity(min)} – ${formatQuantity(max, unit ?? undefined)}`;
+  if (min) return `Min ${formatQuantity(min, unit ?? undefined)}`;
+  return `Max ${formatQuantity(max, unit ?? undefined)}`;
+}
+
+/**
+ * Read-only "programme terms" disclosure (CX6 doc 04/05: cadence / volume / term as a commercial
+ * programme, not a technical record). Lazily fetches the richer single-programme read
+ * (`GET /supply/programmes/:id`, wired up by this change — it already existed on the backend but
+ * the frontend never called it) plus, when relevant, the perishable summary
+ * (`GET /supply/perishable/supply_programme/:id`, also newly wired up). Both fetch only when the
+ * seller opens the panel, so the default card stays uncluttered.
+ */
+function ProgrammeTermsPanel({
+  programmeId,
+  token,
+  showPerishable,
+}: {
+  programmeId: string;
+  token: string;
+  showPerishable: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded'>('idle');
+  const [detail, setDetail] = useState<SupplyProgrammeDetail | null>(null);
+  const [perishable, setPerishable] = useState<PerishableSummary | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function load() {
+    setLoadState('loading');
+    setErr(null);
+    try {
+      setDetail(await fetchSupplyProgramme(programmeId, token));
+    } catch (e: unknown) {
+      setErr(friendlyMessage(e, 'Could not load the full programme terms.'));
+    }
+    if (showPerishable) {
+      try {
+        setPerishable(await fetchPerishable('supply_programme', programmeId, token));
+      } catch {
+        setPerishable(null); // nothing attached yet — not an error the seller needs to see here
+      }
+    }
+    setLoadState('loaded');
+  }
+
+  function toggle() {
+    if (!open && loadState === 'idle') void load();
+    setOpen((o) => !o);
+  }
+
+  return (
+    <div className="mt-3 border-t border-white/10 pt-3">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="text-sm font-medium text-bone-300 hover:text-bone"
+      >
+        {open ? 'Hide programme terms' : 'View programme terms — cadence, volume & pricing'}
+      </button>
+      {open ? (
+        loadState === 'loading' ? (
+          <div className="mt-3 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ) : err ? (
+          <p className="mt-2 text-sm text-outbid">{err}</p>
+        ) : detail ? (
+          <>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-bone-500">Cadence</dt>
+                <dd className="text-bone-200">{humanize(detail.frequency)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-bone-500">Available</dt>
+                <dd className="text-bone-200">
+                  {formatQuantity(detail.availableQuantity, detail.quantityUnitCode ?? undefined)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-bone-500">Order size</dt>
+                <dd className="text-bone-200">{orderSizeLabel(detail)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-bone-500">Indicative price</dt>
+                <dd className="text-bone-200">
+                  <Price minor={detail.indicativePriceMinor} currency={detail.currency} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-bone-500">Lead time</dt>
+                <dd className="text-bone-200">
+                  {detail.leadTimeDays != null ? `${detail.leadTimeDays} days` : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-bone-500">Origin</dt>
+                <dd className="text-bone-200">{detail.originCountry ?? '—'}</dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-bone-600">
+              The programme's validity window (term) is set when created but isn't shown back here
+              yet — check your records for the dates you entered.
+            </p>
+          </>
+        ) : null
+      ) : null}
+      {open && perishable ? (
+        <div
+          className={cn(
+            'mt-3 rounded-lg border p-3 text-sm',
+            perishable.expired
+              ? 'border-outbid/30 bg-outbid/[0.06]'
+              : 'border-gold-500/20 bg-gold-500/[0.04]',
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-gold-300/80">
+            Perishable
+          </p>
+          <p className="mt-1 text-bone-200">
+            {[perishable.variety, perishable.grade].filter(Boolean).join(' · ') ||
+              'Variety/grade not recorded'}
+            {perishable.coldChain ? ' · Cold chain' : ''}
+          </p>
+          <p className="mt-0.5 text-bone-400">
+            {perishable.expired
+              ? 'Past its shelf life'
+              : perishable.expiresAt
+                ? `Shelf life: best before ${formatDate(perishable.expiresAt)}`
+                : 'No shelf-life / expiry date recorded'}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -449,17 +633,17 @@ function PerishablePanel({ programmeId, token }: { programmeId: string; token: s
     setErr(null);
     setMsg(null);
     const metadata: Record<string, unknown> = {
-      harvestDate: harvestDate || undefined,
-      packingDate: packingDate || undefined,
-      expiryDate: expiryDate || undefined,
+      harvestDate: toApiDateTime(harvestDate),
+      packingDate: toApiDateTime(packingDate),
+      expiryDate: toApiDateTime(expiryDate),
       variety: variety.trim() || undefined,
       grade: grade.trim() || undefined,
       moisturePercent: moisturePercent.trim() || undefined,
       coldChain: coldChain || undefined,
       tempMinC: tempMinC.trim() || undefined,
       tempMaxC: tempMaxC.trim() || undefined,
-      shipmentWindowStart: shipmentWindowStart || undefined,
-      shipmentWindowEnd: shipmentWindowEnd || undefined,
+      shipmentWindowStart: toApiDateTime(shipmentWindowStart),
+      shipmentWindowEnd: toApiDateTime(shipmentWindowEnd),
     };
     setSaving(true);
     try {
@@ -467,9 +651,9 @@ function PerishablePanel({ programmeId, token }: { programmeId: string; token: s
         { subjectType: 'supply_programme', subjectId: programmeId, metadata },
         token,
       );
-      setMsg('Perishable metadata saved.');
+      setMsg('Perishable metadata saved. Reopen “View programme terms” above to see the summary.');
     } catch (e2: unknown) {
-      setErr(e2 instanceof Error ? e2.message : 'Could not save perishable metadata.');
+      setErr(friendlyMessage(e2, 'Could not save perishable metadata.'));
     } finally {
       setSaving(false);
     }
@@ -482,7 +666,7 @@ function PerishablePanel({ programmeId, token }: { programmeId: string; token: s
         onClick={() => setOpen(true)}
         className="mt-3 text-sm font-medium text-gold-300 hover:text-gold-200"
       >
-        + Add perishable metadata
+        + Add perishable metadata — shelf life, temperature, harvest/expiry
       </button>
     );
   }
@@ -509,7 +693,7 @@ function PerishablePanel({ programmeId, token }: { programmeId: string; token: s
             onChange={(e) => setPackingDate(e.target.value)}
           />
         </Field>
-        <Field label="Expiry date" htmlFor={`ph-expiry-${programmeId}`}>
+        <Field label="Expiry date" htmlFor={`ph-expiry-${programmeId}`} hint="Shelf life end date.">
           <TextInput
             id={`ph-expiry-${programmeId}`}
             type="date"
@@ -543,7 +727,11 @@ function PerishablePanel({ programmeId, token }: { programmeId: string; token: s
         </Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Temp min °C" htmlFor={`ph-tmin-${programmeId}`}>
+        <Field
+          label="Temp min °C"
+          htmlFor={`ph-tmin-${programmeId}`}
+          hint="Temperature band (cold chain)."
+        >
           <TextInput
             id={`ph-tmin-${programmeId}`}
             inputMode="decimal"

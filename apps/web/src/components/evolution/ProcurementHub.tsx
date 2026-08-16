@@ -1,5 +1,5 @@
 'use client';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Button,
@@ -12,11 +12,19 @@ import {
   Textarea,
   type Column,
 } from '@singha/ui';
+import { FormSection } from './FormSection';
 import { QuantityUnitInput } from './QuantityUnitInput';
+import { friendlyMessage } from './evo-api-error';
 import { StatusChip } from '../../components/StatusChip';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { useAuth } from '../../lib/auth';
-import { CURRENCIES, humanize } from '../../lib/format';
+import {
+  CURRENCIES,
+  formatDate,
+  formatQuantity,
+  procurementTypeLabel,
+  toApiDateTime,
+} from '../../lib/format';
 import {
   createProcurementRequest,
   fetchMyProcurementRequests,
@@ -24,17 +32,29 @@ import {
 } from '../../lib/evolution-api';
 
 /**
- * Procurement hub (E9 · pack doc 09). The demand side of the exchange: a buyer posts a requirement
- * — RFQ, request-supply or reverse-tender — and verified suppliers respond with priced, comparable
- * proposals. This surface creates requests and lists the buyer's own; comparison + award happen on
- * the per-request detail. The auction/offer engine is authoritative — the UI never settles a deal.
+ * Procurement hub (E9 · pack doc 09, CX6 pack docs 04/05). The demand side of the exchange: a
+ * buyer STATES A NEED — RFQ, request-supply or reverse-tender — and verified suppliers respond
+ * with priced, comparable proposals. The creation form is grouped into short plain-English
+ * sections (what / how much / spec & quality / where & when / budget) rather than one technical
+ * field dump, and ends with a live plain-English summary so the buyer sees exactly what they're
+ * about to post before they post it. This surface creates requests and lists the buyer's own;
+ * comparison + award happen on the per-request detail. The auction/offer engine is authoritative
+ * — the UI never settles a deal.
  */
 
+/** Request type — value is the exact backend enum (`RFQ`/`REQUEST_SUPPLY`/`REVERSE_TENDER`);
+ *  only the label is plain English. */
 const TYPE_OPTIONS = [
-  { value: 'RFQ', label: 'RFQ — Request for Quote' },
-  { value: 'REQUEST_SUPPLY', label: 'Request Supply' },
-  { value: 'REVERSE_TENDER', label: 'Reverse tender' },
+  { value: 'RFQ', label: 'Get priced quotes from suppliers (RFQ)' },
+  { value: 'REQUEST_SUPPLY', label: 'Request ongoing or recurring supply' },
+  { value: 'REVERSE_TENDER', label: 'Run a reverse tender — suppliers compete on price' },
 ];
+/** Short noun phrase per type, for the plain-English summary sentence ("You're posting…"). */
+const TYPE_NOUN: Record<string, string> = {
+  RFQ: 'a request for quote',
+  REQUEST_SUPPLY: 'a recurring supply request',
+  REVERSE_TENDER: 'a reverse tender',
+};
 const CURRENCY_OPTIONS = CURRENCIES.map((c) => ({ value: c.code, label: c.code }));
 
 export function ProcurementHub() {
@@ -73,7 +93,7 @@ export function ProcurementHub() {
       .catch((e: unknown) => {
         if (alive) {
           setRows([]);
-          setListError(e instanceof Error ? e.message : 'Could not load your requests.');
+          setListError(friendlyMessage(e, 'Could not load your requests.'));
         }
       });
     return () => {
@@ -88,6 +108,40 @@ export function ProcurementHub() {
       /* keep the existing list on a refresh failure */
     }
   }
+
+  /** Short plain-English restatement of the form, shown live above Submit (CX6 doc 04/05: "show a
+   *  short plain-English summary before submit"). Only mentions parts the buyer has actually filled
+   *  in, so it never reads like a form dump either. */
+  const summaryLines = useMemo(() => {
+    const lines: string[] = [];
+    const noun = TYPE_NOUN[type] ?? 'a requirement';
+    lines.push(
+      title.trim()
+        ? `You're posting ${noun} for “${title.trim()}”.`
+        : `You're posting ${noun} — add a title so suppliers know what it's for.`,
+    );
+    if (quantity.trim()) lines.push(`Quantity: ${formatQuantity(quantity, unit || undefined)}.`);
+    if (specification.trim()) lines.push(`Spec: ${specification.trim()}`);
+    if (destinationCountry.trim()) lines.push(`Delivered to: ${destinationCountry.trim()}.`);
+    if (deliveryBy) lines.push(`Needed by ${formatDate(toApiDateTime(deliveryBy))}.`);
+    if (submissionCloseAt) {
+      lines.push(`Suppliers can respond until ${formatDate(toApiDateTime(submissionCloseAt))}.`);
+    }
+    if (paymentTerms.trim()) lines.push(`Payment terms: ${paymentTerms.trim()}.`);
+    lines.push(`Prices will be quoted in ${currency}.`);
+    return lines;
+  }, [
+    type,
+    title,
+    quantity,
+    unit,
+    specification,
+    destinationCountry,
+    deliveryBy,
+    submissionCloseAt,
+    paymentTerms,
+    currency,
+  ]);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -110,10 +164,10 @@ export function ProcurementHub() {
           quantity: q || undefined,
           quantityUnitCode: q && unit ? unit : undefined,
           destinationCountry: destinationCountry.trim() || undefined,
-          deliveryBy: deliveryBy || undefined,
+          deliveryBy: toApiDateTime(deliveryBy),
           currency,
           paymentTerms: paymentTerms.trim() || undefined,
-          submissionCloseAt: submissionCloseAt || undefined,
+          submissionCloseAt: toApiDateTime(submissionCloseAt),
         },
         token,
       );
@@ -128,7 +182,7 @@ export function ProcurementHub() {
       setSubmissionCloseAt('');
       await refreshList(token);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not post your request.');
+      setError(friendlyMessage(err, 'Could not post your request. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -159,7 +213,7 @@ export function ProcurementHub() {
     {
       key: 'type',
       header: 'Type',
-      render: (r) => <span className="text-bone-300">{humanize(r.type)}</span>,
+      render: (r) => <span className="text-bone-300">{procurementTypeLabel(r.type)}</span>,
     },
     {
       key: 'title',
@@ -189,33 +243,38 @@ export function ProcurementHub() {
           Post what you need. Suppliers respond.
         </h1>
         <p className="mt-3 text-bone-400">
-          Raise an RFQ, request recurring supply or run a reverse tender. Verified suppliers return
-          priced, comparable proposals with delivery and payment terms — and you choose the winner.
+          Say what you're looking for in plain terms — Singha turns it into a structured request.
+          Verified suppliers return priced, comparable proposals with delivery and payment terms —
+          and you choose the winner.
         </p>
       </header>
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <Card className="p-6">
           <h2 className="font-display text-lg font-semibold text-bone">New request</h2>
-          <form className="mt-5 space-y-4" onSubmit={submit}>
-            <Field label="Request type" htmlFor="pr-type" required>
-              <Select
-                id="pr-type"
-                options={TYPE_OPTIONS}
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-              />
-            </Field>
-            <Field label="Title" htmlFor="pr-title" required>
-              <TextInput
-                id="pr-title"
-                placeholder="e.g. 200 MT red onion to Colombo"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Category" htmlFor="pr-category">
+          <form className="mt-5 space-y-7" onSubmit={submit}>
+            <FormSection title="What do you need" hint="A one-line summary suppliers see first.">
+              <Field label="What kind of request is this?" htmlFor="pr-type" required>
+                <Select
+                  id="pr-type"
+                  options={TYPE_OPTIONS}
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                />
+              </Field>
+              <Field label="In one line, what do you need?" htmlFor="pr-title" required>
+                <TextInput
+                  id="pr-title"
+                  placeholder="e.g. 200 MT red onion to Colombo"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Category"
+                htmlFor="pr-category"
+                hint="Helps route your request to the right suppliers."
+              >
                 <TextInput
                   id="pr-category"
                   placeholder="e.g. Agriculture · Produce"
@@ -223,72 +282,103 @@ export function ProcurementHub() {
                   onChange={(e) => setCategory(e.target.value)}
                 />
               </Field>
-              <Field label="Destination country" htmlFor="pr-dest">
+            </FormSection>
+
+            <FormSection title="Quantity" hint="How much do you need, and in what unit?">
+              <Field label="Amount & unit" htmlFor="pr-qty">
+                <QuantityUnitInput
+                  id="pr-qty"
+                  quantity={quantity}
+                  unit={unit}
+                  onQuantityChange={setQuantity}
+                  onUnitChange={setUnit}
+                />
+              </Field>
+            </FormSection>
+
+            <FormSection title="Specification & quality">
+              <Field
+                label="Describe exactly what you need"
+                htmlFor="pr-spec"
+                hint="Grade, quality standard, packing, tolerances, certificates — anything a supplier needs to quote accurately."
+              >
+                <Textarea
+                  id="pr-spec"
+                  rows={3}
+                  placeholder="e.g. Grade A, 40–60mm bulbs, jute bags, moisture max 12%"
+                  value={specification}
+                  onChange={(e) => setSpecification(e.target.value)}
+                />
+              </Field>
+            </FormSection>
+
+            <FormSection title="Where & when">
+              <Field label="Deliver to (country)" htmlFor="pr-dest">
                 <TextInput
                   id="pr-dest"
-                  placeholder="e.g. LK"
+                  placeholder="e.g. Sri Lanka"
                   value={destinationCountry}
                   onChange={(e) => setDestinationCountry(e.target.value)}
                 />
               </Field>
-            </div>
-            <Field
-              label="Specification"
-              htmlFor="pr-spec"
-              hint="Grade, packing, tolerances, standards…"
-            >
-              <Textarea
-                id="pr-spec"
-                rows={3}
-                placeholder="Describe exactly what you need."
-                value={specification}
-                onChange={(e) => setSpecification(e.target.value)}
-              />
-            </Field>
-            <Field label="Quantity" htmlFor="pr-qty">
-              <QuantityUnitInput
-                id="pr-qty"
-                quantity={quantity}
-                unit={unit}
-                onQuantityChange={setQuantity}
-                onUnitChange={setUnit}
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Currency" htmlFor="pr-currency" required>
-                <Select
-                  id="pr-currency"
-                  options={CURRENCY_OPTIONS}
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                />
-              </Field>
-              <Field label="Deliver by" htmlFor="pr-deliver">
-                <TextInput
-                  id="pr-deliver"
-                  type="date"
-                  value={deliveryBy}
-                  onChange={(e) => setDeliveryBy(e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Payment terms" htmlFor="pr-terms">
-                <TextInput
-                  id="pr-terms"
-                  placeholder="e.g. 30% advance, balance on delivery"
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
-                />
-              </Field>
-              <Field label="Submissions close" htmlFor="pr-close">
-                <TextInput
-                  id="pr-close"
-                  type="date"
-                  value={submissionCloseAt}
-                  onChange={(e) => setSubmissionCloseAt(e.target.value)}
-                />
-              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Needed by" htmlFor="pr-deliver" hint="Optional target delivery date.">
+                  <TextInput
+                    id="pr-deliver"
+                    type="date"
+                    value={deliveryBy}
+                    onChange={(e) => setDeliveryBy(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Supplier responses due by"
+                  htmlFor="pr-close"
+                  hint="When the submission window closes."
+                >
+                  <TextInput
+                    id="pr-close"
+                    type="date"
+                    value={submissionCloseAt}
+                    onChange={(e) => setSubmissionCloseAt(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <FormSection title="Budget & payment terms">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Currency" htmlFor="pr-currency" required>
+                  <Select
+                    id="pr-currency"
+                    options={CURRENCY_OPTIONS}
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Payment terms"
+                  htmlFor="pr-terms"
+                  hint="e.g. 30% advance, balance on delivery"
+                >
+                  <TextInput
+                    id="pr-terms"
+                    placeholder="e.g. 30% advance, balance on delivery"
+                    value={paymentTerms}
+                    onChange={(e) => setPaymentTerms(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </FormSection>
+
+            <div className="rounded-xl border border-gold-500/20 bg-gold-500/[0.04] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gold-300/80">
+                What suppliers will see
+              </p>
+              <ul className="mt-2 space-y-1 text-sm leading-relaxed text-bone-300">
+                {summaryLines.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
             </div>
 
             {error ? <p className="text-sm text-outbid">{error}</p> : null}

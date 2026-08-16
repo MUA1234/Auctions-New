@@ -2,21 +2,30 @@
 import { type FormEvent, useState } from 'react';
 import { Button, Card, DataTable, Field, Skeleton, TextInput, type Column } from '@singha/ui';
 import { Price } from './Price';
+import { QuantityUnitInput } from './QuantityUnitInput';
+import { friendlyMessage } from './evo-api-error';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { useAuth } from '../../lib/auth';
 import { recommendSupply, type SupplyRecommendation } from '../../lib/evolution-api';
 
 /**
- * Supply match (E10 · buyer). A buyer describes what they need and gets a ranked, cheapest-first
- * list of matching supply programmes. This is a RECOMMENDATION only — explicitly non-binding
- * (`binding:false`): nothing is ordered automatically, no engine state changes. To transact the
- * buyer proceeds through a real offer/procurement flow, where the engine remains authoritative.
+ * Supply match (E10 · buyer, CX6 pack docs 04/05). A buyer describes what they need and gets a
+ * ranked, cheapest-first list of matching supply PROGRAMMES — standing arrangements, not one-off
+ * listings. This is a RECOMMENDATION only — explicitly non-binding (`binding:false`): nothing is
+ * ordered automatically, no engine state changes. To transact the buyer proceeds through a real
+ * offer/procurement flow, where the engine remains authoritative.
+ *
+ * Read-model note: `/supply/recommend` returns only `{programmeId, product, originCountry,
+ * indicativePriceMinor, leadTimeDays}` — cadence and perishable metadata are not part of this
+ * result, so they can't be shown in the match list (only on the supplier's own programme, see
+ * `SupplyProgrammes.tsx`); out of scope to change here (backend, frozen for this task).
  */
 export function SupplyMatch() {
   const { token, loading } = useAuth();
   const [category, setCategory] = useState('');
   const [product, setProduct] = useState('');
   const [quantityRequired, setQuantityRequired] = useState('');
+  const [unit, setUnit] = useState('');
   const [originCountry, setOriginCountry] = useState('');
   const [results, setResults] = useState<SupplyRecommendation[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -28,11 +37,13 @@ export function SupplyMatch() {
     setError(null);
     setSearching(true);
     try {
+      const q = quantityRequired.trim();
       const res = await recommendSupply(
         {
           category: category.trim() || undefined,
           product: product.trim() || undefined,
-          quantityRequired: quantityRequired.trim() || undefined,
+          quantityRequired: q || undefined,
+          quantityUnitCode: q && unit ? unit : undefined,
           originCountry: originCountry.trim() || undefined,
         },
         token,
@@ -40,7 +51,7 @@ export function SupplyMatch() {
       setResults(res.recommendations);
     } catch (err: unknown) {
       setResults(null);
-      setError(err instanceof Error ? err.message : 'Could not fetch recommendations.');
+      setError(friendlyMessage(err, 'Could not fetch recommendations. Please try again.'));
     } finally {
       setSearching(false);
     }
@@ -86,7 +97,7 @@ export function SupplyMatch() {
     },
     {
       key: 'lead',
-      header: 'Lead time',
+      header: 'Typical lead time',
       align: 'right',
       render: (r) => (
         <span className="text-bone-300">
@@ -101,11 +112,12 @@ export function SupplyMatch() {
       <header className="max-w-2xl">
         <p className="eyebrow text-gold-300">Find supply</p>
         <h1 className="mt-2 font-serif text-3xl font-bold text-bone sm:text-4xl">
-          Tell us what you need. See who can supply.
+          Tell us what you need. See who can supply it, ongoing.
         </h1>
         <p className="mt-3 text-bone-400">
-          We match your requirement to active supply programmes and rank them cheapest-first. This
-          is a recommendation only — nothing is ordered automatically.
+          We match your requirement against suppliers' standing supply programmes — recurring or
+          on-demand — and rank them cheapest-first. This is a recommendation only — nothing is
+          ordered automatically.
         </p>
       </header>
 
@@ -128,18 +140,18 @@ export function SupplyMatch() {
             />
           </Field>
           <Field label="Quantity required" htmlFor="sm-qty">
-            <TextInput
+            <QuantityUnitInput
               id="sm-qty"
-              inputMode="decimal"
-              placeholder="e.g. 200"
-              value={quantityRequired}
-              onChange={(e) => setQuantityRequired(e.target.value.replace(/[^\d.]/g, ''))}
+              quantity={quantityRequired}
+              unit={unit}
+              onQuantityChange={setQuantityRequired}
+              onUnitChange={setUnit}
             />
           </Field>
           <Field label="Origin country" htmlFor="sm-origin">
             <TextInput
               id="sm-origin"
-              placeholder="e.g. LK"
+              placeholder="e.g. Sri Lanka"
               value={originCountry}
               onChange={(e) => setOriginCountry(e.target.value)}
             />

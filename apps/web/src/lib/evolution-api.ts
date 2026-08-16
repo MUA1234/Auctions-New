@@ -265,6 +265,27 @@ export interface SupplyProgrammeSummary {
   category?: string | null;
   status: string;
 }
+/**
+ * Full read of one owned programme (`GET /supply/programmes/:id`) — richer than the `/mine` list
+ * (adds origin, quantities, price, cadence and lead time) but, like `/mine`, still does not return
+ * `validFrom`/`validUntil`/`incoterm`/`pricingBasis`/`packing`/`quality`: those are accepted on
+ * create but not projected back by any read endpoint today (see SINGHA_CX_DECISIONS.md).
+ */
+export interface SupplyProgrammeDetail {
+  id: string;
+  product: string;
+  category: string | null;
+  originCountry: string | null;
+  availableQuantity: string | null;
+  minOrderQuantity: string | null;
+  maxOrderQuantity: string | null;
+  quantityUnitCode: string | null;
+  indicativePriceMinor: number | null;
+  currency: string;
+  frequency: string | null;
+  leadTimeDays: number | null;
+  status: string;
+}
 export interface SupplyRecommendation {
   programmeId: string;
   product: string;
@@ -272,14 +293,34 @@ export interface SupplyRecommendation {
   indicativePriceMinor: number | null;
   leadTimeDays: number | null;
 }
+/** Perishable metadata read (`GET /supply/perishable/:subjectType/:subjectId`) — the derived,
+ *  customer-safe summary (temperature band / shipment window are write-only inputs used to
+ *  compute `expiresAt`, not returned here). 404s when nothing has been attached yet. */
+export interface PerishableSummary {
+  subjectType: string;
+  subjectId: string;
+  variety: string | null;
+  grade: string | null;
+  coldChain: boolean;
+  expiresAt: string | null;
+  expired: boolean;
+}
 export const createSupplyProgramme = (body: Record<string, unknown>, token: string) =>
   apiPost<{ id: string; product: string; status: string }>('/supply/programmes', body, token);
 export const fetchMySupplyProgrammes = (token: string) =>
   apiGetAuthed<SupplyProgrammeSummary[]>('/supply/programmes/mine', token);
+export const fetchSupplyProgramme = (id: string, token: string) =>
+  apiGetAuthed<SupplyProgrammeDetail>(`/supply/programmes/${id}`, token);
 export const setSupplyProgrammeStatus = (id: string, status: string, token: string) =>
   apiPost<{ id: string; status: string }>(`/supply/programmes/${id}/status`, { status }, token);
 export const recommendSupply = (
-  body: { category?: string; product?: string; quantityRequired?: string; originCountry?: string },
+  body: {
+    category?: string;
+    product?: string;
+    quantityRequired?: string;
+    quantityUnitCode?: string;
+    originCountry?: string;
+  },
   token: string,
 ) =>
   apiPost<{ binding: false; count: number; recommendations: SupplyRecommendation[] }>(
@@ -300,6 +341,11 @@ export const attachPerishable = (
     body,
     token,
   );
+export const fetchPerishable = (
+  subjectType: 'supply_programme' | 'listing',
+  subjectId: string,
+  token: string,
+) => apiGetAuthed<PerishableSummary>(`/supply/perishable/${subjectType}/${subjectId}`, token);
 
 /* ------------------------------ E11 · Singha ID ------------------------------ */
 

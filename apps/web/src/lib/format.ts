@@ -102,3 +102,58 @@ export function timeLeft(iso: string | null | undefined): string {
   const s = Math.floor((ms % 60_000) / 1000);
   return `${m}m ${s}s`;
 }
+
+/**
+ * Convert a date-only `<input type="date">` value ("YYYY-MM-DD") into the full ISO-8601
+ * datetime string the backend's `z.string().datetime()` contracts require (procurement
+ * `deliveryBy`/`submissionCloseAt`, supply programme `validFrom`/`validUntil`, perishable
+ * harvest/packing/expiry/shipment-window dates — all Zod `.datetime()`, which needs a
+ * `T`/`Z`-qualified timestamp and rejects a bare date). Returns undefined for empty/invalid
+ * input so callers can spread it straight into an optional field.
+ */
+export function toApiDateTime(dateOnly: string | null | undefined): string | undefined {
+  if (!dateOnly) return undefined;
+  const d = new Date(dateOnly);
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+/**
+ * Friendly labels for procurement request types. The backend enum (`RFQ` / `REQUEST_SUPPLY` /
+ * `REVERSE_TENDER`) is UPPER_SNAKE, so the generic `humanize()` renders it shouting — e.g.
+ * "REQUEST SUPPLY" (CX audit finding X3) — right next to normal-case text. This is the one
+ * lookup customers should see instead.
+ */
+export const PROCUREMENT_TYPE_LABELS: Record<string, string> = {
+  RFQ: 'Request for quote',
+  REQUEST_SUPPLY: 'Request for supply',
+  REVERSE_TENDER: 'Reverse tender',
+};
+export function procurementTypeLabel(type: string | null | undefined): string {
+  if (!type) return 'Request';
+  return PROCUREMENT_TYPE_LABELS[type] ?? humanize(type);
+}
+
+/**
+ * Standard Incoterms (a subset matching `CommercialOfferForm`'s list, kept as the one shared
+ * vocabulary across offer/procurement/supply forms) with plain-English names — so a buyer or
+ * supplier picks a recognised code from a list instead of free-typing one, and any surface that
+ * shows the code can also show what it means.
+ */
+export const INCOTERMS: ReadonlyArray<{ code: string; name: string }> = [
+  { code: 'EXW', name: 'Ex Works' },
+  { code: 'FCA', name: 'Free Carrier' },
+  { code: 'FOB', name: 'Free On Board' },
+  { code: 'CFR', name: 'Cost and Freight' },
+  { code: 'CIF', name: 'Cost, Insurance & Freight' },
+  { code: 'DAP', name: 'Delivered At Place' },
+];
+export const INCOTERM_OPTIONS = INCOTERMS.map((i) => ({
+  value: i.code,
+  label: `${i.code} — ${i.name}`,
+}));
+const INCOTERM_NAMES = new Map(INCOTERMS.map((i) => [i.code, i.name]));
+/** Full name for a (possibly unrecognised) incoterm code, e.g. "Cost, Insurance & Freight". */
+export function incotermName(code: string | null | undefined): string | null {
+  if (!code) return null;
+  return INCOTERM_NAMES.get(code.toUpperCase()) ?? null;
+}
