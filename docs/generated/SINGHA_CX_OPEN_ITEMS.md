@@ -50,3 +50,25 @@ deploys are unaffected by this CI outage.
 - CX3 filters: price-range, display-currency, quantity-range, shipping/pickup and
   verification are not `/api/v2/catalogue` server params yet; adding them needs additive
   backend query support (must stay server-side — the catalogue never downloads all inventory).
+
+## CX13 visual-QA follow-ups (minor / owner)
+- **D4 — scroll affordance (minor polish, FE).** The category/method chip rails on Explore and
+  the last column of the offers/logistics data tables are legitimately horizontally scrollable
+  (`overflow-x-auto`, server-paginated) but hard-clip the last visible item with no scrollbar,
+  fade or arrow — so at narrow widths they can read as "cut off" rather than "scroll for more".
+  Safe additive fix (a right-edge fade mask or a persistent thin scrollbar); deferred from the
+  CX13 fix commit to keep it to the two confirmed high-value defects. Low severity, not blocking.
+- **D5 — seller viewing offers on their own sealed listing gets 403 (product / RBAC — owner +
+  backend).** The sealed-offer operate/view permission (`exchange:operate`) is staff/admin-only,
+  so a *seller* opening offers on their own sealed listing receives 403. The frontend already
+  handles it gracefully (clean "couldn't load" card + Retry), so this is **not** a rendering
+  bug — it is a product decision: should the seller role get a scoped, confidentiality-safe read
+  of offers on listings they own (they need it to award), and if so, does it respect sealed
+  pre-reveal (counts only until the server-authorized reveal)? This touches authorization and
+  sealed-offer confidentiality, so it is intentionally **not** changed here — it belongs with the
+  owner + backend team (`Auctions-Backend` RBAC), not a frontend visual-QA pass.
+- **D6 — mobile bottom dock paint at exact max-scroll (real-device check).** During
+  supplementary headless probing the dock's pixels were empty at the single exact max-scroll
+  frame although the DOM/geometry reported it present and on top — most likely a headless-Chromium
+  compositing quirk, not in the delivered frames. Worth a quick real-device spot-check; no code
+  change asserted.

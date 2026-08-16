@@ -317,3 +317,24 @@ the broken `eslint-disable` in the active `BrandLogo.tsx` with a plain note; (2)
 repo-root `typecheck` script to `--filter=@singha/web... --filter=@singha/auctionflow`, matching
 `test`/`build`, so the deprecated copy is not gated. The frozen schema/domain code is left
 untouched (not "fixed"), per the frozen-copy rule.
+
+## D-CX-6 · Header switches to the mobile drawer below `lg`; heavy actions revealed progressively
+CX13 found the global header overflowing at 768–1024 (the gold CTA wrapped to three lines) and,
+signed in, even at 1440 — shared chrome that predates the overhaul. Rather than cram six nav
+links + currency + auth + CTA into the 720–944px content box, the desktop nav and seller CTA
+now appear at `lg` (the existing mobile drawer is a complete menu — all nav, Discover, auth
+actions and the CTA — so 768–1023 loses nothing), the informational currency picker is deferred
+to `xl`, and the signed-in top bar is trimmed to identity + Sign out (Membership/Security remain
+in the drawer and one click under *My account*). Rationale: a mobile menu up to `lg` is a
+standard, robust pattern; progressive reveal keeps every width within the row without wrapping;
+no functionality is removed, only relocated. Verified on the running stack at 768/1024/1440.
+
+## D-CX-7 · Flow rails loop only when they actually overflow (measured, not heuristic)
+The Flow canvas duplicates a rail's lots to make horizontal scrolling wrap seamlessly. It fired
+on every *exhausted* rail, so on wide screens a short rail that already fit showed its cards
+twice side by side (read as a duplication bug). The loop is now gated on a **measured** overflow
+(`ResizeObserver` comparing the single-set width to the rail's client width; halved while
+looping since the DOM then holds two copies), and the scroll arrows gate on the same signal.
+Rationale: duplication only serves seamless scrolling, which is only needed when there is
+something to scroll; measuring adapts per width (loops at 390, single set at 1440) without a
+brittle item-count threshold. Deterministic, SSR-safe (starts non-looping, refines on mount).

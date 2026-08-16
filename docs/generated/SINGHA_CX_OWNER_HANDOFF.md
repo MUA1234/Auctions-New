@@ -89,8 +89,37 @@ self-gates, so this reverts to the current production experience with no deploy)
 deployment rollback, then forward-fix. No destructive migration is involved (the overhaul is
 presentation + one additive backend read).
 
-## Evidence
-See the before/after screenshot set and the per-phase reports:
-`SINGHA_LIVING_BACKGROUND_REPORT.md`, `SINGHA_CX_CURRENT_STATE_AUDIT.md`, `SINGHA_CX_STATE.md`,
-`SINGHA_CX_DECISIONS.md`, `SINGHA_CX_IP_BOUNDARY_REVIEW.md`, `SINGHA_CX_OPEN_ITEMS.md`.
-<!-- CX13 before/after screenshot index appended after the visual-QA capture. -->
+## Evidence — CX13 responsive visual QA (before/after)
+
+**Owner review package (one link, click through the before/after):**
+https://claude.ai/code/artifact/8fea16a4-3c11-48b3-9be6-f46091d6152d
+(a self-contained visual review — homepage, Explore, Wanted, the new account surfaces, and the
+two CX13 fixes, side by side).
+
+**How it was captured.** A full local stack — Postgres (`singha_preview`) + the built API with
+non-binding preview flags (`FEATURE_OPERATOR_PAYMENTS` / `FEATURE_LOGISTICS_QUOTES` **false**) +
+the Supabase auth stub + the seeded Evolution demo data — screenshotted at the **seven mandated
+widths (360 · 390 · 430 · 768 · 1024 · 1440 · 1920)**, redesign-on vs baseline, plus a signed-in
+pass over the account/offer/logistics surfaces. **Zero horizontal page overflow at any width.**
+
+**Screenshot matrix (75 base frames + a post-fix verification set):**
+| Set | Frames | Covers |
+|---|---|---|
+| `after/` | 42 | redesign-on: home · Explore · Wanted · Sell · Services · Exchange × 7 widths |
+| `before/` | 9 | baseline: home · Explore · Wanted × 390/768/1440 (the before/after pairs) |
+| `authed/` | 24 | signed-in: Command Centre · Singha ID · offers · sealed comparison · lot · logistics · Explore × 390/768/1440 |
+| `verify/` | 13 | post-fix confirmation of D1 (header) and D2 (Flow) on the running stack |
+
+**Two defects found and fixed** (commit `af0c830`, verified on the running stack): the global
+header overflow at tablet widths, and Flow catalogue rails duplicating listings on wide screens.
+Full detail, triage of the remaining minor items (D3 non-defect; D4–D6 owner/polish) and the gate
+status: `SINGHA_CX13_VISUAL_QA_REPORT.md`.
+
+See also the per-phase reports: `SINGHA_LIVING_BACKGROUND_REPORT.md`,
+`SINGHA_CX_CURRENT_STATE_AUDIT.md`, `SINGHA_CX_STATE.md`, `SINGHA_CX_DECISIONS.md`
+(D-CX-6/D-CX-7 for the CX13 fixes), `SINGHA_CX_IP_BOUNDARY_REVIEW.md`, `SINGHA_CX_OPEN_ITEMS.md`.
+
+> **Branch state.** The full overhaul (CX0–CX12 + the Living Background, 70 commits) is on
+> `origin/main` of both repos. The CX13 fix + this CX14 finalization are on
+> `claude/new-session-at0qp4` (this session's designated branch, based directly on `main` — it is
+> `main` + the finalization, a clean fast-forward / PR into `main`).

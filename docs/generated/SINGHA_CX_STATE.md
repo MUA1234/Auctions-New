@@ -159,3 +159,28 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 ## Gates status
 Every increment ships only after: typecheck · vitest (110 passing) · `next build` · eslint ·
 prettier. Backend authority, immutable ledgers, sealed privacy, MFA/RBAC untouched.
+
+## CX13 + CX14 — responsive visual QA + owner handoff (final)
+- **CX13** — seven-width responsive visual QA (360/390/430/768/1024/1440/1920) against a full
+  local stack (Postgres `singha_preview` + built API with non-binding preview flags + Supabase
+  stub + seeded Evolution demo data). 75 base frames (after/before/authed) + a post-fix
+  verification set; **zero horizontal page overflow** at any width. Six findings triaged: two
+  genuine defects **fixed and verified** — D1 global header overflow at 768–1024 (raise desktop
+  nav + CTA to `lg`, defer currency to `xl`, trim signed-in bar, no-wrap CTA) and D2 Flow rails
+  duplicating listings on wide screens (loop only on measured overflow); D3 a full-page-capture
+  artifact (no change); D4–D6 minor polish / a seller-sealed-offer RBAC product question / a
+  real-device dock-paint check → `SINGHA_CX_OPEN_ITEMS`. Fix committed `af0c830`. Report:
+  `SINGHA_CX13_VISUAL_QA_REPORT.md`; decisions D-CX-6 / D-CX-7.
+- **CX14** — owner handoff finalized: before/after evidence index appended to
+  `SINGHA_CX_OWNER_HANDOFF.md` with a self-contained **owner review package** (hosted artifact,
+  click-through before/after). All 14 CX phases + the Living Background shipped; nothing binding
+  enabled; rollback is a flag flip.
+- **Branch reconciliation.** The designated `claude/new-session-at0qp4` (both repos) was a stale
+  ancestor of `main` at session start; the full overhaul (70 FE commits) is on `origin/main`. The
+  FE designated branch was restarted from current `main` (lossless) and now carries the CX13 fix +
+  CX14 docs on top — `main` + finalization, a clean fast-forward / PR into `main`. Backend has no
+  CX13/CX14 code change (its CX5 work is on `origin/main`).
+- **Gates** (FE GitHub Actions still owner-blocked — see OPEN_ITEMS): typecheck, 110 web + 30
+  auctionflow + 13 contract tests, eslint, prettier, check-routes, check-contracts all green;
+  production build compiles (only the sandbox Google-Fonts fetch is environment-blocked; real
+  CI/Vercel reach it).
