@@ -47,10 +47,17 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
   NOT added (no server support); noted with a `// CX3: future backend filters` comment.
   Gates: typecheck, vitest (91 passing), eslint, prettier, `next build` all green.
 
+- **CX5 (raw-ID removal + offer context)** — backend: `GET /commercial-offers/mine` enriched
+  with additive PUBLIC listing context (title/publicRef/saleMethod/location/coverStorageKey),
+  no private data (backend `e5dceca`). Frontend: `OfferView.listing` typed; `MyCommercialOffers`
+  now shows the real title + reference + location instead of the raw listing CUID, with a
+  regression test. (Sealed-offer comparison UX already exists from E4b; further offer-form
+  "plain-English summary / negotiation timeline" polish tracked under CX-cont.)
+
 ## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
 - **CX4** — Listing detail as a transaction workspace (sticky rail desktop / dock mobile).
-- **CX5** — Commercial + sealed offer UX; remove raw `listingId` via safe read-model enrich.
+- **CX5 (cont.)** — offer form plain-English summary + negotiation-timeline polish.
 - **CX6** — Wanted/RFQ + Supply first-class flows.
 - **CX7** — Customer Command Centre (attention-led) + Singha ID as transaction passport.
 - **CX8** — Logistics woven into the transaction journey.

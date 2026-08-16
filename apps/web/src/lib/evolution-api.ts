@@ -71,6 +71,18 @@ export interface OfferView {
   currency: string;
   sealed?: boolean;
   saleMethodCode?: string | null;
+  /**
+   * Public listing context (CX5, pack doc 05) — attached by GET /commercial-offers/mine so
+   * the UI shows a real title/reference/location instead of a raw listing id. Optional so
+   * older responses (and single-offer endpoints that don't enrich) still type-check.
+   */
+  listing?: {
+    title: string | null;
+    publicRef: string;
+    saleMethod: string;
+    location: { city: string | null; region: string | null } | null;
+    coverStorageKey: string | null;
+  };
 }
 export interface SealedRankedOffer {
   rank: number;

@@ -61,14 +61,22 @@ export function MyCommercialOffers() {
     {
       key: 'listing',
       header: 'Listing',
-      render: (o) => (
-        <Link
-          href={`/lot/${o.listingId}`}
-          className="text-bone-200 underline-offset-2 hover:text-bone hover:underline"
-        >
-          {o.listingId}
-        </Link>
-      ),
+      render: (o) => {
+        // CX5 (pack doc 05): show the real title / reference / location — never the raw
+        // listing id. Falls back gracefully for older responses without enrichment.
+        const place = o.listing?.location
+          ? [o.listing.location.city, o.listing.location.region].filter(Boolean).join(', ')
+          : '';
+        const meta = [o.listing?.publicRef, place].filter(Boolean).join(' · ');
+        return (
+          <Link href={`/lot/${o.listingId}`} className="group block max-w-[16rem]">
+            <span className="block truncate font-medium text-bone-200 group-hover:text-bone">
+              {o.listing?.title || o.listing?.publicRef || 'View listing'}
+            </span>
+            {meta && <span className="mt-0.5 block truncate text-xs text-bone-500">{meta}</span>}
+          </Link>
+        );
+      },
     },
     {
       key: 'amount',
