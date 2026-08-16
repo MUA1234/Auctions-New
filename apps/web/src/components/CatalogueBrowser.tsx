@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Card, Chip } from '@singha/ui';
+import { Card, Chip, ScrollX } from '@singha/ui';
 import { AuctionFlowViewport, CubeRow } from '@singha/auctionflow';
 import {
   fetchCatalogueRow,
@@ -230,7 +230,7 @@ export function CatalogueBrowser({
           {/* Row 2 — category rail. */}
           <div className="mt-2.5 flex items-center gap-2">
             <FilterLabel>Category</FilterLabel>
-            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+            <ScrollX className="flex min-w-0 flex-1 items-center gap-2">
               <FilterChip
                 active={category === ''}
                 onClick={() => setCategory('')}
@@ -253,13 +253,13 @@ export function CatalogueBrowser({
                   </FilterChip>
                 );
               })}
-            </div>
+            </ScrollX>
           </div>
 
           {/* Row 3 — sale-method rail. */}
           <div className="mt-2 flex items-center gap-2">
             <FilterLabel>Method</FilterLabel>
-            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+            <ScrollX className="flex min-w-0 flex-1 items-center gap-2">
               <FilterChip
                 active={saleMethod === ''}
                 onClick={() => setSaleMethod('')}
@@ -283,7 +283,7 @@ export function CatalogueBrowser({
                   </FilterChip>
                 );
               })}
-            </div>
+            </ScrollX>
           </div>
         </div>
       </div>

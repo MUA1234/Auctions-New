@@ -338,3 +338,13 @@ looping since the DOM then holds two copies), and the scroll arrows gate on the 
 Rationale: duplication only serves seamless scrolling, which is only needed when there is
 something to scroll; measuring adapts per width (loops at 390, single set at 1440) without a
 brittle item-count threshold. Deterministic, SSR-safe (starts non-looping, refines on mount).
+
+## D-CX-8 · A shared `ScrollX` gives hidden-scrollbar rails a measured edge-fade affordance
+CX13 D4: horizontal-scroll rails whose scrollbar is hidden (`no-scrollbar` — the Explore chip
+rails and the shared `DataTable`) hard-clipped their last visible item, reading as "cut off"
+rather than "scroll for more". Rather than un-hide a chunky scrollbar (visually heavy) or apply a
+static right-fade (a false "more" hint when the rail already fits), a single client component
+`ScrollX` (`@singha/ui`) measures scroll position + overflow (scroll listener + ResizeObserver)
+and fades only the side(s) with genuinely off-screen content — nothing when it fits. Applied once
+to the shared `DataTable` (covers offers, logistics, seller console, control centre, supply,
+procurement) and to the two catalogue chip rails. Verified at 390 (fade) and 1440 (no fade).

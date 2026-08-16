@@ -52,12 +52,14 @@ deploys are unaffected by this CI outage.
   backend query support (must stay server-side — the catalogue never downloads all inventory).
 
 ## CX13 visual-QA follow-ups (minor / owner)
-- **D4 — scroll affordance (minor polish, FE).** The category/method chip rails on Explore and
-  the last column of the offers/logistics data tables are legitimately horizontally scrollable
-  (`overflow-x-auto`, server-paginated) but hard-clip the last visible item with no scrollbar,
-  fade or arrow — so at narrow widths they can read as "cut off" rather than "scroll for more".
-  Safe additive fix (a right-edge fade mask or a persistent thin scrollbar); deferred from the
-  CX13 fix commit to keep it to the two confirmed high-value defects. Low severity, not blocking.
+- **D4 — scroll affordance — RESOLVED.** The category/method chip rails on Explore and the shared
+  data tables (offers, logistics, seller console, control centre, supply, procurement) hid their
+  scrollbar (`no-scrollbar`) and hard-clipped the last visible item, so at narrow widths they read
+  as "cut off" rather than "scroll for more". Fixed with a shared `ScrollX` component (`@singha/ui`)
+  that adds a soft edge-fade on whichever side has off-screen content — **measured**, so it appears
+  only when the rail actually overflows (no false hint when it fits). Applied to the two chip rails
+  and the shared `DataTable` (one change covers all six table surfaces). Verified on the running
+  stack at 390 (fade present) and 1440 (no fade). See D-CX-8.
 - **D5 — seller viewing offers on their own sealed listing gets 403 (product / RBAC — owner +
   backend).** The sealed-offer operate/view permission (`exchange:operate`) is staff/admin-only,
   so a *seller* opening offers on their own sealed listing receives 403. The frontend already
