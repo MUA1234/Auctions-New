@@ -109,10 +109,26 @@ no rate-limiting on `/ai/*` or `/connect/*`; no voice channel in `ChannelType`; 
   data/formatting artifact — AIC-1 never touched `public-api.contract.json`); new live `e2e-assistant`
   suite (27 checks, flag on + off).
 
+- **AIC-2 — DONE** (backend `ac29ebc`). Cross-channel continuity + the "Chat now / WhatsApp /
+  Call me" channel-request flow — **no schema migration**. A continuity token (opaque base64url
+  link, unsigned by design) lets one logical conversation span web→WhatsApp→voice; the
+  continuation ingress (`ConnectService.inboundContinuation`) attaches to the origin conversation
+  ONLY after re-resolving the caller's verified `ExternalIdentity` and matching it to the origin's
+  own stored `customerId` (token never trusted for identity — an intercepted token can't hijack).
+  `POST /assistant/channel-request` is capability-gated (`assistantChannels`, default `['web']`;
+  WhatsApp/voice OFF), WhatsApp = a deep-link via the shared `MockChannelProvider`, voice = a
+  non-binding callback request. Human-handoff context via `ConnectService.conversation()`
+  (message payload + derived `handoffSummary`). Voice modeled as a `Message.payload` event (no
+  `ChannelType.voice` until real telephony). Lead-reviewed all five invariants (esp. the
+  continuation-ingress identity check). `pnpm check` 13/13 (97 API tests, +23), zero `database/`
+  change; `e2e-assistant-channels` idempotent ×2 + regression clean.
+
+**→ The backend "single conversation brain" (assistant + channels + continuity + handoff) is now
+complete and shipped.**
+
 ## Next
-- **AIC-2** — channels + continuity: add `voice` to `ChannelType` (additive), cross-channel
-  continuity (one logical conversation across webchat→WhatsApp→voice, preserving identity/context/
-  history/language/intent/stage/next-action), the "Chat now / WhatsApp / Call me" channel-request
-  flow (capability-driven, deep-link + callback request, non-binding, fake providers), and
-  human-handoff context (extend the existing `setMode`). Model-provider abstraction already exists
-  (`AiProvider`/`MockAiProvider`, used by AIC-1).
+- **AIC-3 — in progress**: AI-assisted search (LLM interprets NL → structured `CatalogueQuery`
+  validated against the schema → `CatalogueV2Service.list()` executes; the model never returns/
+  invents results). Then AIC-4 (security/anti-clone consolidation), AIC-5/6 (FE surfaces: site-wide
+  webchat, item-level "Ask Singha AI", channel choice, suggested prompts, AI discovery, assisted
+  non-binding action prep), AIC-7 (cross-channel E2E + responsive QA + anti-clone update + handoff).
