@@ -10,7 +10,9 @@
  */
 export function BrandLogo({ className }: { className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- animated SVG, must not be optimised
+    // A plain <img> is deliberate: the animated brand SVG must not be optimised/rasterised
+    // by next/image. (The @next/next ESLint plugin isn't registered in this repo's flat
+    // config, so a rule-specific disable directive would itself error — hence a plain note.)
     <img
       src="/images/singha-logo.svg"
       alt="Singha"

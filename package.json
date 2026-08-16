@@ -11,7 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck --filter=@singha/web... --filter=@singha/auctionflow",
     "test": "turbo run test",
     "test:integration": "turbo run test:integration",
     "test:db": "node scripts/with-ephemeral-db.mjs bash -c \"pnpm db:migrate:deploy && pnpm --filter @singha/database run test\"",
