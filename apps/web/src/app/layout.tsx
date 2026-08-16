@@ -3,6 +3,7 @@ import { Poppins, Inter, Manrope } from 'next/font/google';
 import '@singha/ui/styles.css';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { MobileBottomDock } from '../components/MobileBottomDock';
 
 // Headings — rounded geometric sans on the --font-serif variable (matches V1).
 const heading = Poppins({
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <MobileBottomDock />
       </body>
     </html>
   );

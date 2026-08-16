@@ -17,10 +17,11 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
   editorial explainer (six sale methods; auction is one of them), and a two-sided "Wanted"
   section surfacing buyer demand. New `components/home/*`, gated on `neutralIaV1`. Explore
   page relabelled from "Catalogue" and given a `q` param.
+- **CX1 (mobile shell)** — purpose-built mobile bottom dock (Explore | Wanted | Sell |
+  Activity | Account) with active-route state and safe-area handling; global CSS reserves
+  bottom space via `has-mobile-dock`. `MobileBottomDock`, gated on `neutralIaV1`, `md:hidden`.
 
-## Next (phase backlog CX1–CX14)
-- **CX1** — global shell polish + mobile bottom dock (Explore | Wanted | Sell | Activity |
-  Account); confirm neutral IA is the preview default across Header/MobileNav.
+## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
 - **CX3** — Explore: sticky/compact filters (location, price, currency, qty/unit, shipping,
   verification), universal sale-method-neutral card polish.

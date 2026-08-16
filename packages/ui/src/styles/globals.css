@@ -223,3 +223,14 @@ body {
     transform: none !important;
   }
 }
+
+/*
+ * Mobile bottom dock (CX pack doc 03). When the neutral-IA dock is mounted it adds
+ * `has-mobile-dock` to <html>; reserve bottom space on small screens so the fixed bar
+ * never hides page content or the footer. No effect on desktop or when the dock is off.
+ */
+@media (max-width: 767px) {
+  html.has-mobile-dock body {
+    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom));
+  }
+}
