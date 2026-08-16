@@ -62,10 +62,18 @@ export function useFlags(): { flags: FeatureFlags; loading: boolean } {
     (f: FeatureFlags) => withEvolutionPreview(withV3Preview(f, preview), evo),
     [preview, evo],
   );
-  const [flags, setFlags] = useState<FeatureFlags>(() => applyPreviews(DEFAULT_FLAGS));
+  // The first render must match SSR, which cannot see the per-browser preview cookie/param — so
+  // start from DEFAULT_FLAGS with NO preview override applied. Applying the override synchronously
+  // here would make the client's first (hydration) render disagree with the server-rendered HTML,
+  // forcing React to discard the hydrated tree (hydration errors #418/#423, and on some production
+  // routes an unrecovered #329). The preview override + backend flags are applied AFTER mount.
+  const [flags, setFlags] = useState<FeatureFlags>(DEFAULT_FLAGS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Apply the client-only preview override immediately on mount, so the preview experience
+    // appears right after hydration without waiting for the backend flags fetch.
+    setFlags((f) => applyPreviews(f));
     let active = true;
     fetch(`${apiBase}/feature-flags`)
       .then((r) => (r.ok ? r.json() : null))
