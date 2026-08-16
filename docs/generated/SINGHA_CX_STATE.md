@@ -28,11 +28,27 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 - **CX1 (mobile shell)** — purpose-built mobile bottom dock (Explore | Wanted | Sell |
   Activity | Account) with active-route state and safe-area handling; global CSS reserves
   bottom space via `has-mobile-dock`. `MobileBottomDock`, gated on `neutralIaV1`, `md:hidden`.
+- **CX3 (Explore + universal card)** — not flag-gated (ships to everyone, like the CX0
+  fixes). Compact, sticky (`top-16 z-30`, under the header) Explore filter bar: search +
+  new Location text filter + new Ending soon (48h) toggle + Sort (already had price
+  asc/desc) + Flow/Grid/List, with the category/sale-method chip rows converted to
+  `overflow-x-auto` rails so the bar's height stays bounded and it can't cause horizontal
+  page overflow at 390px. `fetchCatalogueV2`/`fetchCatalogueRow` gained a typed
+  `CatalogueQueryParams` (was an untyped `Record`) and now forward `location`/`endingSoon`
+  everywhere, including into Flow bands so filter state still persists across view
+  switches. `SaleCard` rebuilt to the doc 04 hierarchy (media → title → location →
+  price/offer-state → quantity+unit "when present" → sale method → availability/close →
+  subtle logistics hint → one primary action) with a sale-method→verb map (Bid / Buy now /
+  Make offer / Request quote / Respond / View); dropped the on-image sale-method chip and
+  the internal divider (doc 06 "fewer borders, larger media"); `quantity`,
+  `quantityUnitCode`, `collectionSummary` added to `CatalogueCardV2` as optional/
+  forward-compatible (the v2 list card doesn't project them yet — see `SINGHA_CX_DECISIONS`
+  D-CX-1). Price-range/currency/quantity-range/shipping/verification filters intentionally
+  NOT added (no server support); noted with a `// CX3: future backend filters` comment.
+  Gates: typecheck, vitest (91 passing), eslint, prettier, `next build` all green.
 
 ## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
-- **CX3** — Explore: sticky/compact filters (location, price, currency, qty/unit, shipping,
-  verification), universal sale-method-neutral card polish.
 - **CX4** — Listing detail as a transaction workspace (sticky rail desktop / dock mobile).
 - **CX5** — Commercial + sealed offer UX; remove raw `listingId` via safe read-model enrich.
 - **CX6** — Wanted/RFQ + Supply first-class flows.

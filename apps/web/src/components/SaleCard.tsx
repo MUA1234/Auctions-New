@@ -1,34 +1,69 @@
 'use client';
 
 import Link from 'next/link';
-import { Chip } from '@singha/ui';
-import type { CatalogueCardV2 } from '../lib/api';
+import type { CardCommercial, CatalogueCardV2 } from '../lib/api';
 import { coverUrl } from '../lib/media';
-import { formatMoney, timeLeft } from '../lib/format';
+import { categoryMeta, saleMethodIcon, saleMethodLabel } from '../lib/categories';
+import { formatLocation, formatMoney, formatQuantity, timeLeft } from '../lib/format';
 import { LotImage } from './LotImage';
 
 /**
- * Sale-aware catalogue card (Revision 05 §6). Premium rounded glass surface with
- * an elegant media frame, a clear sale-method chip and a strong price hierarchy;
- * gentle hover lift. It renders a DIFFERENT commercial line per sale method from
- * the discriminated `commercial` payload — an EOI card never shows a bid, a Buy
- * Now shows a fixed price, etc. `compact` is the denser Flow-card variant.
+ * One clear, sale-method-appropriate call to action per commercial kind (CX3 "universal
+ * card", pack doc 04). Never a raw enum, never more than one action on a card — this is
+ * the only place that maps a `commercial.kind` to a customer-facing verb, so every card
+ * reads consistently whether it's a vehicle, a sapphire, 40 MT of onions, scrap, an
+ * excavator or land.
+ */
+function primaryActionLabel(kind: CardCommercial['kind']): string {
+  switch (kind) {
+    case 'auction':
+      return 'Bid';
+    case 'buy_now':
+      return 'Buy now';
+    case 'make_offer':
+      return 'Make offer';
+    case 'eoi':
+      return 'Request quote';
+    case 'sealed_tender':
+      return 'Respond';
+    default:
+      return 'View';
+  }
+}
+
+/**
+ * Sale-aware, sale-method-NEUTRAL catalogue card (CX3 "universal card", pack doc 04
+ * hierarchy: media → title → location → price/offer-state → quantity+unit → sale method
+ * → availability/close → a subtle logistics hint → exactly one primary action). Premium
+ * rounded glass surface with a clean, uncluttered media frame and a quiet metadata stack
+ * below it — no field here assumes an auction; it renders a DIFFERENT commercial line per
+ * sale method from the discriminated `commercial` payload, and quantity/logistics only
+ * appear `when present` so a single vehicle and 40 MT of onions both look intentional.
+ * `compact` is the denser Flow-rail variant and, like `CompactLotCell`, deliberately stays
+ * a single tap target with no separate action button.
  */
 export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compact?: boolean }) {
+  const category = categoryMeta(lot.category);
+  const SaleMethodIcon = saleMethodIcon(lot.saleMethod);
+  const locationText = lot.location ? formatLocation(lot.location) : '';
+  const hasQuantity = lot.quantity != null && lot.quantity !== '';
+
   return (
-    <Link href={`/lot/${lot.id}`} className="group block h-full">
+    <Link
+      href={`/lot/${lot.id}`}
+      className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+    >
       <article className={`card-premium flex h-full flex-col ${compact ? 'p-2.5' : 'p-3'}`}>
         <div className="relative overflow-hidden rounded-xl">
           <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-[4/3]" />
-          {/* Bottom scrim so the chip/price legibly float over any image. */}
+          {/* Bottom scrim so the watch/video markers stay legible over any photo. */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-coal-950/85 via-coal-950/20 to-transparent" />
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-2">
-            <Chip>{lot.saleMethod.replace(/_/g, ' ')}</Chip>
-            <div className="flex items-center gap-2 text-[11px] font-medium text-bone-200">
+          {(lot.featured || lot.watchers > 0) && (
+            <div className="absolute inset-x-0 top-0 flex items-center justify-end gap-2 p-2 text-[11px] font-medium text-bone-200">
               {lot.featured && <span className="text-gold-300">★</span>}
               {lot.watchers > 0 && <span className="text-bone-300">♥ {lot.watchers}</span>}
             </div>
-          </div>
+          )}
           {lot.media.videoAvailable && (
             <span className="absolute bottom-2 right-2 rounded bg-coal-950/80 px-1.5 py-0.5 text-[10px] text-bone-200 backdrop-blur">
               ▶ Video
@@ -48,13 +83,52 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
               {lot.shortDescription}
             </p>
           )}
-          <p className="mt-1 text-xs capitalize text-bone-500">
-            {lot.category}
-            {lot.location?.city ? ` · ${lot.location.city}` : ''}
+
+          {/* Location tier — falls back to the category label so the line is never blank
+              for a listing without a recorded city/region. */}
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-bone-500">
+            <span aria-hidden className="shrink-0" style={{ color: `rgba(${category.rgb},0.75)` }}>
+              <category.Icon className="h-3.5 w-3.5" strokeWidth={1.6} />
+            </span>
+            <span className="truncate">{locationText || category.label}</span>
           </p>
-          <div className="mt-3 border-t border-white/[0.06] pt-2.5">
+
+          {/* Price / offer-state (+ availability/close in its `meta`) — one line per
+              commercial kind, never a meaningless field for the wrong sale method. */}
+          <div className="mt-2.5">
             <Commercial lot={lot} />
           </div>
+
+          {/* Quantity + unit — commodity/bulk listings only, e.g. "40 MT". */}
+          {!compact && hasQuantity && (
+            <p className="mt-1.5 text-xs text-bone-400">
+              {formatQuantity(lot.quantity, lot.quantityUnitCode)}
+            </p>
+          )}
+
+          {/* Sale method — quiet caption, never the raw enum. */}
+          {!compact && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs capitalize text-bone-500">
+              <SaleMethodIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.6} />
+              {saleMethodLabel(lot.saleMethod)}
+            </p>
+          )}
+
+          {/* Subtle logistics/pickup hint — only when the listing has one. */}
+          {!compact && lot.collectionSummary && (
+            <p className="mt-1.5 line-clamp-1 text-[11px] text-bone-600">
+              <span className="text-bone-500">Pickup </span>
+              {lot.collectionSummary}
+            </p>
+          )}
+
+          {/* Exactly one primary action, pinned to the card's bottom edge so every card in
+              a row lines up regardless of how much optional content sits above it. */}
+          {!compact && (
+            <span className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gold-500 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-coal-950 transition-colors duration-200 group-hover:bg-gold-400">
+              {primaryActionLabel(lot.commercial.kind)}
+            </span>
+          )}
         </div>
       </article>
     </Link>
@@ -105,7 +179,7 @@ function Commercial({ lot }: { lot: CatalogueCardV2 }) {
         />
       );
     default:
-      return <Line label="" value="View lot" meta="" />;
+      return <Line label="" value="View listing" meta="" />;
   }
 }
 

@@ -38,6 +38,9 @@ const SORTS = [
   { id: 'price_desc', label: 'Price high→low' },
   { id: 'price_asc', label: 'Price low→high' },
 ];
+// Reuse the existing clock glyph for the "Ending soon" quick toggle (CX3) rather than
+// adding a new icon — it already means "time-bounded" everywhere else in the taxonomy.
+const EndingSoonIcon = saleMethodIcon('TIMED_AUCTION');
 
 /**
  * Catalogue (Revision 05 §4–§7). The default "Flow" view is independent horizontal
@@ -62,6 +65,14 @@ export function CatalogueBrowser({
   const [debounced, setDebounced] = useState(initialSearch);
   const [category, setCategory] = useState<string>(initialCategory);
   const [saleMethod, setSaleMethod] = useState<string>(initialSaleMethod);
+  // CX3 (pack doc 04 "Explore"): Location is a free-text server-side filter (matches
+  // listing city/region, case-insensitive) and Ending soon restricts to listings closing
+  // within 48h — both are real `/api/v2/catalogue` query params (`catalogueQuerySchema`),
+  // not client-side filtering. Location is debounced the same way as `search` so typing
+  // never spams the catalogue API; Ending soon is a plain instant toggle like category.
+  const [locationQuery, setLocationQuery] = useState('');
+  const [debouncedLocation, setDebouncedLocation] = useState('');
+  const [endingSoon, setEndingSoon] = useState(false);
   const [sort, setSort] = useState('ending');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CatalogueResponse | null>(null);
@@ -69,12 +80,19 @@ export function CatalogueBrowser({
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setDebounced(query), 300);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
+
+  useEffect(() => {
+    clearTimeout(locationDebounceRef.current);
+    locationDebounceRef.current = setTimeout(() => setDebouncedLocation(locationQuery), 300);
+    return () => clearTimeout(locationDebounceRef.current);
+  }, [locationQuery]);
 
   // In Flow mode we pull a larger page so bands can be seeded across many
   // categories at once (density target: 7–10 bands, Revision 05 §7).
@@ -83,7 +101,17 @@ export function CatalogueBrowser({
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetchCatalogueV2({ search: debounced, category, saleMethod, sort, page, limit })
+    fetchCatalogueV2({
+      search: debounced,
+      category,
+      saleMethod,
+      location: debouncedLocation,
+      // Never send `endingSoon=false` — omit it instead (see CatalogueQueryParams).
+      endingSoon: endingSoon || undefined,
+      sort,
+      page,
+      limit,
+    })
       .then((d) => {
         if (alive) {
           setData(d);
@@ -95,10 +123,23 @@ export function CatalogueBrowser({
     return () => {
       alive = false;
     };
-  }, [debounced, category, saleMethod, sort, page, limit, reloadKey]);
+  }, [
+    debounced,
+    category,
+    saleMethod,
+    debouncedLocation,
+    endingSoon,
+    sort,
+    page,
+    limit,
+    reloadKey,
+  ]);
 
   // Reset to page 1 whenever filters change.
-  useEffect(() => setPage(1), [debounced, category, saleMethod, sort]);
+  useEffect(
+    () => setPage(1),
+    [debounced, category, saleMethod, debouncedLocation, endingSoon, sort],
+  );
 
   // Flow bands are driven by the category facet (all categories), each loading
   // its own cursor slice — not the first global page. A selected category filter
@@ -120,103 +161,145 @@ export function CatalogueBrowser({
 
   return (
     <div className="mt-8">
-      {/* Controls */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterLabel>Category</FilterLabel>
-          <FilterChip
-            active={category === ''}
-            onClick={() => setCategory('')}
-            icon={<AllCategoriesIcon className="h-4 w-4" strokeWidth={1.6} />}
-          >
-            All
-          </FilterChip>
-          {(data?.facets.category ?? []).map((f) => {
-            const meta = categoryMeta(f.value);
-            return (
+      {/*
+       * Compact, sticky Explore filter bar (CX3 pack doc 04 "Explore"). Sits just under
+       * the fixed site header (`top-16` = the header's own h-16, see `Header.tsx`) and
+       * below it in the stacking order (`z-30` < the header's `z-40`), so filters stay
+       * reachable while scrolling long result sets without ever floating over the nav.
+       * The category/method rows are horizontal-scroll rails (`overflow-x-auto`, never
+       * wrap) so the bar's height stays bounded no matter how large the taxonomy gets,
+       * and — combined with `min-w-0` on the rail — they can never cause horizontal PAGE
+       * overflow on narrow viewports; the rail scrolls internally instead.
+       */}
+      <div className="sticky top-16 z-30">
+        <div className="rounded-2xl border border-white/[0.07] bg-coal-950/85 p-3 shadow-[0_16px_36px_-20px_rgba(0,0,0,0.85)] backdrop-blur-xl sm:p-3.5">
+          {/* Row 1 — global query controls: search, location, ending soon, sort, view. */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search listings…"
+              aria-label="Search listings"
+              className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-1.5 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none sm:w-44"
+            />
+            <input
+              value={locationQuery}
+              onChange={(e) => setLocationQuery(e.target.value)}
+              placeholder="Location — city or region…"
+              aria-label="Location"
+              className="w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-1.5 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none sm:w-40"
+            />
+            <FilterChip
+              active={endingSoon}
+              onClick={() => setEndingSoon((v) => !v)}
+              icon={<EndingSoonIcon className="h-3.5 w-3.5" strokeWidth={1.6} />}
+              small
+            >
+              Ending soon
+            </FilterChip>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              aria-label="Sort"
+              className="rounded-md border border-white/10 bg-coal-900/60 px-2 py-1.5 text-xs text-bone-300"
+            >
+              {SORTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <div className="flex overflow-hidden rounded-md border border-white/10">
+              {VIEWS.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setView(v.id)}
+                  aria-pressed={view === v.id}
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    view === v.id ? 'bg-red-500/15 text-bone' : 'text-bone-400 hover:text-bone-200'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2 — category rail. */}
+          <div className="mt-2.5 flex items-center gap-2">
+            <FilterLabel>Category</FilterLabel>
+            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
               <FilterChip
-                key={f.value}
-                active={category === f.value}
-                onClick={() => setCategory(f.value)}
-                tint={meta.rgb}
-                count={f.count}
-                icon={<meta.Icon className="h-4 w-4" strokeWidth={1.6} />}
+                active={category === ''}
+                onClick={() => setCategory('')}
+                icon={<AllCategoriesIcon className="h-4 w-4" strokeWidth={1.6} />}
               >
-                {f.value}
+                All
               </FilterChip>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search lots…"
-            className="w-44 rounded-md border border-white/10 bg-coal-900/60 px-3 py-1.5 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none"
-          />
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="rounded-md border border-white/10 bg-coal-900/60 px-2 py-1.5 text-xs text-bone-300"
-          >
-            {SORTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <div className="flex overflow-hidden rounded-md border border-white/10">
-            {VIEWS.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setView(v.id)}
-                aria-pressed={view === v.id}
-                className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  view === v.id ? 'bg-red-500/15 text-bone' : 'text-bone-400 hover:text-bone-200'
-                }`}
+              {(data?.facets.category ?? []).map((f) => {
+                const meta = categoryMeta(f.value);
+                return (
+                  <FilterChip
+                    key={f.value}
+                    active={category === f.value}
+                    onClick={() => setCategory(f.value)}
+                    tint={meta.rgb}
+                    count={f.count}
+                    icon={<meta.Icon className="h-4 w-4" strokeWidth={1.6} />}
+                  >
+                    {f.value}
+                  </FilterChip>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Row 3 — sale-method rail. */}
+          <div className="mt-2 flex items-center gap-2">
+            <FilterLabel>Method</FilterLabel>
+            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+              <FilterChip
+                active={saleMethod === ''}
+                onClick={() => setSaleMethod('')}
+                icon={<AllMethodsIcon className="h-3.5 w-3.5" strokeWidth={1.6} />}
+                small
               >
-                {v.label}
-              </button>
-            ))}
+                All methods
+              </FilterChip>
+              {(data?.facets.saleMethod ?? []).map((f) => {
+                const Icon = saleMethodIcon(f.value);
+                return (
+                  <FilterChip
+                    key={f.value}
+                    active={saleMethod === f.value}
+                    onClick={() => setSaleMethod(f.value)}
+                    count={f.count}
+                    icon={<Icon className="h-3.5 w-3.5" strokeWidth={1.6} />}
+                    small
+                  >
+                    {saleMethodLabel(f.value)}
+                  </FilterChip>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Sale-method sub-filter */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <FilterLabel>Sale method</FilterLabel>
-        <FilterChip
-          active={saleMethod === ''}
-          onClick={() => setSaleMethod('')}
-          icon={<AllMethodsIcon className="h-3.5 w-3.5" strokeWidth={1.6} />}
-          small
-        >
-          All methods
-        </FilterChip>
-        {(data?.facets.saleMethod ?? []).map((f) => {
-          const Icon = saleMethodIcon(f.value);
-          return (
-            <FilterChip
-              key={f.value}
-              active={saleMethod === f.value}
-              onClick={() => setSaleMethod(f.value)}
-              count={f.count}
-              icon={<Icon className="h-3.5 w-3.5" strokeWidth={1.6} />}
-              small
-            >
-              {saleMethodLabel(f.value)}
-            </FilterChip>
-          );
-        })}
-      </div>
+      {/* CX3: future backend filters — price range, display currency, quantity/unit
+          range, shipping/delivery and verification are NOT server-side filters on
+          `/api/v2/catalogue` today (see `catalogueQuerySchema` in `@singha/contracts`),
+          so they are intentionally not offered as controls here. Adding them client-side
+          would mean downloading and filtering the whole result set in the browser, which
+          this catalogue never does (server-side filter + paginate only). */}
 
       <p className="mt-4 text-xs text-bone-500">
         {loading && !data
           ? 'Loading…'
           : error && !data
             ? 'Couldn’t reach the catalogue'
-            : `${data?.total ?? 0} lots`}
+            : `${data?.total ?? 0} listings`}
       </p>
 
       {error && !data ? (
@@ -238,7 +321,7 @@ export function CatalogueBrowser({
         </div>
       ) : data && data.items.length === 0 ? (
         <Card className="mt-6 py-10 text-center">
-          <p className="text-bone-300">No lots match your filters.</p>
+          <p className="text-bone-300">No listings match your filters.</p>
           <p className="mt-1 text-sm text-bone-500">Try clearing the category or search.</p>
         </Card>
       ) : view === 'flow' ? (
@@ -252,6 +335,8 @@ export function CatalogueBrowser({
             seedByCategory={seedByCategory}
             search={debounced}
             saleMethod={saleMethod}
+            location={debouncedLocation}
+            endingSoon={endingSoon}
             sort={sort}
           />
         )
@@ -287,12 +372,16 @@ function FlowBands({
   seedByCategory,
   search,
   saleMethod,
+  location,
+  endingSoon,
   sort,
 }: {
   categories: string[];
   seedByCategory: Record<string, CatalogueCardV2[]>;
   search: string;
   saleMethod: string;
+  location: string;
+  endingSoon: boolean;
   sort: string;
 }) {
   return (
@@ -308,6 +397,8 @@ function FlowBands({
             seedItems={seedByCategory[category] ?? []}
             search={search}
             saleMethod={saleMethod}
+            location={location}
+            endingSoon={endingSoon}
             sort={sort}
           />
         ))}
@@ -332,12 +423,16 @@ function CategoryBand({
   seedItems,
   search,
   saleMethod,
+  location,
+  endingSoon,
   sort,
 }: {
   category: string;
   seedItems: CatalogueCardV2[];
   search: string;
   saleMethod: string;
+  location: string;
+  endingSoon: boolean;
   sort: string;
 }) {
   const [items, setItems] = useState<CatalogueCardV2[]>(seedItems);
@@ -350,8 +445,17 @@ function CategoryBand({
   const genRef = useRef(0);
 
   const params = useMemo(
-    () => ({ category, search, saleMethod, sort, limit: 12 }),
-    [category, search, saleMethod, sort],
+    () => ({
+      category,
+      search,
+      saleMethod,
+      location,
+      // Never send `endingSoon=false` — omit it instead (see CatalogueQueryParams).
+      endingSoon: endingSoon || undefined,
+      sort,
+      limit: 12,
+    }),
+    [category, search, saleMethod, location, endingSoon, sort],
   );
 
   /** Merge a slice into the row, de-duping by stable listing id (§6). */
@@ -435,7 +539,7 @@ function CategoryBand({
   );
 }
 
-/** "Live 8 · Ending soon 2 · 14 lots" style row summary (doc 04 catalogue mock). */
+/** "Live 8 · Ending soon 2 · 14 listings" style row summary (doc 04 catalogue mock). */
 function bandSubtitle(items: CatalogueCardV2[], exhausted: boolean): string {
   const live = items.filter(
     (l) => l.commercial.kind === 'auction' && l.status.toLowerCase() === 'live',
@@ -447,7 +551,7 @@ function bandSubtitle(items: CatalogueCardV2[], exhausted: boolean): string {
       new Date(l.commercial.endsAt).getTime() - Date.now() < 24 * 3_600_000,
   ).length;
   // A trailing "+" signals more slices are loadable via the row cursor.
-  const parts = [`${items.length}${exhausted ? '' : '+'} lots`];
+  const parts = [`${items.length}${exhausted ? '' : '+'} listings`];
   if (live > 0) parts.unshift(`Live ${live}`);
   if (endingSoon > 0) parts.push(`Ending soon ${endingSoon}`);
   return parts.join(' · ');

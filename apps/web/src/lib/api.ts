@@ -265,6 +265,23 @@ export interface CatalogueCardV2 {
   watchers: number;
   media: { cover?: PublicMedia; videoAvailable: boolean };
   commercial: CardCommercial;
+  /**
+   * Decimal-string quantity + unit code for commodity/bulk listings (quantity engine,
+   * docs/singha-evolution/06 "DATA_LISTING_QUANTITY_CURRENCY"; mirrors
+   * `Asset.quantityAvailable` / `Asset.quantityUnitCode`). Optional and forward-compatible:
+   * the v2 catalogue LIST card does not project these yet (only the single-lot detail has
+   * `attributes`), so the universal card (CX3) renders this tier only "when present" and
+   * stays correct the moment the backend adds them additively.
+   */
+  quantity?: string | null;
+  quantityUnitCode?: string | null;
+  /**
+   * Short free-text pickup/collection hint (mirrors `Listing.collectionSummary`, already
+   * returned by the single-lot detail endpoint but not yet by the list card). Optional for
+   * the same forward-compatible reason as `quantity` above — shown as a subtle logistics
+   * hint only when present.
+   */
+  collectionSummary?: string | null;
   event?: {
     id: string;
     publicRef: string;
@@ -301,10 +318,36 @@ export interface WatchedLot {
   endsAt: string | null;
 }
 
+/**
+ * Query params accepted by the enriched v2 catalogue (mirrors the backend
+ * `catalogueQuerySchema` / `catalogueRowQuerySchema` in `@singha/contracts`, pack 01 doc
+ * 05/07). Shared by the full list and the single-category Rubik row — the row requires
+ * `category` and the list has no `cursor`, but every field here is optional so one type
+ * keeps both call sites key-name-safe without two near-identical interfaces. Fields stay
+ * primitive (not string-literal unions) so UI state that has widened to plain `string`
+ * (e.g. a `useState('ending')` sort) can still be passed straight through.
+ */
+export interface CatalogueQueryParams {
+  category?: string;
+  saleMethod?: string;
+  status?: string;
+  search?: string;
+  /** Matches listing city/region, case-insensitive (server-side `contains`). */
+  location?: string;
+  featured?: boolean;
+  /** Server-side: restricts to listings closing within 48h. Omit rather than send `false`
+   *  — the backend's `z.coerce.boolean()` treats the STRING "false" as truthy. */
+  endingSoon?: boolean;
+  auctionEventId?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+  /** Row endpoint only: opaque cursor from a previous `CatalogueRowResponse`. */
+  cursor?: string;
+}
+
 /** Fetch the enriched catalogue with query params (server-side filter/paginate). */
-export async function fetchCatalogueV2(
-  params: Record<string, string | number | boolean | undefined>,
-): Promise<CatalogueResponse> {
+export async function fetchCatalogueV2(params: CatalogueQueryParams): Promise<CatalogueResponse> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v != null && v !== '') qs.set(k, String(v));
   const res = await fetch(`${apiV2}/catalogue?${qs.toString()}`, { cache: 'no-store' });
@@ -326,7 +369,7 @@ export interface CatalogueRowResponse {
  * global catalogue page. Pass the previous `nextCursor` to load the next slice.
  */
 export async function fetchCatalogueRow(
-  params: Record<string, string | number | boolean | undefined>,
+  params: CatalogueQueryParams,
 ): Promise<CatalogueRowResponse> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v != null && v !== '') qs.set(k, String(v));
