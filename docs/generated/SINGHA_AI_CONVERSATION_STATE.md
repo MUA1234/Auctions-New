@@ -70,5 +70,35 @@ adapters; the fakes stand in until the owner supplies accounts/keys.
 - **AIC-7 — Cross-channel E2E + security evidence + responsive QA (390/768/1440/1920) + anti-clone
   update + model/usage summary + docs + controlled-preview handoff.**
 
+## AIC-0 — Recon findings (key correction: the brain partly EXISTS)
+The "single conversation brain" is **not** greenfield. Already present and reusable:
+- **Models** (`database/prisma/schema.prisma`): `Conversation` (1188), `Message` (1206, has a
+  `payload Json?` column), `BidIntent` (1234, the non-binding intent pattern), `AiRun` (1265,
+  `AiTaskType.assistant` exists; `subjectType/subjectId` can link a run to a conversation),
+  `ExternalIdentity` (verified-only channel↔customer linkage).
+- **ConnectService** (`connect/connect.service.ts`): inbound/send/setMode(AI↔human handoff)/
+  `createBidIntent`+`confirmBidIntent` (rule 11 already implemented for bids — the two-step
+  confirm pattern to reuse), behind `MockChannelProvider` (`channel.provider.ts`) — the
+  adapter-swap seam for real WhatsApp/SMS/email.
+- **AI safety kernel** (`packages/domain/.../ai/ai-safety.ts`): `guardAiRequest` (input ceiling +
+  injection detection incl. `binding_action_via_freetext` & `tier_a_probe` + `redactContext`
+  forbidden-key redaction). The customer assistant MUST reuse this, not reinvent it.
+- **AiProvider/MockAiProvider** (`ai/ai.provider.ts`) + `AiService.assist()` (guard→provider→AiRun
+  flow to mirror). **Authoritative search** = `catalogue-v2.service.ts` (`get()` is the customer-safe
+  item projection; `list()`/`row()` for search — LLM emits structured params, never touches the DB).
+
+**The genuine gap:** no AI↔Conversation wiring (AI never touches conversations); no item-context on
+conversations; no customer-facing surface; and — the real blocker — **RBAC**: `Role.Customer` has
+neither `AiUse` nor `ConnectOperate` (both staff-only), so `/ai/*` and `/connect/*` are staff
+endpoints today. Also: the AI/Connect feature flags exist but are **decorative** (never enforced);
+no rate-limiting on `/ai/*` or `/connect/*`; no voice channel in `ChannelType`; no FE chat UI or
+`/connect`/`/ai` API client. Full detail: recon synthesis (AIC-0).
+
 ## Done
-- _(AIC-0 recon in progress — findings + reuse map to be recorded here.)_
+- **AIC-0** — recon complete (above). Backend branch restarted from `origin/main`.
+- **AIC-1** — customer AI assistant vertical slice (in progress): new least-privilege `AiConverse`
+  permission, `FEATURE_AI_CONVERSATION` flag (enforced), server-side customer-safe `ItemContext`
+  from `catalogue-v2.get()`, `AssistantService` (guard→MockAiProvider→AiRun, non-binding,
+  ownership-scoped, rate-limited), `/assistant/*` endpoints, **no schema migration** (reuses
+  `Message.payload` + `AiRun.subject`). Security tests: privacy / injection / non-binding / flag-off
+  / cross-customer denial.

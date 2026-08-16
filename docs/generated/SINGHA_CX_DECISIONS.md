@@ -348,3 +348,35 @@ static right-fade (a false "more" hint when the rail already fits), a single cli
 and fades only the side(s) with genuinely off-screen content — nothing when it fits. Applied once
 to the shared `DataTable` (covers offers, logistics, seller console, control centre, supply,
 procurement) and to the two catalogue chip rails. Verified at 390 (fade) and 1440 (no fade).
+
+## D-AIC-1 · A new least-privilege `AiConverse` permission for the customer assistant
+The customer AI assistant needs a server permission, but `Role.Customer` today holds neither
+`AiUse` (the seller/staff listing-draft copilot) nor `ConnectOperate` (the staff agent inbox that
+can read every conversation). Widening either would over-grant customers into staff tools. Instead
+add a dedicated `Permission.AiConverse = 'ai:converse'` granted to Customer + Seller + SellerStaff
+(the transacting customer-side roles; admin/super-admin inherit it via ALL_PERMISSIONS). The
+`/assistant/*` endpoints check `AiConverse` **and** ownership (a customer sees only their own
+conversations). Staff `AiUse`/`ConnectOperate` semantics are untouched. Additive, reversible.
+
+## D-AIC-2 · The AI-conversation flag is actually ENFORCED (unlike the existing AI/Connect flags)
+`FEATURE_AI_LISTING` / `FEATURE_AI_MEDIA_ENHANCE` / `FEATURE_WHATSAPP_BID_INTENT` are defined in
+config but never read by any service (decorative). The new `FEATURE_AI_CONVERSATION` (default OFF)
+is enforced at the service boundary via the `requireFeature()` pattern (as `insight`/`singha-id`
+do), so the whole assistant is genuinely dark until switched on — consistent with the controlled
+preview. We deliberately do not copy the "defined-but-unread" precedent.
+
+## D-AIC-3 · Item-context comes only from the existing customer-safe catalogue projection
+The AI never scrapes the page and never re-derives listing fields. The server assembles an
+`ItemContext` solely from `CatalogueV2Service.get()` (already privacy-filtered: no reserve, proxy,
+seller floor, leader identity), maps it to the addendum §4 customer-safe fields, and passes it
+through `guardAiRequest`'s `redactContext` (forbidden-key redaction) as a second line of defence.
+This keeps the single source of truth for "what a public caller may see" in one place.
+
+## D-AIC-4 · Reuse the existing safety kernel + non-binding intent; no schema migration in AIC-1
+The assistant reuses `guardAiRequest('assistant', …)` verbatim (input ceiling, prompt-injection
+refusal incl. `binding_action_via_freetext`, context redaction) — a blocked request records a
+blocked `AiRun` and returns a safe refusal without calling the provider. The LLM interprets/
+explains only; any bid/offer stays with the existing engines behind explicit confirmation (the
+`createBidIntent`→`confirmBidIntent` two-step). AIC-1 needs no migration: the conversation subject
+rides in `Message.payload` (Json) and the run links via `AiRun.subjectType='Conversation'` — both
+existing columns. A dedicated `Conversation.subject`/voice-channel column is a later additive step.
