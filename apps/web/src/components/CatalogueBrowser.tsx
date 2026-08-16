@@ -50,14 +50,16 @@ const SORTS = [
 export function CatalogueBrowser({
   initialCategory = '',
   initialSaleMethod = '',
+  initialSearch = '',
 }: {
   initialCategory?: string;
   initialSaleMethod?: string;
+  initialSearch?: string;
 } = {}) {
   const { flags } = useFlags();
   const [view, setView] = useState<ViewMode>('flow');
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [query, setQuery] = useState(initialSearch);
+  const [debounced, setDebounced] = useState(initialSearch);
   const [category, setCategory] = useState<string>(initialCategory);
   const [saleMethod, setSaleMethod] = useState<string>(initialSaleMethod);
   const [sort, setSort] = useState('ending');

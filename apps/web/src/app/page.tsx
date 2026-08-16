@@ -7,6 +7,9 @@ import { FeaturedSection } from '../components/FeaturedSection';
 import { HeroShowcase } from '../components/HeroShowcase';
 import { SinghaLivingBackground } from '../components/living-background/SinghaLivingBackground';
 import { CategoryCards } from '../components/CategoryCards';
+import { HomeSearchIntent } from '../components/home/HomeSearchIntent';
+import { HomeWaysToTransact } from '../components/home/HomeWaysToTransact';
+import { HomeWanted } from '../components/home/HomeWanted';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,6 +148,8 @@ export default async function HomePage() {
                     <Button variant="outline">Watch live</Button>
                   </Link>
                 </div>
+                {/* Intent-first search + actions (CX doc 04) — controlled preview (neutralIaV1). */}
+                <HomeSearchIntent />
                 <div className="mt-10 h-px w-full max-w-md rule-fade" />
                 <p className="mt-5 text-sm text-bone-500">
                   Institutional transparency · Verified sellers · Server-authoritative records
@@ -227,6 +232,10 @@ export default async function HomePage() {
               <CategoryCards />
             </div>
           </section>
+
+          {/* Ways to transact + Wanted (two-sided) — CX doc 04, controlled preview */}
+          <HomeWaysToTransact />
+          <HomeWanted />
 
           {/* Market Pulse */}
           <section className="container-wide py-20">
