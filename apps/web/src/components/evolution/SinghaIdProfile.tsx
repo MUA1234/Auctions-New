@@ -452,7 +452,10 @@ export function SinghaIdProfile() {
             description="What you need to bid and make offers on Singha."
           >
             {evalHint ? (
-              <p className="mb-4 hud-cut-xs border border-white/[0.06] bg-coal-900/40 px-3 py-2 text-xs text-bone-400">
+              // Tint only, rounded (not the operator "hud-cut" angular style, and no border —
+              // this already sits inside the passport section's Card): CX10 fewer borders +
+              // keep the gaming-HUD language off customer surfaces, doc 06.
+              <p className="mb-4 rounded-lg bg-white/[0.04] px-3 py-2 text-xs text-bone-400">
                 {evalHint.permitted
                   ? 'Bidding: you are cleared to place bids right now.'
                   : `Bidding: not available yet — ${humanize(evalHint.reason)}.`}

@@ -581,12 +581,12 @@ function ProgrammeTermsPanel({
         ) : null
       ) : null}
       {open && perishable ? (
+        // Tint only, no border — already inside the programme's Card (CX10: avoid a
+        // double-bordered nested card, doc 06 "fewer borders").
         <div
           className={cn(
-            'mt-3 rounded-lg border p-3 text-sm',
-            perishable.expired
-              ? 'border-outbid/30 bg-outbid/[0.06]'
-              : 'border-gold-500/20 bg-gold-500/[0.04]',
+            'mt-3 rounded-lg p-3 text-sm',
+            perishable.expired ? 'bg-outbid/[0.08]' : 'bg-gold-500/[0.06]',
           )}
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-gold-300/80">

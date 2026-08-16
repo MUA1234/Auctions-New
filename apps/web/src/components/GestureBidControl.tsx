@@ -179,7 +179,9 @@ export function GestureBidControl({
       {error && <p className="mt-2 text-sm text-outbid">{error}</p>}
 
       {ack && (
-        <div className="mt-3 rounded-lg border border-gold-500/30 bg-gold-500/[0.07] p-3">
+        // Tint only, no border — this confirmation already sits inside BidPanel's Card
+        // (CX10: avoid a double-bordered nested card, doc 06 "fewer borders").
+        <div className="mt-3 rounded-lg bg-gold-500/[0.10] p-3">
           <p className="text-sm text-bone-200">
             Completing the swipe places a <strong>binding bid</strong> of{' '}
             <span className="font-semibold text-gold-300">

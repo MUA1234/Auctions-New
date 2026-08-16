@@ -165,8 +165,10 @@ export default async function HomePage() {
             and over the fixed living scene, so every section below reads solid exactly as
             before while the hero reveals the cinematic environment. */}
         <div className="relative bg-[#070709]">
-          {/* Featured items — real media, sale-aware cards */}
-          <section className="container-wide py-20">
+          {/* Featured items — real media, sale-aware cards. First full peak after the hero
+              (CX10: varied py-16/20/24 rhythm instead of identical py-20 blocks, per the CX
+              audit's "reads as a homogeneous scroll" finding). */}
+          <section className="container-wide py-24">
             <div className="mb-9 flex items-end justify-between">
               <div>
                 <p className="eyebrow">Open now</p>
@@ -225,9 +227,9 @@ export default async function HomePage() {
             </Card>
           </section>
 
-          {/* Explore categories */}
+          {/* Explore categories — connective wayfinding, tightened a notch (CX10 rhythm pass). */}
           <section className="border-y border-white/[0.07] bg-coal-950/40">
-            <div className="container-wide py-20">
+            <div className="container-wide py-16">
               <p className="eyebrow">Browse by type</p>
               <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
                 Explore categories
@@ -305,9 +307,9 @@ export default async function HomePage() {
             )}
           </section>
 
-          {/* Trust & transparency */}
+          {/* Trust & transparency — connective, tightened a notch (CX10 rhythm pass). */}
           <section className="border-t border-white/10 bg-coal-950/40">
-            <div className="container-wide py-20">
+            <div className="container-wide py-16">
               <h2 className="mb-9 font-serif text-3xl font-bold text-bone">
                 Built for institutional trust
               </h2>
@@ -322,19 +324,28 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* Sell with Singha */}
-          <section className="border-t border-white/10">
-            <div className="container-wide flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="font-serif text-3xl font-bold text-bone">Sell with Singha</h2>
-                <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
-                  Banks, corporates, government and private sellers — disposal with an institutional
-                  evidence trail from listing to settlement.
-                </p>
+          {/* Sell with Singha — the page's closing bookend. An editorial fade rule (already
+              used once in the hero) reads as a deliberate final chapter break instead of
+              repeating the same hairline border-t as every section above (doc 06 "fewer
+              borders, prefer tint/spacing"); the extra padding + matching heading scale give
+              it equal weight to the opening "Featured items" peak (CX10 rhythm pass). */}
+          <section>
+            <div className="container-wide">
+              <div className="rule-fade h-px w-full" aria-hidden />
+              <div className="flex flex-col items-start gap-6 py-24 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
+                    Sell with Singha
+                  </h2>
+                  <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
+                    Banks, corporates, government and private sellers — disposal with an
+                    institutional evidence trail from listing to settlement.
+                  </p>
+                </div>
+                <Link href="/sell">
+                  <Button variant="gold">Start selling</Button>
+                </Link>
               </div>
-              <Link href="/sell">
-                <Button variant="gold">Start selling</Button>
-              </Link>
             </div>
           </section>
         </div>

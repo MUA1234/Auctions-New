@@ -11,6 +11,7 @@ import { WatchButton } from '../../../components/WatchButton';
 import { LotGallery } from '../../../components/LotGallery';
 import { LotStickyDock } from '../../../components/LotStickyDock';
 import { LotLogisticsHint } from '../../../components/LotLogisticsHint';
+import { StatusChip } from '../../../components/StatusChip';
 
 export const dynamic = 'force-dynamic';
 
@@ -199,11 +200,4 @@ function Fact({
       <dd className={`mt-0.5 text-sm text-bone-200 ${className}`}>{value}</dd>
     </div>
   );
-}
-
-function StatusChip({ status }: { status: string }) {
-  const s = status.toLowerCase();
-  const tone =
-    s === 'live' || s === 'open' || s === 'active' ? 'win' : s === 'sold' ? 'neutral' : 'gold';
-  return <Chip tone={tone}>{humanize(status)}</Chip>;
 }

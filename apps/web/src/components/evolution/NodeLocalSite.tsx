@@ -139,13 +139,16 @@ export function NodeLocalSite() {
       ) : (
         <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {listings.map((lot) => (
+            // Premium rounded card (`.card-premium`, the same treatment SaleCard uses
+            // everywhere else), not the angular `hud-cut` clip — that gaming-HUD language is
+            // reserved for operator surfaces, not this public storefront (CX10, audit §3.16).
             <Link
               key={lot.id}
               href={`/lot/${lot.id}`}
-              className="group hud-cut-sm flex flex-col border border-white/[0.07] bg-gradient-to-b from-coal-800/50 to-coal-900/75 p-5 transition-colors hover:border-gold-500/40"
+              className="group card-premium flex flex-col p-5"
             >
               <div
-                className="hud-cut-sm mb-4 h-32 bg-gradient-to-br from-coal-700/60 to-coal-900/80"
+                className="mb-4 h-32 rounded-xl bg-gradient-to-br from-coal-700/60 to-coal-900/80"
                 aria-hidden
               />
               <p className="text-xs uppercase tracking-wide text-bone-500">{lot.publicRef}</p>

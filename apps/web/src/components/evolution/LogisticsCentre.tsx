@@ -485,13 +485,15 @@ function QuoteResult({
         </div>
       </dl>
 
-      <p className="rounded-lg border border-gold-500/20 bg-gold-500/[0.06] px-3 py-2 text-xs leading-relaxed text-gold-200">
+      {/* Tint only, no border, on all three callouts below — already inside this panel's Card
+          (CX10: avoid a double-bordered nested card, doc 06 "fewer borders"). */}
+      <p className="rounded-lg bg-gold-500/[0.08] px-3 py-2 text-xs leading-relaxed text-gold-200">
         A quote is not a booking. Freight figures are indicative until you confirm and a carrier
         accepts the shipment.
       </p>
 
       {shipment ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/[0.08] p-3">
+        <div className="rounded-lg bg-red-500/[0.10] p-3">
           <p className="text-sm font-semibold text-red-300">Booked — shipment created.</p>
           <p className="mt-1 text-xs text-bone-400">
             Your tracking reference — keep it to check status on the Track tab later.
@@ -502,7 +504,7 @@ function QuoteResult({
           </Button>
         </div>
       ) : confirming ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+        <div className="flex flex-col gap-3 rounded-lg bg-white/[0.05] p-3">
           <p className="text-sm text-bone-200">Book this quote and create a shipment?</p>
           <div className="flex flex-wrap gap-3">
             <Button variant="gold" disabled={booking} onClick={book}>

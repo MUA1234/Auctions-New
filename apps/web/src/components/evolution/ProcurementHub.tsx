@@ -370,7 +370,9 @@ export function ProcurementHub() {
               </div>
             </FormSection>
 
-            <div className="rounded-xl border border-gold-500/20 bg-gold-500/[0.04] p-4">
+            {/* Tint only, no border — this callout already sits inside the form's Card
+                (CX10: avoid a double-bordered nested card, doc 06 "fewer borders"). */}
+            <div className="rounded-xl bg-gold-500/[0.06] p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gold-300/80">
                 What suppliers will see
               </p>
