@@ -165,7 +165,48 @@ complete and shipped.**
   fetch (`next/font` → `fonts.googleapis.com`, pre-existing/unrelated to this change —
   `NODE_EXTRA_CA_CERTS` is set but Next's bundled font-fetcher doesn't honour it).
 
+- **AIC-6 — DONE** (frontend `Auctions-New`, branch `claude/new-session-at0qp4` — uncommitted,
+  legible `git status`; the lead reviews + commits). EXTENDS the AIC-5 surfaces in place — no new
+  component tree, no new API client. Two non-binding additions to `SinghaAssistant.tsx`:
+  1. **AI-assisted discovery (addendum §6/§11).** A "🔍 Find listings" composer toggle (a
+     deliberate explicit mode, not free-text NL intent-detection — task pack: "pick the clean one;
+     don't over-engineer intent detection") routes the next submit to the ALREADY-SHIPPED
+     `assistantSearch` client instead of `askAssistant`. A find-request renders as a normal AI turn
+     ("Here's what I found:" / an honest "I couldn't find anything matching that." on zero results)
+     plus an inline result block: the validated `interpreted` filters as one subtle transparency
+     line (e.g. "Machinery & Equipment · near Melbourne · ending soon", read straight off the
+     existing category taxonomy — never invented) and up to 5 EXISTING compact `SaleCard`s inside
+     the panel's own `ScrollX` rail (same horizontal-scroll idiom the suggestion-chip row already
+     uses), so a wide result set never forces the chat panel itself to scroll sideways. Capped at 5
+     client-side regardless of how many the server returns. Renders ONLY what the client response
+     contains — no fabricated listings. A `refused:true` response (the boundary guard blocked the
+     query) shows the identical fixed safe-refusal copy the ask flow shows for a blocked message —
+     `assistantSearch`'s response carries no `reply` field at all on refusal, so the FE holds its
+     own copy of the backend's `SAFE_REFUSAL` string for that one case.
+  2. **Non-binding assisted action prep (addendum §12) — wiring only, no new binding path.** The
+     existing customer-safe `suggestions` chips are now actionable: a fixed `ACTION_SUGGESTIONS`
+     allowlist mirrors the backend's per-sale-method labels 1:1 ("Make an offer", "Buy now",
+     "Register interest", "Submit a sealed tender", "Ask about bidding") and routes those five to
+     the seeded listing's own `SalePanel`/`BidPanel` — `router.push('/lot/{id}#lot-action')`
+     (reusing `LotStickyDock`'s existing scroll target, not a new one), or a close-and-scroll with
+     no navigation if already on that lot. Every other suggestion (e.g. "Arrange inspection",
+     "Shipping & collection", or the sale-method-less defaults) is UNCHANGED — still sent as a
+     normal follow-up question to `askAssistant`. The assistant itself never imports or calls a
+     bid/offer/EOI/tender client function — nothing a chip could route to is capable of submitting
+     anything; the customer still confirms through the existing panel's own explicit-confirm step
+     (pack rule 11). A doc comment on the routing helper states this invariant explicitly.
+  Gated the same as everything else in this panel (`aiConversation`, off ⇒ unchanged). Gates green:
+  `pnpm run typecheck` clean; `pnpm exec turbo run test --filter=@singha/web... --filter=@singha/auctionflow`
+  145/145 (10 new, all in the extended `SinghaAssistant.test.tsx` — a find-request rendering result
+  cards / capping at 5 / an honest empty state / the refusal-copy parity with the ask flow / an
+  action chip navigating + calling no submit/offer/bid function / an already-on-the-lot
+  close-and-scroll / a non-action chip staying on the ask flow / a defensive no-seeded-listing
+  fallback); `pnpm run lint` and `pnpm run format:check` clean; `check-routes.mjs` /
+  `check-contracts.mjs` clean (neither touched). `turbo run build` hits the SAME pre-existing
+  sandbox block as AIC-5 (`next/font` → `fonts.googleapis.com`, `SELF_SIGNED_CERT_IN_CHAIN` in this
+  sandbox's proxy) — unrelated to this change; `tsc --noEmit` across the whole app (which compiles
+  every file, including these) is clean.
+
 ## Next
-- **AIC-6**: AI discovery search box + assisted non-binding action prep (interpret → authoritative
-  results; a drafted offer/RFQ → explicit customer confirm → the existing engine). Then AIC-7
-  (cross-channel E2E + responsive QA (390/768/1440/1920) + anti-clone update + handoff).
+- **AIC-7**: cross-channel E2E + security evidence + responsive QA (390/768/1440/1920) + anti-clone
+  update + model/usage summary + docs + controlled-preview handoff.
