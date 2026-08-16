@@ -50,6 +50,13 @@ export interface FeatureFlags {
   operatorPayments: boolean; // E8b — payment route resolution (operator)
   insightEngine: boolean; // E12 — deterministic intelligence surfaces
   satelliteNodes: boolean; // E13 — Satellite Market Node + local site
+  // AIC-5 — customer-facing AI conversation assistant FE surfaces (site-wide webchat
+  // launcher/panel, item-level "Ask Singha AI", channel choice). Mirrors the backend capability
+  // flag of the same name (`FEATURE_AI_CONVERSATION`, source of truth `GET /api/v1/feature-flags`)
+  // — this flag only gates FE presentation; every `/assistant/*` route is independently
+  // enforced server-side regardless of what this flag says. Grouped on the Evolution preview
+  // channel below (not a new one) so `?evo=on` previews it alongside the rest of the platform.
+  aiConversation: boolean;
 }
 
 /** The eleven V3 experience flags, in review order (the preview switch flips all of them). */
@@ -112,6 +119,7 @@ export const EVOLUTION_FLAG_KEYS = [
   'operatorPayments',
   'insightEngine',
   'satelliteNodes',
+  'aiConversation',
 ] as const satisfies readonly (keyof FeatureFlags)[];
 
 /** Overlay every Evolution flag to ON (review/preview switch; never turns anything off). */
@@ -163,6 +171,7 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   operatorPayments: false,
   insightEngine: false,
   satelliteNodes: false,
+  aiConversation: false,
 };
 
 /**

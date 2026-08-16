@@ -139,10 +139,33 @@ complete and shipped.**
   tools / provider creds, and records the boundary controls (all server-enforced + tested). No new
   client-side leakage; the crown jewels (orchestration, prompts, matching/ranking) stay server-side.
 
+- **AIC-5 — DONE** (frontend `Auctions-New`, branch `claude/new-session-at0qp4` — uncommitted,
+  legible `git status`; the lead reviews + commits). The FE assistant surfaces: a new gated flag
+  `aiConversation` (`apps/web/src/lib/flags.ts`, mirrors backend `FEATURE_AI_CONVERSATION`; rides
+  the existing `?evo=on` / `NEXT_PUBLIC_EVO_PREVIEW` preview channel rather than a new one); a typed
+  `/assistant/*` FE client (`lib/assistant-api.ts`) reusing the SAME `apiPost`/`apiGetAuthed`
+  authed-fetch path every other authed surface uses (no new auth); `AssistantProvider`/
+  `useAssistant` (shared open/seed context — a zero-DOM context wrapper, always mounted in the root
+  layout so any surface can open the chat); `SinghaAssistant` — a Singha-styled floating launcher
+  (gold, dock-aware on mobile via the SAME `neutralIaV1`-gated offset technique `LotStickyDock`
+  uses) + a `@singha/ui` `Sheet` panel (bottom sheet on phones, slide-in on desktop) with a message
+  list (customer/AI bubbles, a "…thinking" state, the conversation persisted across page reloads via
+  `localStorage` + `GET /assistant/conversations/:id`), a suggested-prompts chip row, and a Chat
+  now/WhatsApp/Call me channel row wired to `POST /assistant/channel-request`; a signed-out gate
+  replaces the input (every route requires an authed `ai:converse` customer, enforced server-side);
+  `AskSinghaButton` — a full labelled variant on the lot detail page (secondary to Bid/Buy/Offer,
+  never competing with it) and a compact icon variant on `SaleCard` (a `role="button"` span, not a
+  real `<button>` — the card is itself one big `<Link>`, and nesting a native interactive element
+  inside an `<a>` is invalid HTML). `aiConversation` off renders nothing anywhere; production is
+  untouched. Gates green: `pnpm run typecheck` / `lint` / `format:check` clean; `turbo run test`
+  135/135 (16 new — launcher gating on/off, the signed-out gate, `AskSinghaButton` seeding +
+  nested-in-link click/keyboard safety, provider state sharing, and the FE `/assistant/*` client's
+  request shapes/URLs + `friendlyMessage` error mapping via mocked `fetch`); `check-routes.mjs` /
+  `check-contracts.mjs` clean; `turbo run build` is blocked only by this sandbox's Google Fonts
+  fetch (`next/font` → `fonts.googleapis.com`, pre-existing/unrelated to this change —
+  `NODE_EXTRA_CA_CERTS` is set but Next's bundled font-fetcher doesn't honour it).
+
 ## Next
-- **AIC-5 — in progress**: the FE assistant surfaces — a premium, Singha-integrated **site-wide
-  webchat** (launcher + panel, message list, suggested prompts, Chat/WhatsApp/Call channel choice),
-  the **item-level "Ask Singha AI"** action (lot detail secondary + compact card action, passing the
-  server listing context), a typed `/assistant/*` FE API client, and a new gated FE flag
-  `aiConversation`. Then AIC-6 (AI discovery search box + assisted non-binding action prep) and AIC-7
-  (cross-channel E2E + responsive QA + handoff).
+- **AIC-6**: AI discovery search box + assisted non-binding action prep (interpret → authoritative
+  results; a drafted offer/RFQ → explicit customer confirm → the existing engine). Then AIC-7
+  (cross-channel E2E + responsive QA (390/768/1440/1920) + anti-clone update + handoff).

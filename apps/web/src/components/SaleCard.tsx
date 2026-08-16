@@ -6,6 +6,7 @@ import { coverUrl } from '../lib/media';
 import { categoryMeta, saleMethodIcon, saleMethodLabel } from '../lib/categories';
 import { formatLocation, formatMoney, formatQuantity, timeLeft } from '../lib/format';
 import { LotImage } from './LotImage';
+import { AskSinghaButton } from './assistant/AskSinghaButton';
 
 /**
  * One clear, sale-method-appropriate call to action per commercial kind (CX3 "universal
@@ -68,6 +69,17 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
             <span className="absolute bottom-2 right-2 rounded bg-coal-950/80 px-1.5 py-0.5 text-[10px] text-bone-200 backdrop-blur">
               ▶ Video
             </span>
+          )}
+          {/* Compact, unobtrusive — top-left, clear of the featured/watchers/video markers.
+              Only on the full card: `compact` (Flow-rail) cards deliberately stay a single tap
+              target with no separate action button (see the card's own doc comment above). */}
+          {!compact && (
+            <AskSinghaButton
+              listingId={lot.id}
+              url={`/lot/${lot.id}`}
+              variant="compact"
+              className="absolute left-2 top-2 z-10"
+            />
           )}
         </div>
         <div className="mt-3 flex flex-1 flex-col">
