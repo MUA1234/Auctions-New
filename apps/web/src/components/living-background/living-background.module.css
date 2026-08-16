@@ -1,0 +1,232 @@
+/*
+ * Singha Living Background — the fixed, cinematic homepage environment.
+ *
+ * A viewport-fixed layered scene (base image + ambient light + haze + light shaft +
+ * Canvas motes + legibility vignette). It stays pinned to the viewport while the page
+ * scrolls: all ambient motion is time-based (CSS keyframes / rAF), NEVER driven by
+ * scroll position. Opaque page sections scroll up and over it (see app/page.tsx).
+ *
+ * This is the one deliberately-scoped CSS Module in an otherwise Tailwind app: the
+ * feature is a self-contained compositing/animation system whose ~5 keyframe families
+ * and layered blends do not belong in the shared design tokens. Decision recorded in
+ * docs/generated/SINGHA_CX_DECISIONS.md.
+ */
+
+.root {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  contain: layout paint;
+  /* Pointer micro-parallax targets (desktop fine-pointer only); default = centred. */
+  --lb-px: 0;
+  --lb-py: 0;
+  /* One-shot fade-in once mounted (no scroll coupling). */
+  opacity: 0;
+  transition: opacity 900ms ease-out;
+  background-color: #050608; /* base so there is never a flash of nothing */
+}
+.shown {
+  opacity: 1;
+}
+
+/* All layers fill the fixed root. */
+.imageWrap,
+.image,
+.atmos,
+.glow,
+.haze,
+.shaft,
+.particles,
+.vignette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Base image ---------------------------------------------------------- */
+.imageWrap {
+  z-index: 0;
+}
+.image {
+  object-fit: cover;
+  /* Preserve the illuminated central vegetation as the focal point. On narrow
+     screens the frame shifts so the bright glow sits away from the full-width,
+     left-aligned hero copy; from md up it re-centres for the two-column layout. */
+  object-position: 30% 60%;
+  transform: scale(1.004);
+  transform-origin: 50% 55%;
+  will-change: transform;
+  /* Almost-imperceptible optical breathing — time-based, ~24s, no loop seam. */
+  animation: lbBreathe 24s ease-in-out infinite;
+}
+@media (min-width: 768px) {
+  .image {
+    object-position: 50% 58%;
+  }
+}
+
+/* ---- Ambient atmosphere group (pointer micro-parallax lives here) --------- */
+.atmos {
+  z-index: 1;
+  transform: translate3d(calc(var(--lb-px) * 6px), calc(var(--lb-py) * 6px), 0);
+  transition: transform 200ms ease-out;
+}
+
+.glow {
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+/* A cool blue atmospheric glow high in the frame — slow drift, different phase. */
+.glowCool {
+  background: radial-gradient(
+    46% 40% at 60% 18%,
+    rgba(64, 132, 196, 0.16),
+    rgba(64, 132, 196, 0) 60%
+  );
+  animation: lbDriftCool 29s ease-in-out infinite;
+}
+/* A warm green-gold glow that rises and falls near the vegetation. */
+.glowWarm {
+  background: radial-gradient(
+    40% 34% at 48% 74%,
+    rgba(150, 196, 84, 0.14),
+    rgba(201, 162, 75, 0.05) 55%,
+    rgba(201, 162, 75, 0) 72%
+  );
+  animation: lbDriftWarm 21s ease-in-out infinite;
+}
+
+/* Low-opacity haze for perceived depth. */
+.haze {
+  z-index: 1;
+  background: radial-gradient(120% 80% at 50% 30%, rgba(120, 150, 170, 0.05), transparent 70%);
+  filter: blur(6px);
+  animation: lbHaze 34s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* One extremely restrained diagonal cool light shaft. */
+.shaft {
+  z-index: 1;
+  background: linear-gradient(
+    108deg,
+    transparent 40%,
+    rgba(120, 170, 210, 0.06) 50%,
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  animation: lbShaft 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ---- Canvas motes -------------------------------------------------------- */
+.particles {
+  z-index: 2;
+}
+
+/* ---- Legibility vignette (static; preserves the luminous centre) --------- */
+.vignette {
+  z-index: 3;
+  background:
+    linear-gradient(90deg, rgba(4, 5, 7, 0.72) 0%, rgba(4, 5, 7, 0.32) 26%, transparent 52%),
+    linear-gradient(180deg, rgba(4, 5, 7, 0.5) 0%, transparent 20%),
+    linear-gradient(0deg, rgba(4, 5, 7, 0.9) 0%, rgba(4, 5, 7, 0.35) 14%, transparent 34%),
+    radial-gradient(125% 105% at 50% 44%, transparent 52%, rgba(0, 0, 0, 0.55) 100%);
+}
+@media (min-width: 768px) {
+  .vignette {
+    /* Two-column layout: soften the left wash so the artwork breathes more. */
+    background:
+      linear-gradient(90deg, rgba(4, 5, 7, 0.6) 0%, rgba(4, 5, 7, 0.22) 24%, transparent 48%),
+      linear-gradient(180deg, rgba(4, 5, 7, 0.45) 0%, transparent 18%),
+      linear-gradient(0deg, rgba(4, 5, 7, 0.9) 0%, rgba(4, 5, 7, 0.3) 12%, transparent 30%),
+      radial-gradient(125% 105% at 50% 44%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+  }
+}
+
+/* ---- Keyframes (time-based only — never coupled to scroll) --------------- */
+@keyframes lbBreathe {
+  0%,
+  100% {
+    transform: scale(1.002);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+}
+@keyframes lbDriftCool {
+  0%,
+  100% {
+    transform: translate3d(-1.5%, -1%, 0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(1.5%, 1%, 0);
+    opacity: 1;
+  }
+}
+@keyframes lbDriftWarm {
+  0%,
+  100% {
+    transform: translate3d(1%, 1.5%, 0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate3d(-1%, -1.5%, 0);
+    opacity: 1;
+  }
+}
+@keyframes lbHaze {
+  0%,
+  100% {
+    transform: translate3d(-2%, 0, 0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(2%, -1%, 0);
+    opacity: 1;
+  }
+}
+@keyframes lbShaft {
+  0%,
+  100% {
+    transform: translate3d(-6%, 0, 0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(6%, 0, 0);
+    opacity: 1;
+  }
+}
+
+/*
+ * Reduced motion — the scene becomes deliberately still (a designed static image),
+ * not broken. All ambient animation and pointer parallax collapse; the Canvas is not
+ * started at all (guarded in JS). The global @singha/ui reduced-motion killswitch also
+ * neutralises these, but we are explicit here so the module is self-contained.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition: none;
+  }
+  .image,
+  .glowCool,
+  .glowWarm,
+  .haze,
+  .shaft {
+    animation: none !important;
+  }
+  .atmos {
+    transform: none !important;
+    transition: none !important;
+  }
+  .image {
+    transform: none;
+  }
+}

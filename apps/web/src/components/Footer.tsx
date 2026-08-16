@@ -25,7 +25,7 @@ const FOOTER_NAV: { heading: string; links: { href: string; label: string }[] }[
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-white/[0.07] bg-coal-950/50">
+    <footer className="relative z-[1] mt-24 border-t border-white/[0.07] bg-coal-950/50">
       <div className="container-wide grid gap-10 py-14 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="space-y-3">
           <BrandLogo className="h-11 w-auto" />

@@ -5,7 +5,7 @@ import { apiGet, fetchCatalogueV2, type CatalogueCardV2, type MarketPulse } from
 import { formatMoney } from '../lib/format';
 import { FeaturedSection } from '../components/FeaturedSection';
 import { HeroShowcase } from '../components/HeroShowcase';
-import { HomeHeroBackdrop } from '../components/HomeHeroBackdrop';
+import { SinghaLivingBackground } from '../components/living-background/SinghaLivingBackground';
 import { CategoryCards } from '../components/CategoryCards';
 
 export const dynamic = 'force-dynamic';
@@ -87,233 +87,246 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero — cinematic, editorial, restrained */}
-      <section className="relative overflow-hidden border-b border-white/[0.07]">
-        {/* Sparse atmospheric depth — a single soft radial, not a red grid.
-            (Fallback base; the V3 image backdrop below covers it when enabled.) */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              'radial-gradient(80% 60% at 78% 8%, rgba(31,160,85,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
-          }}
-        />
-        {/* V3 cinematic image backdrop — gated on v3VisualArchitecture, CSP-safe (self). */}
-        <HomeHeroBackdrop />
-        <div className="container-wide relative flex min-h-[85vh] flex-col justify-center py-20 sm:py-24 lg:min-h-[90vh]">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-            {/* Left — editorial copy. A drop-shadow filter lifts every line of copy off the
+      {/* Fixed, cinematic "living background" (gated on v3VisualArchitecture). Pinned to
+          the viewport with NO scroll coupling; the opaque content sheet below scrolls up
+          and over it. Replaces the old static HomeHeroBackdrop. */}
+      <SinghaLivingBackground />
+      <div className="relative z-[1]">
+        {/* Hero — cinematic, editorial, restrained. Transparent so the fixed living scene
+            shows behind the copy. */}
+        <section className="relative overflow-hidden border-b border-white/[0.07]">
+          {/* Sparse atmospheric depth — a single soft radial, not a red grid. The
+              production (v3-off) hero base; when the living scene is on it sits faintly
+              behind the copy. */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden
+            style={{
+              background:
+                'radial-gradient(80% 60% at 78% 8%, rgba(31,160,85,0.10), transparent 60%), radial-gradient(50% 50% at 8% 100%, rgba(201,162,75,0.07), transparent 65%)',
+            }}
+          />
+          <div className="container-wide relative flex min-h-[85vh] flex-col justify-center py-20 sm:py-24 lg:min-h-[90vh]">
+            <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+              {/* Left — editorial copy. A drop-shadow filter lifts every line of copy off the
                 untinted hero image (the darkening scrim was removed). It must be drop-shadow, not
                 text-shadow: text-shadow breaks the gradient-clipped headline ("assets & commodities",
                 background-clip:text + transparent fill), whereas drop-shadow shadows the rendered
                 gold pixels and leaves the fill intact — and it still shadows the plain copy below. */}
-            <div
-              style={{
-                filter:
-                  'drop-shadow(0 1px 1px rgba(0,0,0,0.85)) drop-shadow(0 2px 12px rgba(0,0,0,0.6))',
-              }}
-            >
-              <p className="eyebrow flex items-center gap-2">
-                <span className="relative inline-flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-red-500" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              <div
+                style={{
+                  filter:
+                    'drop-shadow(0 1px 1px rgba(0,0,0,0.85)) drop-shadow(0 2px 12px rgba(0,0,0,0.6))',
+                }}
+              >
+                <p className="eyebrow flex items-center gap-2">
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-red-500" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                  </span>
+                  Offers · buy now · tenders · live auctions
+                </p>
+                <h1 className="mt-6 max-w-2xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-6xl xl:text-7xl">
+                  The trusted exchange for{' '}
+                  <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
+                    assets &amp; commodities
+                  </span>
+                  .
+                </h1>
+                <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
+                  Vehicles, machinery, gems, property, produce and commodities — discovered,
+                  inspected and transacted through offers, buy now, tenders and auctions.
+                </p>
+                <div className="mt-10 flex flex-wrap items-center gap-4">
+                  <Link href="/catalogue">
+                    <Button variant="primary">Explore catalogue</Button>
+                  </Link>
+                  <Link href="/live">
+                    <Button variant="outline">Watch live</Button>
+                  </Link>
+                </div>
+                <div className="mt-10 h-px w-full max-w-md rule-fade" />
+                <p className="mt-5 text-sm text-bone-500">
+                  Institutional transparency · Verified sellers · Server-authoritative records
+                </p>
+              </div>
+              {/* Right — auto-scrolling 3D reel: featured lots mixed with Market Pulse news */}
+              <HeroShowcase items={featured} news={pulseNews} />
+            </div>
+          </div>
+        </section>
+
+        {/* Below the hero: an opaque sheet (#070709 = the app base colour) that scrolls up
+            and over the fixed living scene, so every section below reads solid exactly as
+            before while the hero reveals the cinematic environment. */}
+        <div className="relative bg-[#070709]">
+          {/* Featured items — real media, sale-aware cards */}
+          <section className="container-wide py-20">
+            <div className="mb-9 flex items-end justify-between">
+              <div>
+                <p className="eyebrow">Open now</p>
+                <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
+                  Featured items
+                </h2>
+                <p className="mt-1 text-sm text-bone-500">Curated lots open right now.</p>
+              </div>
+              <Link
+                href="/catalogue"
+                className="group text-sm font-medium text-gold-300 transition-colors hover:text-gold-200"
+              >
+                View all{' '}
+                <span className="inline-block transition-transform group-hover:translate-x-0.5">
+                  →
                 </span>
-                Offers · buy now · tenders · live auctions
-              </p>
-              <h1 className="mt-6 max-w-2xl font-serif text-5xl font-extrabold leading-[1.02] tracking-tight text-bone sm:text-6xl xl:text-7xl">
-                The trusted exchange for{' '}
-                <span className="bg-gradient-to-r from-gold-200 via-gold-400 to-gold-600 bg-clip-text text-transparent">
-                  assets &amp; commodities
-                </span>
-                .
-              </h1>
-              <p className="mt-7 max-w-xl text-lg leading-relaxed text-bone-300/90">
-                Vehicles, machinery, gems, property, produce and commodities — discovered, inspected
-                and transacted through offers, buy now, tenders and auctions.
-              </p>
-              <div className="mt-10 flex flex-wrap items-center gap-4">
-                <Link href="/catalogue">
-                  <Button variant="primary">Explore catalogue</Button>
-                </Link>
+              </Link>
+            </div>
+            {featured.length > 0 ? (
+              // Data fetched server-side; FeaturedSection picks the cinematic reel
+              // (featuredReelV3) or the static grid client-side (pack doc 09).
+              <FeaturedSection items={featured} />
+            ) : (
+              <Card>
+                <p className="text-bone-400">
+                  Featured lots are being curated. {''}
+                  <Link href="/catalogue" className="text-gold-400">
+                    Browse the full catalogue →
+                  </Link>
+                </p>
+              </Card>
+            )}
+          </section>
+
+          {/* Featured event */}
+          <section className="container-wide pb-20">
+            <Card className="relative overflow-hidden p-8 sm:p-12">
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <Chip tone="live">Singha Live</Chip>
+                  <h2 className="mt-4 font-serif text-3xl font-bold text-bone">
+                    Featured live auction
+                  </h2>
+                  <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
+                    Multi-camera broadcast with online, floor and phone bidding reconciled into one
+                    unified, auditable ledger.
+                  </p>
+                </div>
                 <Link href="/live">
-                  <Button variant="outline">Watch live</Button>
+                  <Button variant="primary">Enter live room</Button>
                 </Link>
               </div>
-              <div className="mt-10 h-px w-full max-w-md rule-fade" />
-              <p className="mt-5 text-sm text-bone-500">
-                Institutional transparency · Verified sellers · Server-authoritative records
-              </p>
-            </div>
-            {/* Right — auto-scrolling 3D reel: featured lots mixed with Market Pulse news */}
-            <HeroShowcase items={featured} news={pulseNews} />
-          </div>
-        </div>
-      </section>
+            </Card>
+          </section>
 
-      {/* Featured items — real media, sale-aware cards */}
-      <section className="container-wide py-20">
-        <div className="mb-9 flex items-end justify-between">
-          <div>
-            <p className="eyebrow">Open now</p>
-            <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
-              Featured items
-            </h2>
-            <p className="mt-1 text-sm text-bone-500">Curated lots open right now.</p>
-          </div>
-          <Link
-            href="/catalogue"
-            className="group text-sm font-medium text-gold-300 transition-colors hover:text-gold-200"
-          >
-            View all{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-0.5">→</span>
-          </Link>
-        </div>
-        {featured.length > 0 ? (
-          // Data fetched server-side; FeaturedSection picks the cinematic reel
-          // (featuredReelV3) or the static grid client-side (pack doc 09).
-          <FeaturedSection items={featured} />
-        ) : (
-          <Card>
-            <p className="text-bone-400">
-              Featured lots are being curated. {''}
-              <Link href="/catalogue" className="text-gold-400">
-                Browse the full catalogue →
-              </Link>
-            </p>
-          </Card>
-        )}
-      </section>
-
-      {/* Featured event */}
-      <section className="container-wide pb-20">
-        <Card className="relative overflow-hidden p-8 sm:p-12">
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Chip tone="live">Singha Live</Chip>
-              <h2 className="mt-4 font-serif text-3xl font-bold text-bone">
-                Featured live auction
+          {/* Explore categories */}
+          <section className="border-y border-white/[0.07] bg-coal-950/40">
+            <div className="container-wide py-20">
+              <p className="eyebrow">Browse by type</p>
+              <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
+                Explore categories
               </h2>
-              <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
-                Multi-camera broadcast with online, floor and phone bidding reconciled into one
-                unified, auditable ledger.
-              </p>
+              <CategoryCards />
             </div>
-            <Link href="/live">
-              <Button variant="primary">Enter live room</Button>
-            </Link>
-          </div>
-        </Card>
-      </section>
+          </section>
 
-      {/* Explore categories */}
-      <section className="border-y border-white/[0.07] bg-coal-950/40">
-        <div className="container-wide py-20">
-          <p className="eyebrow">Browse by type</p>
-          <h2 className="mb-9 mt-2 font-serif text-3xl font-bold tracking-tight text-bone sm:text-4xl">
-            Explore categories
-          </h2>
-          <CategoryCards />
-        </div>
-      </section>
-
-      {/* Market Pulse */}
-      <section className="container-wide py-20">
-        <div className="mb-9 flex items-center gap-3">
-          <h2 className="font-serif text-3xl font-bold text-bone">Market Pulse</h2>
-          <Chip tone="gold">Editorial</Chip>
-        </div>
-        {pulse && pulse.salesCount > 0 ? (
-          <>
-            <div className="grid gap-6 md:grid-cols-3">
-              <Card className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
-                  Sold ({pulse.windowDays}d)
-                </span>
-                <span className="tabular font-display text-2xl font-bold text-bone">
-                  {pulse.salesCount} lots
-                </span>
-              </Card>
-              <Card className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
-                  Total value
-                </span>
-                <span className="tabular font-display text-2xl font-bold text-bone">
-                  {formatMoney(pulse.totalMinor)}
-                </span>
-              </Card>
-              <Card className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
-                  Top category
-                </span>
-                <span className="font-display text-2xl font-bold capitalize text-bone">
-                  {pulse.categories[0]?.category ?? '—'}
-                </span>
-              </Card>
+          {/* Market Pulse */}
+          <section className="container-wide py-20">
+            <div className="mb-9 flex items-center gap-3">
+              <h2 className="font-serif text-3xl font-bold text-bone">Market Pulse</h2>
+              <Chip tone="gold">Editorial</Chip>
             </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {pulse.categories.slice(0, 4).map((c) => (
-                <Card key={c.category} className="flex items-center justify-between">
-                  <span className="text-sm capitalize text-bone-300">{c.category}</span>
-                  <span className="tabular text-sm font-semibold text-gold-400">
-                    {formatMoney(c.avgMinor)} avg
-                  </span>
-                </Card>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid gap-6 md:grid-cols-3">
-              {PULSE_FALLBACK.map((entry) => (
-                <Card key={entry.tag} className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
-                    {entry.tag}
-                  </span>
-                  <p className="text-sm leading-relaxed text-bone-300">{entry.text}</p>
-                </Card>
-              ))}
-            </div>
-            <p className="mt-4 text-xs text-bone-600">
-              Market Pulse publishes only source-backed, reviewed content (pack doc 13). Sample copy
-              shown until live results are available.
-            </p>
-          </>
-        )}
-      </section>
+            {pulse && pulse.salesCount > 0 ? (
+              <>
+                <div className="grid gap-6 md:grid-cols-3">
+                  <Card className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                      Sold ({pulse.windowDays}d)
+                    </span>
+                    <span className="tabular font-display text-2xl font-bold text-bone">
+                      {pulse.salesCount} lots
+                    </span>
+                  </Card>
+                  <Card className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                      Total value
+                    </span>
+                    <span className="tabular font-display text-2xl font-bold text-bone">
+                      {formatMoney(pulse.totalMinor)}
+                    </span>
+                  </Card>
+                  <Card className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                      Top category
+                    </span>
+                    <span className="font-display text-2xl font-bold capitalize text-bone">
+                      {pulse.categories[0]?.category ?? '—'}
+                    </span>
+                  </Card>
+                </div>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {pulse.categories.slice(0, 4).map((c) => (
+                    <Card key={c.category} className="flex items-center justify-between">
+                      <span className="text-sm capitalize text-bone-300">{c.category}</span>
+                      <span className="tabular text-sm font-semibold text-gold-400">
+                        {formatMoney(c.avgMinor)} avg
+                      </span>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-6 md:grid-cols-3">
+                  {PULSE_FALLBACK.map((entry) => (
+                    <Card key={entry.tag} className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gold-400">
+                        {entry.tag}
+                      </span>
+                      <p className="text-sm leading-relaxed text-bone-300">{entry.text}</p>
+                    </Card>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs text-bone-600">
+                  Market Pulse publishes only source-backed, reviewed content (pack doc 13). Sample
+                  copy shown until live results are available.
+                </p>
+              </>
+            )}
+          </section>
 
-      {/* Trust & transparency */}
-      <section className="border-t border-white/10 bg-coal-950/40">
-        <div className="container-wide py-20">
-          <h2 className="mb-9 font-serif text-3xl font-bold text-bone">
-            Built for institutional trust
-          </h2>
-          <div className="grid gap-6 md:grid-cols-3">
-            {TRUST.map((t) => (
-              <Card key={t.title} className="flex flex-col gap-3">
-                <h3 className="font-display text-base font-semibold text-bone">{t.title}</h3>
-                <p className="text-sm leading-relaxed text-bone-400">{t.text}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+          {/* Trust & transparency */}
+          <section className="border-t border-white/10 bg-coal-950/40">
+            <div className="container-wide py-20">
+              <h2 className="mb-9 font-serif text-3xl font-bold text-bone">
+                Built for institutional trust
+              </h2>
+              <div className="grid gap-6 md:grid-cols-3">
+                {TRUST.map((t) => (
+                  <Card key={t.title} className="flex flex-col gap-3">
+                    <h3 className="font-display text-base font-semibold text-bone">{t.title}</h3>
+                    <p className="text-sm leading-relaxed text-bone-400">{t.text}</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
 
-      {/* Sell with Singha */}
-      <section className="border-t border-white/10">
-        <div className="container-wide flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-serif text-3xl font-bold text-bone">Sell with Singha</h2>
-            <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
-              Banks, corporates, government and private sellers — disposal with an institutional
-              evidence trail from listing to settlement.
-            </p>
-          </div>
-          <Link href="/sell">
-            <Button variant="gold">Start selling</Button>
-          </Link>
+          {/* Sell with Singha */}
+          <section className="border-t border-white/10">
+            <div className="container-wide flex flex-col items-start gap-6 py-20 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-serif text-3xl font-bold text-bone">Sell with Singha</h2>
+                <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
+                  Banks, corporates, government and private sellers — disposal with an institutional
+                  evidence trail from listing to settlement.
+                </p>
+              </div>
+              <Link href="/sell">
+                <Button variant="gold">Start selling</Button>
+              </Link>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
     </>
   );
 }
