@@ -16,7 +16,7 @@ const SALE_METHOD_LABEL: Record<string, string> = {
   BUY_NOW: 'Buy now',
   MAKE_OFFER: 'Make an offer',
   SEALED_TENDER: 'Sealed tender',
-  EOI: 'Expression of interest',
+  EXPRESSION_OF_INTEREST: 'Expression of interest',
 };
 
 export default async function LotPage({ params }: { params: { id: string } }) {

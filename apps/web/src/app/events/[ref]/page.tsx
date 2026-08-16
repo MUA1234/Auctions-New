@@ -22,7 +22,7 @@ const METHOD_LABEL: Record<string, string> = {
   BUY_NOW: 'Buy now',
   MAKE_OFFER: 'Make an offer',
   SEALED_TENDER: 'Sealed tender',
-  EOI: 'Interest',
+  EXPRESSION_OF_INTEREST: 'Interest',
 };
 
 export default async function EventDetailPage({ params }: { params: { ref: string } }) {

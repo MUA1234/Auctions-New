@@ -11,7 +11,15 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 - **Living Background** (separate pack) — fixed cinematic homepage hero (CSS + Canvas,
   progressive enhancement, reduced-motion, proven scroll-independent 390–1920). Gated on
   `v3VisualArchitecture`. Report: `SINGHA_LIVING_BACKGROUND_REPORT.md`. Shipped `6a125b8`.
-- **CX0 (in progress)** — current-state audit → `SINGHA_CX_CURRENT_STATE_AUDIT.md`.
+- **CX0** — current-state audit → `SINGHA_CX_CURRENT_STATE_AUDIT.md` (16 surfaces, tagged
+  findings, phase-mapped fixes). It surfaced two real bugs, both now fixed + regression-tested:
+  1. **EOI dead branch (pre-existing, high severity)** — the buyer action panel, sticky-dock
+     CTA and label maps compared `'EOI'`, but the backend `SaleMethod` enum is
+     `EXPRESSION_OF_INTEREST`, so every EOI listing's "register interest" form was unreachable.
+     Fixed in `SalePanel`, `LotStickyDock`, `lot/[id]`, `events/[ref]`, `account/eoi`.
+  2. **Dock collision (introduced by CX1)** — the new mobile bottom dock and the lot-detail
+     sticky dock both pinned to `bottom-0`; the sticky dock now offsets above the nav dock on
+     phones under neutral IA.
 - **CX2 (homepage, first pass)** — intent-first hero (real search deep-linking into Explore
   `?q=` + "I want to: Sell / Post what I need / View opportunities"), a "Ways to transact"
   editorial explainer (six sale methods; auction is one of them), and a two-sided "Wanted"

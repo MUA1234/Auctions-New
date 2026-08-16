@@ -56,7 +56,7 @@ export default function EoiPage() {
         <Card className="mt-8 text-center">
           <p className="text-bone-300">You haven't registered interest in any lots yet.</p>
           <Link
-            href="/catalogue?saleMethod=EOI"
+            href="/catalogue?method=EXPRESSION_OF_INTEREST"
             className="mt-3 inline-block text-sm text-gold-400"
           >
             Find lots open to interest →

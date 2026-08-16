@@ -1,13 +1,14 @@
 'use client';
 
 import { formatMoney } from '../lib/format';
+import { useFlags } from '../lib/use-flags';
 
 const CTA: Record<string, string> = {
   TIMED_AUCTION: 'Place bid',
   BUY_NOW: 'Buy now',
   MAKE_OFFER: 'Make offer',
   SEALED_TENDER: 'Submit tender',
-  EOI: 'Register interest',
+  EXPRESSION_OF_INTEREST: 'Register interest',
 };
 
 const LABEL: Record<string, string> = {
@@ -15,7 +16,7 @@ const LABEL: Record<string, string> = {
   BUY_NOW: 'Buy now',
   MAKE_OFFER: 'Guide',
   SEALED_TENDER: 'Guide',
-  EOI: 'Guide',
+  EXPRESSION_OF_INTEREST: 'Guide',
 };
 
 /**
@@ -36,12 +37,18 @@ export function LotStickyDock({
   saleMethod: string;
   targetId?: string;
 }) {
+  const { flags } = useFlags();
   const cta = CTA[saleMethod] ?? 'View lot';
   const label = LABEL[saleMethod] ?? 'Price';
+  // When the neutral-IA mobile bottom dock is active, it owns the very bottom of small
+  // viewports (< md). Sit this action dock directly above it there; from md up (where the
+  // nav dock is hidden) return to the screen edge. Prevents the two fixed bars colliding.
+  const position = flags.neutralIaV1
+    ? 'bottom-[calc(3.75rem_+_env(safe-area-inset-bottom))] pb-0 md:bottom-0 md:pb-[env(safe-area-inset-bottom)]'
+    : 'bottom-0 pb-[env(safe-area-inset-bottom)]';
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-coal-950/90 backdrop-blur-xl lg:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className={`fixed inset-x-0 z-40 border-t border-white/10 bg-coal-950/90 backdrop-blur-xl lg:hidden ${position}`}
     >
       <div className="container-page flex items-center justify-between gap-4 py-3">
         <div className="min-w-0">

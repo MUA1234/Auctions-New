@@ -76,7 +76,7 @@ export function SalePanel({
           token={token}
         />
       );
-    case 'EOI':
+    case 'EXPRESSION_OF_INTEREST':
       return <EoiPanel listingId={listingId} currency={currency} token={token} />;
     default:
       return (
