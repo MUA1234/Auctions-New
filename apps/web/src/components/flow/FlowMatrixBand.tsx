@@ -108,9 +108,29 @@ export function FlowMatrixBand({
     if (near && items.length === 0 && !loading && !exhausted) void loadMore();
   }, [near, items.length, loading, exhausted, loadMore]);
 
-  // A fully-loaded, reasonably-sized rail loops: render the lots twice and wrap at the
-  // halfway point so touch / trackpad / drag scrolling reads as one endless rail.
-  const loop = exhausted && items.length > 1 && items.length <= LOOP_CAP;
+  // A fully-loaded, reasonably-sized rail can loop — the lots render twice and the scroll
+  // wraps at the halfway point so touch / trackpad / drag reads as one endless rail. But
+  // only when the single set actually OVERFLOWS the rail: a short rail that already fits (a
+  // few lots on a wide screen) must not duplicate, or its cards simply render twice side by
+  // side and read as duplicated content. `overflows` is measured, so the same rail loops at
+  // 390px (overflowing) yet stays a single set at 1440px (fitting).
+  const [overflows, setOverflows] = useState(false);
+  const loop = exhausted && items.length > 1 && items.length <= LOOP_CAP && overflows;
+
+  // Measure single-set overflow (halve the width while looping, since the rail then holds
+  // two copies). ResizeObserver keeps it correct across viewport changes and lazy loads.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      const singleSet = loop ? el.scrollWidth / 2 : el.scrollWidth;
+      setOverflows(singleSet - el.clientWidth > 4);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [items, loop]);
 
   const onScroll = useCallback(() => {
     const el = railRef.current;
@@ -157,7 +177,9 @@ export function FlowMatrixBand({
   );
 
   const display = loop ? [...items, ...items] : items;
-  const showArrows = items.length > 0 && (!exhausted || items.length > 4);
+  // Arrows only when the rail can actually scroll (measured overflow) — never over a rail
+  // whose lots all fit, and never over the loading skeleton.
+  const showArrows = items.length > 0 && overflows;
 
   return (
     <section

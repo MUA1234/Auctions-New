@@ -10,8 +10,8 @@ import { useFlags } from '../lib/use-flags';
 import { signOut, useAuth } from '../lib/auth';
 
 /**
- * Mobile navigation drawer (V3-1 shell). The desktop header nav is `hidden md:flex`,
- * so without this phones lose all top-level navigation. Renders a hamburger that opens
+ * Mobile navigation drawer (V3-1 shell). The desktop header nav is `hidden lg:flex`,
+ * so below `lg` (phones and small tablets) this is the only top-level navigation. Renders a hamburger that opens
  * the focus-trapped `Sheet` with the full nav, flag-gated Discover, auth-aware account
  * actions and the seller CTA. Closes on route change, ESC, scrim tap or link tap.
  */
@@ -32,7 +32,7 @@ export function MobileNav() {
   ];
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-label="Open menu"
