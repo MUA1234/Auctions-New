@@ -380,3 +380,16 @@ explains only; any bid/offer stays with the existing engines behind explicit con
 `createBidIntent`→`confirmBidIntent` two-step). AIC-1 needs no migration: the conversation subject
 rides in `Message.payload` (Json) and the run links via `AiRun.subjectType='Conversation'` — both
 existing columns. A dedicated `Conversation.subject`/voice-channel column is a later additive step.
+
+## D-AIC-5 · Preview flags are mount-gated so SSR and hydration agree
+AIC-7 full-stack QA surfaced a pre-existing hydration defect: `useFlags` applied the per-browser
+preview override (`?evo`/`?v3` cookie/param) synchronously in the initial render. The server can't
+see that cookie, so the client's first (hydration) render disagreed with the server HTML — React
+discarded the hydrated tree (#418/#423), and on a direct production load of `/lot/[id]?evo=on` threw
+an unrecovered #329 that left the assistant launcher (and other preview surfaces) unrendered. Fix:
+`useFlags` now starts from `DEFAULT_FLAGS` (matching SSR) and applies the preview override + backend
+flags **after mount** — one root-cause change that fixes every preview-gated surface uniformly
+(the `Header` nav already used this mount-gate pattern; this generalises it). The cost is a
+one-frame flash of the default experience before the preview applies, which is acceptable for a
+controlled-preview environment and far better than a hydrating crash. Verified: a direct
+`/lot/[id]?evo=on&v3=on` load now renders the launcher with zero hydration errors.

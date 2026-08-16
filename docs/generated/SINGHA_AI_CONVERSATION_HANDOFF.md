@@ -83,5 +83,16 @@ migration is involved (the entire layer added **zero** schema changes — it rid
   (privacy, injection refusal, non-binding, ownership 404, flag-off, cross-customer denial,
   continuity no-duplicate, anti-invention), plus 119 API + 145 web unit tests.
 - **Responsive (390/768/1440/1920)** — the signed-in assistant captured end-to-end at the mandated
-  widths (AIC-7); before/after and per-phase evidence indexed with the CX package.
-<!-- AIC-7 responsive capture manifest appended after the full-stack QA run. -->
+  widths (AIC-7), driven against the full stack (API with `FEATURE_AI_CONVERSATION=true`, a real
+  signed-in buyer, live `/assistant/message` + `/assistant/search` round-trips). Evidence set
+  (`scratchpad/aic7/`): `assistant-launcher-390` (dock-aware launcher), and `assistant-reply-<w>` +
+  `assistant-search-<w>` for w ∈ {390, 768, 1440, 1920} — each showing a real AI reply with
+  suggestion chips, real AI-discovery result cards (e.g. CAT 320D / Komatsu, live bids), the
+  find-mode composer, and the Chat / WhatsApp / Call channel row. Bottom sheet at 390, side panel at
+  768+; no overflow/clipping; binding flags stayed OFF throughout.
+- **One genuine defect found in QA and fixed** (`b84ce3b`): a pre-existing hydration mismatch — the
+  preview flags applied synchronously in the first render, disagreeing with SSR and crashing the
+  Discover nav / assistant on a direct `?evo=on` production load. Fixed at the root (`useFlags`
+  mount-gates the preview override); verified the launcher now renders with zero hydration errors.
+  The other QA observations were expected (seed has no cover media; the floating launcher opens
+  context-free by design; native `<input>` placeholder clipping; unrelated dashboard 404s).

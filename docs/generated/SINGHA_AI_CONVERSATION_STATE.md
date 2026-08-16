@@ -207,6 +207,23 @@ complete and shipped.**
   sandbox's proxy) — unrelated to this change; `tsc --noEmit` across the whole app (which compiles
   every file, including these) is clean.
 
-## Next
-- **AIC-7**: cross-channel E2E + security evidence + responsive QA (390/768/1440/1920) + anti-clone
-  update + model/usage summary + docs + controlled-preview handoff.
+- **AIC-7 — DONE**. Cross-channel + full-stack acceptance QA + handoff. Stood up the full stack
+  (Postgres 5433 + API :4000 with `FEATURE_AI_CONVERSATION=true` + Supabase stub + FE), signed in as
+  a real seeded buyer, and drove the assistant end-to-end at 390/768/1440/1920 — live
+  `/assistant/message` + `/assistant/search` round-trips, real AI-discovery result cards, suggestion
+  chips, the find-mode composer, and the Chat/WhatsApp/Call row (evidence `scratchpad/aic7/`). Backend
+  security/anti-invention/non-binding proven by the e2e suites (`e2e-assistant`, `-channels`,
+  `-search`). **One genuine defect found + fixed** (`b84ce3b`): a pre-existing hydration mismatch
+  (preview flags applied pre-mount) that crashed the Discover nav / assistant on a direct `?evo=on`
+  production load — fixed at the root in `useFlags` (mount-gate the preview override); re-verified the
+  launcher renders with zero hydration errors. Handoff + model/usage summary:
+  `SINGHA_AI_CONVERSATION_HANDOFF.md`. Anti-clone: `SINGHA_CX_IP_BOUNDARY_REVIEW.md` (AIC section).
+
+## Programme complete
+**AIC-0 → AIC-7 are all shipped, security-reviewed and verified** on `claude/new-session-at0qp4`
+(backend `ee7fe92`/`ac29ebc`/`389333a`; frontend `263be0a`/`3a53665`/`b84ce3b`; docs alongside). The
+single Singha conversation brain — customer assistant, cross-channel continuity, WhatsApp/voice
+channel requests, human handoff, AI-assisted search, and the premium webchat + item-level "Ask
+Singha AI" + AI discovery — is complete behind the controlled preview, non-binding, with zero schema
+migrations. Owner-gated remainder: the real WhatsApp / voice / LLM provider accounts (behind the
+existing adapters) and the standing enablement/privacy actions.
