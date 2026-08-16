@@ -87,3 +87,40 @@ Listing/search enumeration stays server-paginated (the catalogue never dumps all
 CX3 kept every filter server-side). Account/offer probing, document access and operator/node
 configuration remain server-authorized and rate-limited (backend); the overhaul added no new
 unauthenticated data path.
+
+---
+
+# AIC — AI Conversation & Omnichannel anti-clone extension (addendum §17)
+
+Classifies the new AI conversation layer (AIC-0…AIC-3, backend `389333a`). Verdict: the valuable
+AI capability is **server-side**; the browser receives only what it needs to render chat, send a
+message, display a customer-safe response and invoke an authorised channel action. No proprietary
+orchestration, prompts, memory, matching or ranking ships to the client.
+
+| Function / surface | Class |
+|---|---|
+| Webchat UI + item-level "Ask Singha AI" + channel-choice (FE, AIC-5/6) | PUBLIC PRESENTATION |
+| `POST /assistant/{message,search,channel-request}`, `GET /assistant/conversations/:id` request/response DTOs | PUBLIC CONTRACT (customer-safe: reply text, label-only suggestions, the customer-safe ItemContext, and search results that ARE the existing `CatalogueCardV2` cards) |
+| Conversation orchestration, item-context assembly, NL→filter interpretation, continuity resolution, model routing/tiering | SERVER-SIDE PROPRIETARY (`AssistantService`, `ConnectService`, `ai-safety.ts`, `ai.search-interpreter.ts`) |
+| Prompt templates / policies / injection heuristics / model-tier router | CONFIDENTIAL, server-only — `ai-safety.ts` is PURE Tier-A and "NEVER reach the browser bundle" (its own header); prompt bodies are never serialised |
+| Reserve, proxy max, seller floor, KYC, risk/fraud score, staff notes, valuations, routing/ranking weights | CONFIDENTIAL DATA — never enters the assistant: the ItemContext is an explicit per-sale-kind **allowlist** off `CatalogueV2Service.get()`, `redactContext` is a second pass, and only `guard.safeContext` reaches the provider |
+| Staff agent inbox (`/connect/*`, `ConnectOperate`) + staff AI copilot (`/ai/assist`, `AiUse`) | OPERATOR-ONLY (RBAC) — a customer holds only the new least-privilege `AiConverse`, never these |
+| WhatsApp / voice / production LLM credentials | OWNER-ONLY, server-side; never in the FE bundle |
+
+**LLM is never the transaction authority.** `guardAiRequest` refuses binding-via-free-text
+(`binding_action_via_freetext`) and Tier-A probes (`tier_a_probe`); a bid/offer stays with the
+existing engines behind explicit confirmation (the `createBidIntent`→`confirmBidIntent` two-step).
+**AI-assisted search** emits only structured filters, re-validated per-key against the same
+`catalogueQuerySchema` the public catalogue enforces; `CatalogueV2Service` is the sole executor and
+result source — the model never invents inventory/price/availability, and no search/ranking logic
+is reconstructed client-side.
+
+**Boundary controls (all server-enforced, all covered by tests):** `FEATURE_AI_CONVERSATION` gate,
+`AiConverse` permission, `@Throttle` rate limits, ownership scoping (404-not-403, anti-enumeration),
+verified-`ExternalIdentity` identity resolution (continuity token is a link, never trusted for
+authority), and an append-only `AiRun` provenance record per invocation (blocked requests included).
+
+**Owner actions (unchanged from CX12 + addendum):** make both repos private (highest-value
+anti-clone step — the server-side orchestration + prompts are the crown jewels and are only safe
+while private); supply the real WhatsApp/voice/LLM provider credentials server-side (never client);
+the D5 sealed-offer seller-RBAC decision is unrelated to this layer.

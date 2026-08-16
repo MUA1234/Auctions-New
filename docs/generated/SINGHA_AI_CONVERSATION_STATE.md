@@ -126,9 +126,23 @@ no rate-limiting on `/ai/*` or `/connect/*`; no voice channel in `ChannelType`; 
 **→ The backend "single conversation brain" (assistant + channels + continuity + handoff) is now
 complete and shipped.**
 
+- **AIC-3 — DONE** (backend `389333a`). AI-assisted search: `POST /assistant/search` — the model
+  interprets NL into structured filters only; `sanitizeSearchFilters` re-validates every key
+  against the same `catalogueQuerySchema` the public catalogue enforces (per-key, so one bad key
+  can't wipe the valid ones), falling back to `{search: rawQuery}` if nothing survives;
+  `CatalogueV2Service.list()` is the sole executor + result source (the model never invents).
+  Guard-first (injection → safe empty + blocked `AiRun`), non-binding, no migration. `pnpm check`
+  13/13 (119 API tests, +22); `e2e-assistant-search` 32/32.
+- **AIC-4 — DONE**. Anti-clone / IP boundary review extended for the AI layer (addendum §17) →
+  `SINGHA_CX_IP_BOUNDARY_REVIEW.md` ("AIC — AI Conversation … anti-clone extension"): classifies
+  public UI / public contract / server-side orchestration / confidential prompts+data / operator
+  tools / provider creds, and records the boundary controls (all server-enforced + tested). No new
+  client-side leakage; the crown jewels (orchestration, prompts, matching/ranking) stay server-side.
+
 ## Next
-- **AIC-3 — in progress**: AI-assisted search (LLM interprets NL → structured `CatalogueQuery`
-  validated against the schema → `CatalogueV2Service.list()` executes; the model never returns/
-  invents results). Then AIC-4 (security/anti-clone consolidation), AIC-5/6 (FE surfaces: site-wide
-  webchat, item-level "Ask Singha AI", channel choice, suggested prompts, AI discovery, assisted
-  non-binding action prep), AIC-7 (cross-channel E2E + responsive QA + anti-clone update + handoff).
+- **AIC-5 — in progress**: the FE assistant surfaces — a premium, Singha-integrated **site-wide
+  webchat** (launcher + panel, message list, suggested prompts, Chat/WhatsApp/Call channel choice),
+  the **item-level "Ask Singha AI"** action (lot detail secondary + compact card action, passing the
+  server listing context), a typed `/assistant/*` FE API client, and a new gated FE flag
+  `aiConversation`. Then AIC-6 (AI discovery search box + assisted non-binding action prep) and AIC-7
+  (cross-channel E2E + responsive QA + handoff).
