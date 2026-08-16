@@ -27,7 +27,7 @@ import {
   type Shipment,
 } from '../../lib/evolution-api';
 import { useAuth } from '../../lib/auth';
-import { formatDateTime, humanize } from '../../lib/format';
+import { formatDateTime, humanize, incotermName } from '../../lib/format';
 import { SignInPrompt } from '../../components/SignInPrompt';
 import { StatusChip } from '../../components/StatusChip';
 import { Price } from './Price';
@@ -55,6 +55,16 @@ const MODES: SelectOption[] = [
   { value: 'AIR', label: 'Air freight' },
   { value: 'ROAD', label: 'Road haulage' },
 ];
+
+/** Plain-English freight-mode label (CX8) — reuses the same wording the Quote form's own
+ *  `MODES` select already shows, instead of `humanize()` on the raw enum (which renders
+ *  `SEA_FCL` as shouting "SEA FCL"). Falls back to `humanize()` for any mode not in the list
+ *  so an unrecognised value never disappears, it just loses the parenthetical explainer. */
+const MODE_LABELS = new Map(MODES.map((m) => [m.value, m.label]));
+function modeLabel(mode: string | undefined): string {
+  if (!mode) return '—';
+  return MODE_LABELS.get(mode) ?? humanize(mode);
+}
 
 const SIGN_IN_NEXT = '/services/logistics';
 
@@ -173,7 +183,14 @@ function ReferencePanel({
       header: 'Term',
       render: (r) => <span className="font-mono font-semibold text-bone">{r.code}</span>,
     },
-    { key: 'name', header: 'Name', render: (r) => r.name ?? '—' },
+    {
+      // Plain-English name (CX8): falls back to the standard ICC name for a recognised code
+      // when the API doesn't send one, instead of a bare "—" next to a term the buyer may not
+      // know by its abbreviation alone.
+      key: 'name',
+      header: 'Name',
+      render: (r) => r.name ?? incotermName(r.code) ?? '—',
+    },
     {
       key: 'arranger',
       header: 'Freight arranged by',
@@ -436,7 +453,7 @@ function QuoteResult({
     <Card className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="eyebrow text-gold-300">Indicative quote</p>
-        {quote.mode ? <Chip>{humanize(quote.mode)}</Chip> : null}
+        {quote.mode ? <Chip>{modeLabel(quote.mode)}</Chip> : null}
       </div>
 
       <Price
@@ -448,7 +465,12 @@ function QuoteResult({
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
           <dt className="text-bone-500">Incoterm</dt>
-          <dd className="mt-0.5 font-mono text-bone">{quote.incoterm ?? '—'}</dd>
+          <dd className="mt-0.5 text-bone">
+            <span className="font-mono">{quote.incoterm ?? '—'}</span>
+            {quote.incoterm && incotermName(quote.incoterm) && (
+              <span className="ml-1.5 text-xs text-bone-400">{incotermName(quote.incoterm)}</span>
+            )}
+          </dd>
         </div>
         <div>
           <dt className="text-bone-500">Freight paid by</dt>
@@ -470,6 +492,9 @@ function QuoteResult({
       {shipment ? (
         <div className="rounded-lg border border-red-500/30 bg-red-500/[0.08] p-3">
           <p className="text-sm font-semibold text-red-300">Booked — shipment created.</p>
+          <p className="mt-1 text-xs text-bone-400">
+            Your tracking reference — keep it to check status on the Track tab later.
+          </p>
           <p className="mt-1 break-all font-mono text-sm text-bone">{shipment.id}</p>
           <Button variant="outline" className="mt-3" onClick={() => onTrack(shipment.id)}>
             Track this shipment →
@@ -556,11 +581,11 @@ function TrackPanel({ seedId }: { seedId: string }) {
     <div className="flex flex-col gap-6">
       <Card>
         <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <Field label="Shipment ID" className="flex-1">
+          <Field label="Tracking reference" className="flex-1">
             <TextInput
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="e.g. shp_…"
+              placeholder="Paste the reference from your booking confirmation"
             />
           </Field>
           <Button type="submit" variant="primary" disabled={loading || !input.trim()}>
@@ -593,7 +618,7 @@ function TrackPanel({ seedId }: { seedId: string }) {
       ) : (
         <EmptyState
           title="Track a shipment"
-          description="Enter a shipment ID to see its current status and the append-only event history. Buyers view tracking read-only."
+          description="Enter the tracking reference from your booking confirmation to see its current status and the append-only event history. Buyers view tracking read-only."
         />
       )}
     </div>
@@ -606,7 +631,7 @@ function ShipmentTimeline({ shipment }: { shipment: Shipment }) {
     <Card className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-bone-500">Shipment</p>
+          <p className="text-xs uppercase tracking-wide text-bone-500">Tracking reference</p>
           <p className="mt-0.5 break-all font-mono text-sm text-bone">{shipment.id}</p>
         </div>
         {shipment.status ? <StatusChip status={shipment.status} /> : null}

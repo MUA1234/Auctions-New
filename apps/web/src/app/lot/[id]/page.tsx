@@ -2,12 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Chip } from '@singha/ui';
 import { fetchLotDetail, type LotDetail } from '../../../lib/api';
+import { mediaUrl } from '../../../lib/media';
 import { BidPanel } from '../../../components/BidPanel';
 import { BidBattle } from '../../../components/BidBattle';
 import { SalePanel } from '../../../components/SalePanel';
 import { WatchButton } from '../../../components/WatchButton';
 import { LotGallery } from '../../../components/LotGallery';
 import { LotStickyDock } from '../../../components/LotStickyDock';
+import { LotLogisticsHint } from '../../../components/LotLogisticsHint';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,7 @@ const SALE_METHOD_LABEL: Record<string, string> = {
   MAKE_OFFER: 'Make an offer',
   SEALED_TENDER: 'Sealed tender',
   EXPRESSION_OF_INTEREST: 'Expression of interest',
+  LIVE_HYBRID: 'Live auction',
 };
 
 export default async function LotPage({ params }: { params: { id: string } }) {
@@ -31,6 +34,11 @@ export default async function LotPage({ params }: { params: { id: string } }) {
   const place = [lot.location?.city, lot.location?.region].filter(Boolean).join(', ');
   const method = SALE_METHOD_LABEL[lot.saleMethod] ?? lot.saleMethod.replace(/_/g, ' ');
   const priceMinor = lot.auction?.currentBidMinor ?? lot.currentBidMinor;
+  // Supporting documents (contracts, certificates, reports) are just another `media` kind
+  // (`packages/contracts/src/commands.ts` `mediaKindValues`) — the gallery already keeps
+  // non-video kinds for its image strip, so documents are pulled out separately here rather
+  // than left to render as a broken image thumbnail.
+  const documents = (lot.media ?? []).filter((m) => m.kind === 'document');
 
   return (
     <div className="container-page pb-28 pt-12 lg:pb-12">
@@ -56,8 +64,9 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             {place ? ` · ${place}` : ''}
           </p>
 
-          {/* Key facts — always populated so the page never reads as empty. */}
-          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:grid-cols-4">
+          {/* Key facts — always populated so the page never reads as empty. Tinted, not
+              bordered (doc 06 "fewer borders, larger media"). */}
+          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl bg-white/[0.02] p-5 sm:grid-cols-4">
             <Fact label="Reference" value={lot.reference} />
             <Fact label="Category" value={lot.category} className="capitalize" />
             <Fact label="Location" value={place || '—'} />
@@ -69,6 +78,17 @@ export default async function LotPage({ params }: { params: { id: string } }) {
               <h2 className="font-display text-sm font-semibold text-bone">Description</h2>
               <p className="mt-2 whitespace-pre-line leading-relaxed text-bone-300">
                 {lot.fullDescription || lot.shortDescription}
+              </p>
+            </div>
+          )}
+
+          {lot.inspectionSummary && (
+            <div className="mt-7">
+              <h2 className="font-display text-sm font-semibold text-bone">
+                Viewing &amp; inspection
+              </h2>
+              <p className="mt-2 break-words leading-relaxed text-bone-300">
+                {lot.inspectionSummary}
               </p>
             </div>
           )}
@@ -87,6 +107,28 @@ export default async function LotPage({ params }: { params: { id: string } }) {
                   </div>
                 ))}
               </dl>
+            </div>
+          )}
+
+          {documents.length > 0 && (
+            <div className="mt-7">
+              <h2 className="font-display text-sm font-semibold text-bone">Documents</h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                {documents.map((doc, i) => {
+                  const href = mediaUrl(doc.storageKey);
+                  if (!href) return null;
+                  return (
+                    <li key={doc.id}>
+                      <a
+                        href={href}
+                        className="inline-flex max-w-full items-center gap-1.5 break-words rounded text-sm text-bone-200 underline decoration-white/20 underline-offset-4 transition-colors hover:text-gold-300 hover:decoration-gold-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60"
+                      >
+                        {doc.caption || `Document ${i + 1}`}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </div>
@@ -112,7 +154,11 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             <WatchButton lotId={lot.id} />
           </div>
 
-          <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+          {/* CX8: compact collection/delivery affordance, woven right into the transaction
+              rail. Renders nothing when there's no pickup line and Logistics is off. */}
+          <LotLogisticsHint collectionSummary={lot.collectionSummary} place={place} />
+
+          <div className="mt-5 rounded-xl bg-white/[0.02] p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-bone-200">
               <span className="text-gold-400" aria-hidden>
                 ◆

@@ -107,11 +107,48 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
   `check-routes`/`check-contracts`/`next build` all green. Full findings: `SINGHA_CX_DECISIONS.md`
   D-CX-4.
 
+- **CX4 + CX8 (lot detail transaction workspace + logistics woven in)** — `lot/[id]`
+  recomposed to read as one workspace: the Key-facts `dl` and the "Server-authoritative" trust
+  card lost their 1px borders in favour of tint-only panels (doc 06 "fewer borders"); new
+  "Viewing & inspection" and "Documents" sections render only when the data exists
+  (`lot.inspectionSummary`, and `media[].kind === 'document'` — a real `mediaKindValues` member,
+  `packages/contracts/src/commands.ts` — pulled out of the gallery's image strip rather than
+  left to render as a broken image thumbnail). `SALE_METHOD_LABEL` (`lot/[id]/page.tsx`) and
+  `LotStickyDock`'s `CTA`/`LABEL` maps gained the missing `LIVE_HYBRID` entry — a real
+  `SaleMethod` value (`database/prisma/schema.prisma:70`) both maps omitted, so a live/hybrid
+  lot's Sale-method fact rendered a raw-ish enum string (the audit's X6/CX4 finding). `SalePanel`'s
+  `PriceHeader` and `BidPanel`'s "Current bid" now render through the shared `Price` component
+  instead of a bare `formatMoney` call, so the existing display-currency/FX line (`fxDisplay`
+  flag) can appear next to the binding price here too — zero change to either panel's bid/
+  purchase handlers, validation or confirmation flow. CX8: new `LotLogisticsHint` shows a pickup
+  line (`collectionSummary` when present, else a line built from `location`) plus a "Get a
+  delivery estimate" link into `/services/logistics` — a plain link (neither that page nor
+  `LogisticsCentre` reads query params, so a prefilled deep link would silently do nothing) and
+  gated on the `logistics` flag (only the entry point — the pickup line itself is plain listing
+  data, not an Evolution capability); renders nothing when it would have nothing to show.
+  `LogisticsCentre` keeps every existing API call unchanged; copy-only polish: freight `mode`
+  and Incoterm `code` now show their plain-English name (reusing the Quote form's own `MODES`
+  labels and the existing `incotermName()` lookup — no invented trade-terms meanings, per the
+  pack's legal/compliance escalation rule) instead of `humanize()`ing an UPPER_SNAKE enum; the
+  Track tab's "Shipment ID" label / `"e.g. shp_…"` placeholder (audit: exposes the internal
+  ID-prefix convention) became "Tracking reference", and the booking-confirmation screen now
+  tells the buyer to keep that reference — without adding the "my shipments" list the audit
+  separately flagged, which needs a not-yet-existing backend endpoint and is out of scope for a
+  no-new-API-calls phase (reported as a gap, not silently built around). **Gaps, not built:**
+  seller/verification (`LotDetail` has no such field — confirmed against
+  `contracts/public-api.contract.json`, the backend-generated response shape) and
+  `quantity`/`quantityUnitCode` (same contract confirms neither key exists on
+  `GET /api/v2/catalogue/:id`, only on the `Asset` data model) — neither is rendered.
+  `collectionSummary`/`inspectionSummary` WERE added to the `LotDetail` type: the one exception,
+  since that same contract file lists both as real, already-returned keys on this exact
+  endpoint — completing a type gap, not inventing data. Full reasoning:
+  `SINGHA_CX_DECISIONS.md` D-CX-5. Gates: typecheck, eslint, prettier all clean; vitest 30/30
+  files, 110/110 tests (5 new — `LotLogisticsHint.test.tsx`); `check-routes`/`check-contracts`/
+  `next build` all green.
+
 ## Next (phase backlog)
 - **CX2 (cont.)** — authenticated "Needs your attention" block on the homepage.
-- **CX4** — Listing detail as a transaction workspace (sticky rail desktop / dock mobile).
 - **CX5 (cont.)** — offer form plain-English summary + negotiation-timeline polish.
-- **CX8** — Logistics woven into the transaction journey.
 - **CX9** — Sri Lanka/local-market natural language (no "Satellite Node" vocabulary).
 - **CX10** — visual hierarchy/motion refinement (fewer cards/borders, larger media).
 - **CX11** — microcopy + friendly error mapper + a11y (no raw IDs/enums/errors).
@@ -120,5 +157,5 @@ Evolution surfaces). Production defaults are unchanged until an owner enables th
 - **CX14** — controlled-preview handoff (env names, flag values, seed/deploy/smoke steps).
 
 ## Gates status
-Every increment ships only after: typecheck · vitest (105 passing) · `next build` · eslint ·
+Every increment ships only after: typecheck · vitest (110 passing) · `next build` · eslint ·
 prettier. Backend authority, immutable ledgers, sealed privacy, MFA/RBAC untouched.

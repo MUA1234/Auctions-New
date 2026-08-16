@@ -9,6 +9,7 @@ import { useFlags } from '../lib/use-flags';
 import { newIntentId } from '../lib/gesture';
 import { formatMoney, timeLeft } from '../lib/format';
 import { GestureBidControl } from './GestureBidControl';
+import { Price } from './evolution/Price';
 
 export function BidPanel({
   auctionId,
@@ -111,9 +112,12 @@ export function BidPanel({
     <Card className="sticky top-20 flex flex-col gap-4">
       <div>
         <p className="text-[11px] uppercase tracking-wide text-bone-500">Current bid</p>
-        <p className="tabular font-display text-3xl font-bold text-gold-400">
-          {formatMoney(current, state.currency)}
-        </p>
+        {/* The bid amount + currency is always the binding source of truth; `Price` adds an
+            "≈ … · indicative" display-currency line only when the viewer has picked one AND
+            the fxDisplay flag is on (CX4) — never a second binding amount. */}
+        <div className="mt-1">
+          <Price minor={current} currency={state.currency} className="text-3xl" />
+        </div>
         <p className="mt-1 text-sm text-bone-400">
           {state.status === 'open'
             ? `Ends in ${timeLeft(state.endsAt)}`

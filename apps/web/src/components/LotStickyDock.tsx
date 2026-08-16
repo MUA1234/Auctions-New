@@ -9,6 +9,7 @@ const CTA: Record<string, string> = {
   MAKE_OFFER: 'Make offer',
   SEALED_TENDER: 'Submit tender',
   EXPRESSION_OF_INTEREST: 'Register interest',
+  LIVE_HYBRID: 'Place bid',
 };
 
 const LABEL: Record<string, string> = {
@@ -17,6 +18,7 @@ const LABEL: Record<string, string> = {
   MAKE_OFFER: 'Guide',
   SEALED_TENDER: 'Guide',
   EXPRESSION_OF_INTEREST: 'Guide',
+  LIVE_HYBRID: 'Current bid',
 };
 
 /**

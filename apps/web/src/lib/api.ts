@@ -142,6 +142,22 @@ export interface LotDetail extends CatalogueLot {
   fullDescription?: string;
   location?: { city: string | null; region: string | null };
   media?: PublicMedia[];
+  /**
+   * Free-text pickup/collection hint (mirrors `Listing.collectionSummary`). CX8: unlike
+   * `quantity`/`quantityUnitCode` (deliberately NOT added below — see next comment), this one
+   * is confirmed already live on `GET /api/v2/catalogue/:id` by
+   * `contracts/public-api.contract.json` (backend-generated from a real response, not
+   * assumed) — genuinely returned today, just not previously typed here. Added additively so
+   * the lot page can show a pickup line without touching the backend.
+   */
+  collectionSummary?: string | null;
+  /** Free-text viewing/inspection hint (mirrors `Listing.inspectionSummary`) — same contract
+   *  evidence as `collectionSummary` above. */
+  inspectionSummary?: string | null;
+  // `quantity` / `quantityUnitCode` intentionally NOT added: the same contract file has no
+  // such keys for this endpoint (only `Asset.quantityAvailable`/`quantityUnitCode` exist on
+  // the data model, unprojected by any endpoint yet — confirmed, not assumed). CX4 skips a
+  // quantity+unit fact on the lot page rather than render a field the API doesn't expose.
 }
 
 /**

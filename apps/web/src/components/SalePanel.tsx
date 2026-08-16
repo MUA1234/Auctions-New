@@ -6,6 +6,7 @@ import { Button, Card } from '@singha/ui';
 import { buyNow, makeOffer, submitEoi, submitTender } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { formatMoney, parseMoneyToMinor } from '../lib/format';
+import { Price } from './evolution/Price';
 
 /**
  * Buyer action panel for every NON-auction sale method (Singha Exchange, docs/07):
@@ -103,9 +104,16 @@ function PriceHeader({
   return (
     <div>
       <p className="text-[11px] uppercase tracking-widest text-bone-500">{label}</p>
-      <p className="mt-1 font-display text-3xl font-bold text-gold-400">
-        {priceMinor != null ? formatMoney(priceMinor, currency) : 'On request'}
-      </p>
+      {/* The transaction currency is always shown as the binding source of truth; `Price`
+          adds an "≈ … · indicative" display-currency line only when the viewer has picked
+          one AND the fxDisplay flag is on (CX4) — never a second binding amount. */}
+      <div className="mt-1">
+        {priceMinor != null ? (
+          <Price minor={priceMinor} currency={currency} className="text-3xl" />
+        ) : (
+          <span className="font-display text-3xl font-bold text-gold-400">On request</span>
+        )}
+      </div>
     </div>
   );
 }

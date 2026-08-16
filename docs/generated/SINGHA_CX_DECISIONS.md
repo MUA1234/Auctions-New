@@ -3,6 +3,89 @@
 Meaningful, reversible-internal decisions taken autonomously during the Customer Experience
 Overhaul and the Living Background work. Newest first.
 
+## D-CX-5 · CX4 + CX8 lot detail workspace + logistics: why `collectionSummary`/`inspectionSummary` were typed but `quantity` and seller/verification were not, and what stayed copy-only in Logistics
+
+**`LotDetail` needed a real, checkable answer for "does this field actually exist on the wire,"
+not a guess from a comment — `contracts/public-api.contract.json` gave one.** The task's own
+constraint named the exact risk: verify in `api.ts`, and if `collectionSummary`/`quantity`
+aren't on `LotDetail`, skip rather than fabricate. Neither was declared on `LotDetail` — but
+`api.ts`'s existing comment on `CatalogueCardV2.collectionSummary` (added in CX3, D-CX-1) already
+claimed the single-lot detail endpoint returns it today. Rather than trust or dismiss that
+claim, it was checked against the one artifact in this repo built for exactly this question:
+`contracts/public-api.contract.json`, generated verbatim from a real
+`GET /api/v2/catalogue/:id` response (`scripts/emit-contract.mjs`, "shared with the frontend to
+prevent silent DTO drift"). Its entry for that endpoint lists `collectionSummary` AND
+`inspectionSummary` as real top-level keys — confirming both, not just the one D-CX-1 already
+flagged. The same entry has no `quantity`/`quantityUnitCode` key anywhere, confirming the
+opposite for those two (matching D-CX-1's separate note that quantity fields exist only on the
+`Asset` data model, unprojected by any endpoint). Net effect: `collectionSummary` and
+`inspectionSummary` were added to `LotDetail` as optional/nullable fields — completing a type
+gap against already-real backend behaviour, not inventing a shape — while `quantity`/
+`quantityUnitCode` were left off and skipped on the lot page entirely, exactly as the
+instruction anticipated. `seller`/verification has no key of any kind on that same contract
+entry, so it is a confirmed, reported gap, not a rendering choice.
+
+**The same contract entry also reveals `LotDetail` has drifted further than this phase's scope
+covers — noted, not fixed.** The contract's `GET /api/v2/catalogue/:id` shape carries `commercial`
+(a nested `{currency, currentBidMinor, ...}` object, mirroring `CatalogueCardV2.commercial`) and
+has no top-level `currency`/`currentBidMinor` keys at all — yet `LotDetail extends CatalogueLot`,
+which types exactly those two as flat top-level fields, and the whole page (price header, sticky
+dock, `SalePanel`/`BidPanel` props) reads them that way. If the live v2 endpoint really has no
+flat `currency`/`currentBidMinor`, those reads are already silently `undefined` today, pre-dating
+this phase (the safe failure mode: `formatMoney(undefined, undefined)` renders "LKR —", not a
+crash). Restructuring `LotDetail` around the nested `commercial` shape would touch how every
+sale-method panel reads its binding price — a materially larger, riskier change than "add two
+optional display strings," explicitly against this task's "keep binding semantics untouched" /
+"do not touch the backend" constraints, and not something to fix opportunistically mid-CX4/CX8.
+Left as a reported finding for a dedicated follow-up, not silently patched.
+
+**`check-contracts.mjs` was deliberately NOT extended to cover `GET /api/v2/catalogue/:id`.**
+Adding that endpoint to the script's `MAP` would immediately fail on the pre-existing gaps above
+(`commercial`, `event`, `featured`, `watchers` — none of which this phase needed or added) — a
+new, permanently-red CI gate is worse than no gate. The two fields this phase actually added
+(`collectionSummary`, `inspectionSummary`) are exactly the two the live contract confirms;
+wiring the full endpoint into drift-checking is future work once the `commercial`-shape question
+above is resolved, not a byproduct of a display-only lot-page pass.
+
+**`SalePanel`/`BidPanel` price displays now route through the shared `Price` component —
+display-only, not a binding-logic change.** CX4 asks for "transaction currency (+ indicative
+display currency via the existing Price/FX component if present)." `Price` already exists
+(E5, used by `LogisticsCentre`) and already self-gates on `fxDisplay` + a chosen display
+currency, rendering identically to a bare `formatMoney()` call when either is unset — so
+swapping `PriceHeader`'s and `BidPanel`'s amount line to `<Price>` is a formatting swap, not a
+new dependency or a new gate. Neither panel's submit handlers, validation, confirmation copy or
+API calls changed; `SalePanel`'s `null`-price "On request" copy was deliberately preserved
+(kept out of `Price`, which would otherwise render a bare "—") rather than let a component swap
+silently change established customer-facing wording.
+
+**The "Get a delivery estimate" entry point is a plain link, gated on `logistics`, separate from
+the ungated pickup line.** Neither `/services/logistics` nor `LogisticsCentre` reads any query
+parameter today (verified by reading both files, not assumed) — the task's own instruction was
+to prefer a plain link over a query-param contract that doesn't exist, so no `?origin=`/
+`?destination=` was added. The link itself is gated on the `logistics` flag (mirroring
+`EvolutionEntryLinks`' established "graceful hide" pattern for entry points into a flag-gated
+surface) so it never invites a visitor to a destination `EvoGate` would immediately turn away.
+The pickup line above it (`collectionSummary`/location) is NOT gated — it is plain listing data,
+unrelated to the E7 Logistics capability, so gating it on the same flag would hide real listing
+facts behind an unrelated toggle.
+
+**`LogisticsCentre`'s microcopy polish stayed inside the "no invented meanings" boundary.**
+CX8 asks for "Incoterms explained in plain words." The page's own descriptive copy (what an
+Incoterm fixes, "reference only") and the API's own `Incoterm.description` field were left
+untouched — nothing there was rewritten. The one addition (`incotermName()`, code → standard ICC
+name, e.g. "FOB" → "Free On Board") reuses a static lookup this exact codebase already ships and
+already trusts for the same purpose in `CommercialOfferForm`/`ProcurementHub`/`lib/format.ts` —
+expanding a standard abbreviation to its official name is not a legal interpretation, so it does
+not trip CLAUDE.md's "legal/compliance wording" escalation trigger; inventing NEW prose about
+what a term means commercially (who bears risk, who pays freight) would, and was not done.
+Freight `mode` (`SEA_FCL` → "Sea freight — FCL (full container)") reuses the Quote form's own
+`MODES` labels already in the same file — fixing the exact X3 finding audit called out on this
+page, with data already present, not new copy. The Track tab's "my shipments list" gap
+(audit P2, explicitly mapped to CX8) was NOT built: the only fix available without a new backend
+endpoint is making the handoff moment clearer, so the booking-confirmation screen now tells the
+buyer in plain words to keep the tracking reference — a real mitigation of the documented gap,
+not a claim of having solved it.
+
 ## D-CX-4 · CX7 Command Centre + Singha ID passport: combining two read-models, an honest passport-state vocabulary, and what stayed out of scope
 
 **The Command Centre's "Needs your attention" needed two data sources, not one — the aggregate
