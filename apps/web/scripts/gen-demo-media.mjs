@@ -48,6 +48,7 @@ const SIZE = args.size ?? '1536x1024';
 const LIMIT = args.limit ? Number(args.limit) : Infinity;
 const ONLY = args.only ? String(args.only).toUpperCase() : null;
 const DRY = Boolean(args['dry-run']);
+const EMIT = Boolean(args['emit-prompts']); // write a human ChatGPT prompt sheet instead of images
 
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
 const cat3 = (c) => c.slice(0, 3).toUpperCase();
@@ -202,6 +203,57 @@ const targets = manifest
   .filter((it) => it.imageCount > 0)
   .filter((it) => !ONLY || it.ref === ONLY)
   .slice(0, LIMIT);
+
+// --- emit a human "image request sheet" for ChatGPT (no API needed) ---------
+if (EMIT) {
+  const SIZE_NOTE = 'Landscape 3:2 — 1536×1024 px (gems may use square 1024×1024). PNG or JPG.';
+  const lines = [];
+  lines.push('# Singha demo images — ChatGPT request sheet\n');
+  lines.push(
+    'Generate one image per line below in ChatGPT (a model with image generation, e.g. GPT-4o / ' +
+      'gpt-image-1). **Save each file with the EXACT filename shown** and keep the category folder, ' +
+      'then zip the whole `smkt` folder and send it back.\n',
+  );
+  lines.push(`**Image size:** ${SIZE_NOTE}\n`);
+  lines.push(
+    '**Priority:** the `-1` image of each listing is the card COVER — if you only do one per ' +
+      'listing, do that one (54 images). All four give a full gallery (216 images).\n',
+  );
+  lines.push(
+    '**Folder layout to zip:**\n```\nsmkt/\n  vehicles/  smkt-veh-01-1.png …\n  machinery/ smkt-mac-01-1.png …\n  gems/      smkt-gem-01-1.png …\n  property/  smkt-pro-01-1.png …\n  bulk/      smkt-bul-01-1.png …\n  general/   smkt-gen-01-1.png …\n```\n',
+  );
+  lines.push(
+    '**Rules for every image:** photorealistic, no text/watermarks/logos, no real number plates ' +
+      'or brand badges, no people. Each set of 4 must clearly be the SAME item (same colour, body, ' +
+      'wear) from different angles.\n',
+  );
+  let curCat = '';
+  for (const it of targets) {
+    if (it.category !== curCat) {
+      curCat = it.category;
+      lines.push(`\n## ${curCat}\n`);
+    }
+    const palette = COLOUR_HEX[it.category] ?? COLOUR_HEX.general;
+    const colourName = COLOUR_NAME[palette[hash(it.ref) % palette.length]];
+    const views = viewsFor(it.category);
+    const n = Math.min(VIEWS, it.imageCount);
+    lines.push(`### ${it.ref} — ${it.title} _(condition: ${it.condition})_`);
+    for (let v = 0; v < n; v += 1) {
+      const label = views[v] ?? `view ${v + 1}`;
+      const fname = `smkt/${it.category}/${it.ref.toLowerCase()}-${v + 1}.png`;
+      lines.push(
+        `- **\`${fname}\`** ${v === 0 ? '(cover) ' : ''}— ${buildPrompt(it, label, colourName)}`,
+      );
+    }
+    lines.push('');
+  }
+  const outFile = join(HERE, 'demo-image-requests.md');
+  writeFileSync(outFile, lines.join('\n'));
+  console.log(
+    `Wrote ChatGPT request sheet: ${outFile}\n  listings=${targets.length} images=${targets.reduce((s, it) => s + Math.min(VIEWS, it.imageCount), 0)}`,
+  );
+  process.exit(0);
+}
 
 for (const it of targets) {
   const dir = join(OUT, it.category);
