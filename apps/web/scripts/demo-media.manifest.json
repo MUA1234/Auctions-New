@@ -1,0 +1,422 @@
+[
+  {
+    "ref": "SMKT-BUL-01",
+    "category": "bulk",
+    "title": "Red Onions · 20 MT, Grade A",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-02",
+    "category": "bulk",
+    "title": "Potatoes · 15 MT, table grade",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-03",
+    "category": "bulk",
+    "title": "Green Chillies · 8 MT",
+    "condition": "fair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-04",
+    "category": "bulk",
+    "title": "Red Lentils (Dhal) · 25 MT, imported",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-05",
+    "category": "bulk",
+    "title": "Coconut lot · 30,000 nuts",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-06",
+    "category": "bulk",
+    "title": "Ceylon Cinnamon (Alba) · 2 MT",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-07",
+    "category": "bulk",
+    "title": "HMS 1&2 Steel Scrap · 60 MT (80:20)",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-08",
+    "category": "bulk",
+    "title": "Aluminium Extrusion Scrap · 8 MT (6063)",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-09",
+    "category": "bulk",
+    "title": "Copper Cable Scrap · 3 MT (bright/berry mix)",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-BUL-10",
+    "category": "bulk",
+    "title": "Stainless Steel Scrap · 5 MT (304 mixed)",
+    "condition": "used",
+    "imageCount": 0
+  },
+  {
+    "ref": "SMKT-GEM-01",
+    "category": "gems",
+    "title": "Ceylon Blue Sapphire · 5.42 ct (unheated)",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-02",
+    "category": "gems",
+    "title": "Yellow Sapphire · 8.10 ct",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-03",
+    "category": "gems",
+    "title": "Star Sapphire (grey-blue) · 12.5 ct",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-04",
+    "category": "gems",
+    "title": "Purple Spinel · 3.35 ct",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-05",
+    "category": "gems",
+    "title": "Green Tourmaline · 6.7 ct",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-06",
+    "category": "gems",
+    "title": "Padparadscha-type Sapphire · 2.9 ct",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-07",
+    "category": "gems",
+    "title": "White Zircon parcel · 20 stones (~15 ct total)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-08",
+    "category": "gems",
+    "title": "Alexandrite-effect Synthetic (lab) · 4.1 ct",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-09",
+    "category": "gems",
+    "title": "Rough Sapphire geuda lot · 250 g",
+    "condition": "unknown operational condition",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEM-10",
+    "category": "gems",
+    "title": "Red Spinel · 1.8 ct",
+    "condition": "excellent",
+    "imageCount": 0
+  },
+  {
+    "ref": "SMKT-GEN-01",
+    "category": "general",
+    "title": "Office Furniture Clearance · 120 workstations",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-02",
+    "category": "general",
+    "title": "Restaurant Equipment Lot · commercial kitchen",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-03",
+    "category": "general",
+    "title": "Gym Equipment · 30 machines (commercial)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-04",
+    "category": "general",
+    "title": "Solar Panels (used) · 200 x 330W",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-05",
+    "category": "general",
+    "title": "IT Asset Disposal · 150 laptops (mixed)",
+    "condition": "fair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-06",
+    "category": "general",
+    "title": "Event & Marquee Equipment · full inventory",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-07",
+    "category": "general",
+    "title": "Shipping Containers · 10 x 20ft (used)",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-08",
+    "category": "general",
+    "title": "Retail POS & Shelving · shop fit-out",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-09",
+    "category": "general",
+    "title": "Printing Press · A2 offset (project)",
+    "condition": "requires repair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-GEN-10",
+    "category": "general",
+    "title": "Ex-fleet Bicycles · 60 units",
+    "condition": "fair",
+    "imageCount": 0
+  },
+  {
+    "ref": "SMKT-MAC-01",
+    "category": "machinery",
+    "title": "Caterpillar 320D Hydraulic Excavator (2013)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-02",
+    "category": "machinery",
+    "title": "Komatsu PC200-8 Excavator (2015)",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-03",
+    "category": "machinery",
+    "title": "JCB 3CX Backhoe Loader (2017)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-04",
+    "category": "machinery",
+    "title": "Toyota 8FG25 2.5T Forklift (2018)",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-05",
+    "category": "machinery",
+    "title": "Kubota L4508 Agricultural Tractor (2020)",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-06",
+    "category": "machinery",
+    "title": "250 kVA Cummins Diesel Generator (2016)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-07",
+    "category": "machinery",
+    "title": "Atlas Copco XAS 137 Screw Compressor (2015)",
+    "condition": "fair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-08",
+    "category": "machinery",
+    "title": "CAT 950H Wheel Loader (2012)",
+    "condition": "used",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-09",
+    "category": "machinery",
+    "title": "Komatsu D65 Bulldozer (2011, requires repair)",
+    "condition": "requires repair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-MAC-10",
+    "category": "machinery",
+    "title": "Bomag BW211 Single-Drum Roller (2016)",
+    "condition": "good",
+    "imageCount": 0
+  },
+  {
+    "ref": "SMKT-PRO-01",
+    "category": "property",
+    "title": "40 Perch Residential Land · Galle (near town)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-02",
+    "category": "property",
+    "title": "Commercial Building · Colombo 04 (3 floors)",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-03",
+    "category": "property",
+    "title": "Agricultural Land · 3 acres, Kurunegala",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-04",
+    "category": "property",
+    "title": "Warehouse · 15,000 sq ft, Colombo–Katunayake",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-05",
+    "category": "property",
+    "title": "Development Land · 1.5 acres, Kandy hills",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-06",
+    "category": "property",
+    "title": "House for disposal · 4BR, Nugegoda",
+    "condition": "fair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-07",
+    "category": "property",
+    "title": "Beachfront Land · 25 perch, Hambantota",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-08",
+    "category": "property",
+    "title": "Retail Unit (strata) · Melbourne CBD fringe",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-09",
+    "category": "property",
+    "title": "Warehouse/Industrial Shed · Hosur",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-PRO-10",
+    "category": "property",
+    "title": "Paddy Land · 5 acres, Polonnaruwa (lease/EOI)",
+    "condition": "good",
+    "imageCount": 0
+  },
+  {
+    "ref": "SMKT-VEH-01",
+    "category": "vehicles",
+    "title": "2019 Toyota Hilux 2.8 GD-6 Double Cab",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-02",
+    "category": "vehicles",
+    "title": "2018 Mitsubishi Canter FE71 Tipper",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-03",
+    "category": "vehicles",
+    "title": "2021 Suzuki Wagon R FZ Hybrid",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-04",
+    "category": "vehicles",
+    "title": "2017 Toyota Land Cruiser 79 Series Pickup",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-05",
+    "category": "vehicles",
+    "title": "2016 Isuzu NPR 400 Box Truck",
+    "condition": "fair",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-06",
+    "category": "vehicles",
+    "title": "2020 Toyota Prius S Touring",
+    "condition": "very good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-07",
+    "category": "vehicles",
+    "title": "2015 Nissan Leaf (salvage / repairable)",
+    "condition": "salvage",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-08",
+    "category": "vehicles",
+    "title": "2022 Mahindra Bolero Maxx Pik-Up",
+    "condition": "excellent",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-09",
+    "category": "vehicles",
+    "title": "2014 BMW 320i (Australian delivered)",
+    "condition": "good",
+    "imageCount": 4
+  },
+  {
+    "ref": "SMKT-VEH-10",
+    "category": "vehicles",
+    "title": "2019 Ford Ranger XLT Dual Cab",
+    "condition": "very good",
+    "imageCount": 0
+  }
+]

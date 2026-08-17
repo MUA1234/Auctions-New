@@ -51,3 +51,5 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+apps/web/public/demo/
+apps/web/demo-shots/
