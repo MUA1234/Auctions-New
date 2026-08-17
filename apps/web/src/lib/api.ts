@@ -298,6 +298,12 @@ export interface CatalogueCardV2 {
    * hint only when present.
    */
   collectionSummary?: string | null;
+  /**
+   * RW4 — customer-safe logistics availability hints on the list card (mirror whether the listing
+   * has a pickup / destination location set). Optional + forward-compatible like `quantity` above.
+   */
+  pickupAvailable?: boolean;
+  deliveryAvailable?: boolean;
   event?: {
     id: string;
     publicRef: string;
@@ -355,6 +361,18 @@ export interface CatalogueQueryParams {
    *  — the backend's `z.coerce.boolean()` treats the STRING "false" as truthy. */
   endingSoon?: boolean;
   auctionEventId?: string;
+  /** RW4 — price BAND in minor units, matched against whichever commercial figure a listing
+   *  actually publishes (buy-now / unit / guide / live-or-opening bid). */
+  minPriceMinor?: number;
+  maxPriceMinor?: number;
+  /** RW4 — quantity range + unit code (commodity/bulk). */
+  minQuantity?: number;
+  maxQuantity?: number;
+  unit?: string;
+  /** RW4 — logistics presence flags. Send `true` to filter; omit otherwise (like `endingSoon`,
+   *  the backend's `z.coerce.boolean()` treats the STRING "false" as truthy). */
+  pickup?: boolean;
+  delivery?: boolean;
   sort?: string;
   page?: number;
   limit?: number;
