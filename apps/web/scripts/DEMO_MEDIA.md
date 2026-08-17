@@ -2,7 +2,16 @@
 
 Coherent, same-item image sets for the realistic demo catalogue (`SMKT-*` listings), served
 self-hosted from `apps/web/public/demo/smkt/…` and referenced by the backend seeder's MediaObject
-rows. Two backends behind one command:
+rows.
+
+> **Current dataset (interim):** committed under `public/demo/smkt/<cat>/smkt-<cat3>-NN-1.png` are
+> **54 owner-supplied cover images** — one cover per image-bearing listing (9 × 6 categories),
+> no `-2/-3/-4` views. Seed with `DEMO_MEDIA_EXT=png DEMO_IMAGES_PER_LISTING=1` (see below) so the
+> seeder references only the covers that exist. These are stylised illustrations accepted as a
+> stopgap; swap in real photos or a full generated set later with no schema change — same paths.
+> Only raster covers (png/jpg/webp) are committed; procedural `.svg` placeholders stay gitignored.
+
+Two backends behind one command:
 
 | Provider          | Command                                                                       | Output                                                                    | Needs                                                |
 | ----------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -28,12 +37,17 @@ OPENAI_API_KEY=sk-… node apps/web/scripts/gen-demo-media.mjs --provider=openai
 # 3. Full run (≈216 images across 54 listings):
 OPENAI_API_KEY=sk-… node apps/web/scripts/gen-demo-media.mjs --provider=openai --quality=medium
 
-# 4. Re-seed so MediaObject storageKeys point at the .png files (backend):
-DATABASE_URL=… DEMO_MEDIA_EXT=png DEMO_MEDIA_BASE=<web-origin> \
-  node database/prisma/seed-marketplace-reset.ts && \
-  DATABASE_URL=… DEMO_MEDIA_EXT=png DEMO_MEDIA_BASE=<web-origin> \
-  node database/prisma/seed-marketplace.ts
+# 4. Re-seed so MediaObject storageKeys point at the .png files (backend).
+#    Leave DEMO_MEDIA_BASE unset for bare `demo/…` keys that resolve same-origin on any
+#    deployment (Vercel prod / preview); set DEMO_IMAGES_PER_LISTING=1 for a cover-only set.
+DATABASE_URL=… DEMO_MEDIA_EXT=png DEMO_IMAGES_PER_LISTING=1 \
+  pnpm --filter @singha/database run seed:marketplace:reset && \
+  DATABASE_URL=… DEMO_MEDIA_EXT=png DEMO_IMAGES_PER_LISTING=1 \
+  pnpm --filter @singha/database run seed:marketplace
 ```
+
+`DEMO_IMAGES_PER_LISTING` (default 4) sets how many images each image-bearing listing gets; use
+`1` for the cover-only uploaded set above, `4` for a full multi-view generated set.
 
 ## Options
 

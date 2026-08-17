@@ -51,6 +51,8 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
-apps/web/public/demo/
+# Demo marketplace media: commit real raster covers (png/jpg/webp) so Vercel serves them;
+# keep the regenerable procedural SVG placeholders (gen-demo-media.mjs --provider=svg) out of git.
+apps/web/public/demo/**/*.svg
 apps/web/demo-shots/
 apps/web/scripts/demo-image-requests.md
