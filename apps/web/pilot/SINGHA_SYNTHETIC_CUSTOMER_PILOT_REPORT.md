@@ -12,15 +12,16 @@ safely-testable matrix passes.
 
 ## 1. Verdict
 
-**The complete safely-testable pilot matrix PASSES.** Four journeys, all green, backend- and
+**The complete safely-testable pilot matrix PASSES.** Five journeys, all green, backend- and
 security-verified where applicable:
 
-| Journey                                                                              | Result | Backend verified | Security verified |
-| ------------------------------------------------------------------------------------ | ------ | :--------------: | :---------------: |
-| Multi-bidder auction (proxy / reserve / soft-close / append-only ledger)             | PASS   |        ✅        |        ✅         |
-| Singha AI conversation (grounding / injection refusal / non-binding / non-invention) | PASS   |        ✅        |        ✅         |
-| Abuse / permissions / confidentiality / immutability / anti-clone                    | PASS   |        ✅        |        ✅         |
-| Anonymous visitor — homepage / catalogue / lot @ 390·768·1440·1920                   | PASS   |        —         |         —         |
+| Journey                                                                                | Result | Backend verified | Security verified |
+| -------------------------------------------------------------------------------------- | ------ | :--------------: | :---------------: |
+| Multi-bidder auction (proxy / reserve / soft-close / append-only ledger)               | PASS   |        ✅        |        ✅         |
+| Singha AI conversation (grounding / injection refusal / non-binding / non-invention)   | PASS   |        ✅        |        ✅         |
+| Commercial offers & sealed tender (non-binding until accept / confidential pre-reveal) | PASS   |        ✅        |        ✅         |
+| Abuse / permissions / confidentiality / immutability / anti-clone                      | PASS   |        ✅        |        ✅         |
+| Anonymous visitor — homepage / catalogue / lot @ 390·768·1440·1920                     | PASS   |        —         |         —         |
 
 **3 real defects were found and fixed during the loop** (2 backend, 1 frontend), each with a
 regression test; all gates re-run green afterwards. Details in §5.
@@ -171,6 +172,17 @@ cruiser prado'}` → returns the seeded lot; "land in galle" → still `property
   reserve figure.
 - **Search interprets, the catalogue executes:** 6/6 returned results are real listings, the seeded
   lot is discoverable, and a gibberish query fabricates nothing.
+
+**Commercial offers are non-binding; sealed tenders are confidential (rule 11; DECISIONS D4).**
+
+- A submitted make-offer persists as `status = open` — a proposal, never a committed sale; the
+  binding path is an explicit seller `accept`.
+- Two distinct buyers submit sealed offers; a participant's pre-reveal view is **counts only**
+  (`{participants: 2, offersReceived: 2}`) — neither competitor's nor their own amount is exposed,
+  and the seller-facing listing view refuses a competitor buyer (403).
+- **A buyer cannot trigger the reveal (403)** — only seller/operator/admin can; both sealed offers
+  persist with `revealed_at = null`.
+- With payments OFF, none of these actions creates a `payment` or `settlement` row.
 
 **Permissions, tenant isolation, anti-clone (rules 9, 13).**
 
