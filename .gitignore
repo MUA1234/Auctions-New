@@ -53,3 +53,4 @@ pnpm-debug.log*
 !.vscode/extensions.json
 apps/web/public/demo/
 apps/web/demo-shots/
+apps/web/scripts/demo-image-requests.md
