@@ -46,7 +46,7 @@ export function Header() {
           <BrandLogo />
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium text-bone-300 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-medium text-bone-300 lg:flex xl:gap-8">
           {navItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -73,11 +73,11 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           {/* Flag-gated (multiCurrency): informational display-currency picker; never binding. */}
-          <div className="hidden sm:block">
+          <div className="hidden xl:block">
             <DisplayCurrencySelector />
           </div>
           <AuthNav />
-          <div className="hidden sm:block">
+          <div className="hidden lg:block">
             <SellCta />
           </div>
           <MobileNav />

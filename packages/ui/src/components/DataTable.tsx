@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { cn } from '../lib/cn';
+import { ScrollX } from './ScrollX';
 
 export type ColumnAlign = 'left' | 'right' | 'center';
 
@@ -34,7 +35,7 @@ export function DataTable<T>({
   minWidth = 520,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('no-scrollbar overflow-x-auto', className)}>
+    <ScrollX className={className}>
       <table className="w-full border-collapse text-sm" style={{ minWidth }}>
         <thead>
           <tr className="border-b border-white/10">
@@ -78,6 +79,6 @@ export function DataTable<T>({
           )}
         </tbody>
       </table>
-    </div>
+    </ScrollX>
   );
 }

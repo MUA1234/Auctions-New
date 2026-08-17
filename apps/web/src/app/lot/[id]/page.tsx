@@ -12,6 +12,7 @@ import { LotGallery } from '../../../components/LotGallery';
 import { LotStickyDock } from '../../../components/LotStickyDock';
 import { LotLogisticsHint } from '../../../components/LotLogisticsHint';
 import { StatusChip } from '../../../components/StatusChip';
+import { AskSinghaButton } from '../../../components/assistant/AskSinghaButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,8 +153,11 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             />
           )}
 
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-2.5">
             <WatchButton lotId={lot.id} />
+            {/* Secondary to the primary transaction action above (Bid/Buy/Offer) — never
+                competing with it. Renders nothing when aiConversation is off. */}
+            <AskSinghaButton listingId={lot.id} url={`/lot/${lot.id}`} />
           </div>
 
           {/* CX8: compact collection/delivery affordance, woven right into the transaction

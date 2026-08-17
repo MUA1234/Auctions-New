@@ -17,3 +17,4 @@ export {
   type Column,
   type ColumnAlign,
 } from './components/DataTable';
+export { ScrollX, type ScrollXProps } from './components/ScrollX';

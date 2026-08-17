@@ -317,3 +317,79 @@ the broken `eslint-disable` in the active `BrandLogo.tsx` with a plain note; (2)
 repo-root `typecheck` script to `--filter=@singha/web... --filter=@singha/auctionflow`, matching
 `test`/`build`, so the deprecated copy is not gated. The frozen schema/domain code is left
 untouched (not "fixed"), per the frozen-copy rule.
+
+## D-CX-6 · Header switches to the mobile drawer below `lg`; heavy actions revealed progressively
+CX13 found the global header overflowing at 768–1024 (the gold CTA wrapped to three lines) and,
+signed in, even at 1440 — shared chrome that predates the overhaul. Rather than cram six nav
+links + currency + auth + CTA into the 720–944px content box, the desktop nav and seller CTA
+now appear at `lg` (the existing mobile drawer is a complete menu — all nav, Discover, auth
+actions and the CTA — so 768–1023 loses nothing), the informational currency picker is deferred
+to `xl`, and the signed-in top bar is trimmed to identity + Sign out (Membership/Security remain
+in the drawer and one click under *My account*). Rationale: a mobile menu up to `lg` is a
+standard, robust pattern; progressive reveal keeps every width within the row without wrapping;
+no functionality is removed, only relocated. Verified on the running stack at 768/1024/1440.
+
+## D-CX-7 · Flow rails loop only when they actually overflow (measured, not heuristic)
+The Flow canvas duplicates a rail's lots to make horizontal scrolling wrap seamlessly. It fired
+on every *exhausted* rail, so on wide screens a short rail that already fit showed its cards
+twice side by side (read as a duplication bug). The loop is now gated on a **measured** overflow
+(`ResizeObserver` comparing the single-set width to the rail's client width; halved while
+looping since the DOM then holds two copies), and the scroll arrows gate on the same signal.
+Rationale: duplication only serves seamless scrolling, which is only needed when there is
+something to scroll; measuring adapts per width (loops at 390, single set at 1440) without a
+brittle item-count threshold. Deterministic, SSR-safe (starts non-looping, refines on mount).
+
+## D-CX-8 · A shared `ScrollX` gives hidden-scrollbar rails a measured edge-fade affordance
+CX13 D4: horizontal-scroll rails whose scrollbar is hidden (`no-scrollbar` — the Explore chip
+rails and the shared `DataTable`) hard-clipped their last visible item, reading as "cut off"
+rather than "scroll for more". Rather than un-hide a chunky scrollbar (visually heavy) or apply a
+static right-fade (a false "more" hint when the rail already fits), a single client component
+`ScrollX` (`@singha/ui`) measures scroll position + overflow (scroll listener + ResizeObserver)
+and fades only the side(s) with genuinely off-screen content — nothing when it fits. Applied once
+to the shared `DataTable` (covers offers, logistics, seller console, control centre, supply,
+procurement) and to the two catalogue chip rails. Verified at 390 (fade) and 1440 (no fade).
+
+## D-AIC-1 · A new least-privilege `AiConverse` permission for the customer assistant
+The customer AI assistant needs a server permission, but `Role.Customer` today holds neither
+`AiUse` (the seller/staff listing-draft copilot) nor `ConnectOperate` (the staff agent inbox that
+can read every conversation). Widening either would over-grant customers into staff tools. Instead
+add a dedicated `Permission.AiConverse = 'ai:converse'` granted to Customer + Seller + SellerStaff
+(the transacting customer-side roles; admin/super-admin inherit it via ALL_PERMISSIONS). The
+`/assistant/*` endpoints check `AiConverse` **and** ownership (a customer sees only their own
+conversations). Staff `AiUse`/`ConnectOperate` semantics are untouched. Additive, reversible.
+
+## D-AIC-2 · The AI-conversation flag is actually ENFORCED (unlike the existing AI/Connect flags)
+`FEATURE_AI_LISTING` / `FEATURE_AI_MEDIA_ENHANCE` / `FEATURE_WHATSAPP_BID_INTENT` are defined in
+config but never read by any service (decorative). The new `FEATURE_AI_CONVERSATION` (default OFF)
+is enforced at the service boundary via the `requireFeature()` pattern (as `insight`/`singha-id`
+do), so the whole assistant is genuinely dark until switched on — consistent with the controlled
+preview. We deliberately do not copy the "defined-but-unread" precedent.
+
+## D-AIC-3 · Item-context comes only from the existing customer-safe catalogue projection
+The AI never scrapes the page and never re-derives listing fields. The server assembles an
+`ItemContext` solely from `CatalogueV2Service.get()` (already privacy-filtered: no reserve, proxy,
+seller floor, leader identity), maps it to the addendum §4 customer-safe fields, and passes it
+through `guardAiRequest`'s `redactContext` (forbidden-key redaction) as a second line of defence.
+This keeps the single source of truth for "what a public caller may see" in one place.
+
+## D-AIC-4 · Reuse the existing safety kernel + non-binding intent; no schema migration in AIC-1
+The assistant reuses `guardAiRequest('assistant', …)` verbatim (input ceiling, prompt-injection
+refusal incl. `binding_action_via_freetext`, context redaction) — a blocked request records a
+blocked `AiRun` and returns a safe refusal without calling the provider. The LLM interprets/
+explains only; any bid/offer stays with the existing engines behind explicit confirmation (the
+`createBidIntent`→`confirmBidIntent` two-step). AIC-1 needs no migration: the conversation subject
+rides in `Message.payload` (Json) and the run links via `AiRun.subjectType='Conversation'` — both
+existing columns. A dedicated `Conversation.subject`/voice-channel column is a later additive step.
+
+## D-AIC-5 · Preview flags are mount-gated so SSR and hydration agree
+AIC-7 full-stack QA surfaced a pre-existing hydration defect: `useFlags` applied the per-browser
+preview override (`?evo`/`?v3` cookie/param) synchronously in the initial render. The server can't
+see that cookie, so the client's first (hydration) render disagreed with the server HTML — React
+discarded the hydrated tree (#418/#423), and on a direct production load of `/lot/[id]?evo=on` threw
+an unrecovered #329 that left the assistant launcher (and other preview surfaces) unrendered. Fix:
+`useFlags` now starts from `DEFAULT_FLAGS` (matching SSR) and applies the preview override + backend
+flags **after mount** — one root-cause change that fixes every preview-gated surface uniformly
+(the `Header` nav already used this mount-gate pattern; this generalises it). The cost is a
+one-frame flash of the default experience before the preview applies, which is acceptable for a
+controlled-preview environment and far better than a hydrating crash. Verified: a direct
+`/lot/[id]?evo=on&v3=on` load now renders the launcher with zero hydration errors.

@@ -13,44 +13,34 @@ export function AuthNav() {
   const { token, user, loading } = useAuth();
 
   if (loading)
-    return <span className="hidden h-5 w-16 animate-pulse rounded bg-white/5 sm:block" />;
+    return <span className="hidden h-5 w-16 animate-pulse rounded bg-white/5 lg:block" />;
 
   if (!token) {
     return (
       <Link
         href="/login"
-        className="hidden text-sm font-medium text-bone-300 hover:text-bone sm:block"
+        className="hidden whitespace-nowrap text-sm font-medium text-bone-300 hover:text-bone lg:block"
       >
         Sign in
       </Link>
     );
   }
 
+  // Desktop top bar (lg+) keeps the identity + sign-out lean so the whole header row fits
+  // without wrapping at every width; Membership / Security live one click away under
+  // My account and remain directly in the mobile drawer (below lg).
   return (
-    <div className="hidden items-center gap-3 sm:flex">
+    <div className="hidden items-center gap-4 lg:flex">
       <Link
         href="/dashboard"
-        className="max-w-[12rem] truncate text-sm text-bone-300 hover:text-bone"
+        className="max-w-[8rem] truncate text-sm text-bone-300 hover:text-bone xl:max-w-[12rem]"
+        title="My account"
       >
         {user?.name ?? user?.email ?? 'My account'}
       </Link>
-      <Link
-        href="/account"
-        className="text-sm text-bone-500 hover:text-bone-300"
-        title="Membership"
-      >
-        Membership
-      </Link>
-      <Link
-        href="/account/security"
-        className="text-sm text-bone-500 hover:text-bone-300"
-        title="Account security & MFA"
-      >
-        Security
-      </Link>
       <button
         onClick={() => void signOut()}
-        className="text-sm font-medium text-bone-500 hover:text-bone-300"
+        className="whitespace-nowrap text-sm font-medium text-bone-500 hover:text-bone-300"
       >
         Sign out
       </button>
@@ -62,7 +52,9 @@ export function AuthNav() {
 export function SellCta() {
   return (
     <Link href="/sell">
-      <Button variant="gold">Sell with Singha</Button>
+      <Button variant="gold" className="whitespace-nowrap">
+        Sell with Singha
+      </Button>
     </Link>
   );
 }
