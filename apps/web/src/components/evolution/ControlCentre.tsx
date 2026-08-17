@@ -831,11 +831,15 @@ function RiskResult({ r }: { r: RiskAssessment }) {
 /* ------------------------------ KYC (E11 · Singha ID) ------------------------------ */
 
 const KYC_CAPS: SelectOption[] = [
-  { value: 'originate_listings', label: 'Originate listings' },
-  { value: 'take_offers', label: 'Take offers' },
-  { value: 'run_auctions', label: 'Run auctions' },
-  { value: 'accept_payments', label: 'Accept payments' },
-  { value: 'high_value_bidding', label: 'High-value bidding' },
+  // Must match the backend `singhaCapabilities` enum exactly — the decide endpoint
+  // Zod-validates `capability` and 400s on anything else.
+  { value: 'place_bid', label: 'Place bids' },
+  { value: 'make_offer', label: 'Make offers' },
+  { value: 'sell', label: 'Sell / list' },
+  { value: 'operate_auction', label: 'Operate auctions' },
+  { value: 'export', label: 'Export trade' },
+  { value: 'import', label: 'Import trade' },
+  { value: 'high_value_trade', label: 'High-value trade' },
 ];
 
 const KYC_DECISIONS: SelectOption[] = [
@@ -845,7 +849,7 @@ const KYC_DECISIONS: SelectOption[] = [
 
 function KycTab({ token }: { token: string }) {
   const [customerId, setCustomerId] = useState('');
-  const [capability, setCapability] = useState('originate_listings');
+  const [capability, setCapability] = useState('place_bid');
   const [decision, setDecision] = useState<'verified' | 'rejected'>('verified');
   const [expiresAt, setExpiresAt] = useState('');
   const [result, setResult] = useState<{
