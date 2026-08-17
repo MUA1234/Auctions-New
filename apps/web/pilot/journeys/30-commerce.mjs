@@ -147,7 +147,54 @@ export default {
       `sealed=${sealedRows} unrevealed=${unrevealed}`,
     );
 
-    // 3) Providers OFF — none of this created a payment/settlement row.
+    // 3) RW5 — the OWNING seller may manage sealed offers on THEIR OWN listing without operator
+    // rights; a DIFFERENT seller (supplier1) may not (no cross-seller IDOR). The sealed listing's
+    // asset is owned by seller1 (fixtures createListing passes ownerCustomerId = seller1).
+    const otherSellerRoster = await api('GET', `/commercial-offers/listings/${sealed.listingId}`, {
+      token: t.supplier1,
+    });
+    push(
+      'a different seller cannot read the sealed roster (no cross-seller IDOR)',
+      otherSellerRoster.status === 403,
+      `status=${otherSellerRoster.status}`,
+    );
+    const ownerRoster = await api('GET', `/commercial-offers/listings/${sealed.listingId}`, {
+      token: t.seller1,
+    });
+    push(
+      'owning seller can read their own sealed roster (RW5)',
+      ownerRoster.status === 200,
+      `status=${ownerRoster.status}`,
+    );
+    // Pre-reveal, even the owner's roster is counts-only — no competitor amounts.
+    const ownerRosterStr = JSON.stringify(ownerRoster.json || {});
+    push(
+      "owner's pre-reveal roster is still counts-only",
+      !ownerRosterStr.includes(String(AMOUNT_A)) && !ownerRosterStr.includes(String(AMOUNT_B)),
+      ownerRosterStr.slice(0, 90),
+    );
+    const otherSellerReveal = await api(
+      'POST',
+      `/commercial-offers/listings/${sealed.listingId}/reveal`,
+      { token: t.supplier1 },
+    );
+    push(
+      'a different seller cannot reveal another seller’s tender (403)',
+      otherSellerReveal.status === 403,
+      `status=${otherSellerReveal.status}`,
+    );
+    const ownerReveal = await api(
+      'POST',
+      `/commercial-offers/listings/${sealed.listingId}/reveal`,
+      { token: t.seller1 },
+    );
+    push(
+      'owning seller can reveal their own sealed tender (RW5)',
+      ownerReveal.status === 200 || ownerReveal.status === 201,
+      `status=${ownerReveal.status}`,
+    );
+
+    // 4) Providers OFF — none of this created a payment/settlement row.
     const payAfter =
       count(`select count(*) from payment`) + count(`select count(*) from settlement`);
     push(
@@ -164,7 +211,7 @@ export default {
       backendVerified: true,
       securityVerified: true,
       notes:
-        'Offers are proposals (status open) until an explicit seller accept; sealed tenders expose counts only pre-reveal and buyers cannot reveal; nothing charged (providers off).',
+        'Offers are proposals (status open) until an explicit seller accept; sealed tenders expose counts only pre-reveal and buyers cannot reveal; the OWNING seller (RW5) may read/reveal their own tender while a different seller is refused (no cross-seller IDOR); nothing charged (providers off).',
     };
   },
 };
