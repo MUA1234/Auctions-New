@@ -353,7 +353,13 @@ function SinghaAssistantPanel() {
 
   return (
     <>
-      {!open && <Launcher onOpen={() => openAssistant()} dockAware={flags.neutralIaV1} />}
+      {!open && (
+        <Launcher
+          onOpen={() => openAssistant()}
+          dockAware={flags.neutralIaV1}
+          onLotDetail={/^\/lot\/[^/]+/.test(pathname ?? '')}
+        />
+      )}
       <Sheet
         open={open}
         onClose={close}
@@ -415,17 +421,30 @@ function SinghaAssistantPanel() {
  * viewports only, `md:hidden` there), sit above it using the SAME
  * `calc(dockHeight + env(safe-area-inset-bottom))` shape; otherwise just clear the safe area.
  */
-function Launcher({ onOpen, dockAware }: { onOpen: () => void; dockAware: boolean }) {
+function Launcher({
+  onOpen,
+  dockAware,
+  onLotDetail = false,
+}: {
+  onOpen: () => void;
+  dockAware: boolean;
+  onLotDetail?: boolean;
+}) {
   const bottom = dockAware
     ? 'bottom-[calc(3.75rem_+_env(safe-area-inset-bottom)_+_1rem)]'
     : 'bottom-[calc(env(safe-area-inset-bottom)_+_1rem)]';
+  // On a lot detail page the LotStickyDock owns the bottom band below `lg` (it is `lg:hidden`)
+  // and the lot already exposes a context-seeding "Ask Singha AI" entry, so hide the floating
+  // launcher below `lg` there — otherwise the two fixed bottom-right controls overlap the
+  // primary bid/offer CTA. From `lg` up the sticky dock is gone and the launcher shows again.
+  const lotHidden = onLotDetail ? 'max-lg:hidden' : '';
   return (
     <Button
       type="button"
       variant="gold"
       onClick={onOpen}
       aria-label="Ask Singha AI"
-      className={`fixed right-4 z-50 h-14 w-14 rounded-full p-0 md:bottom-6 md:right-6 ${bottom}`}
+      className={`fixed right-4 z-50 h-14 w-14 rounded-full p-0 md:bottom-6 md:right-6 ${bottom} ${lotHidden}`}
     >
       <AssistantGlyph className="h-6 w-6" />
     </Button>
