@@ -52,6 +52,15 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
     ? lot.subcategory.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : '';
   const hasQuantity = lot.quantity != null && lot.quantity !== '';
+  // §11 — subtle logistics summary from the seller's structured declaration (Incoterm + pickup /
+  // delivery availability). Only rendered when at least one is present.
+  const logistics = [
+    lot.incoterm ? lot.incoterm : '',
+    lot.pickupAvailable ? 'Pickup' : '',
+    lot.deliveryAvailable ? 'Delivery' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Link
@@ -146,6 +155,27 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
           {!compact && hasQuantity && (
             <p className="mt-1.5 text-xs text-bone-400">
               {formatQuantity(lot.quantity, lot.quantityUnitCode)}
+            </p>
+          )}
+
+          {/* §11 — subtle logistics summary (Incoterm + pickup/delivery) when the seller declared it. */}
+          {!compact && logistics && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-bone-600">
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.6}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" />
+                <circle cx="7" cy="17" r="1.6" />
+                <circle cx="17.5" cy="17" r="1.6" />
+              </svg>
+              {logistics}
             </p>
           )}
 

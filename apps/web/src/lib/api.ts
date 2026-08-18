@@ -307,10 +307,20 @@ export interface LotDetail extends CatalogueLot {
   /** Free-text viewing/inspection hint (mirrors `Listing.inspectionSummary`) — same contract
    *  evidence as `collectionSummary` above. */
   inspectionSummary?: string | null;
-  // `quantity` / `quantityUnitCode` intentionally NOT added: the same contract file has no
-  // such keys for this endpoint (only `Asset.quantityAvailable`/`quantityUnitCode` exist on
-  // the data model, unprojected by any endpoint yet — confirmed, not assumed). CX4 skips a
-  // quantity+unit fact on the lot page rather than render a field the API doesn't expose.
+  // §2/§11 — structured commercial + logistics fields the seller declares at listing time. The
+  // v2 detail projects the card fields (spread server-side) plus the detail-only extras below;
+  // `contracts/public-api.contract.json` (backend-generated from a real response) confirms the
+  // keys. `LotDetail` extends the v1 `CatalogueLot`, which does not carry these, so they are
+  // declared here explicitly. All optional + forward-compatible.
+  quantity?: string | null;
+  quantityUnitCode?: string | null;
+  pickupAvailable?: boolean;
+  deliveryAvailable?: boolean;
+  minOrderQuantity?: string | null;
+  unitPriceMinor?: number | null;
+  pricingBasis?: string | null;
+  /** Seller-declared default trade term (Incoterm code, e.g. "FOB"). */
+  incoterm?: string | null;
 }
 
 /**
@@ -465,6 +475,11 @@ export interface CatalogueCardV2 {
    */
   pickupAvailable?: boolean;
   deliveryAvailable?: boolean;
+  /**
+   * §11 — the seller's declared default trade term (Incoterm code, e.g. "FOB"). Optional +
+   * forward-compatible: shown as a subtle logistics chip only when present.
+   */
+  incoterm?: string | null;
   event?: {
     id: string;
     publicRef: string;

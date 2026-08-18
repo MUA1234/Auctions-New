@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Chip } from '@singha/ui';
 import { fetchLotDetail, type LotDetail } from '../../../lib/api';
 import { mediaUrl } from '../../../lib/media';
-import { humanize } from '../../../lib/format';
+import { humanize, incotermName } from '../../../lib/format';
 import { BidPanel } from '../../../components/BidPanel';
 import { BidBattle } from '../../../components/BidBattle';
 import { SalePanel } from '../../../components/SalePanel';
@@ -80,6 +80,24 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             <Fact label="Category" value={lot.category} className="capitalize" />
             <Fact label="Location" value={place || '—'} />
             <Fact label="Sale method" value={method} />
+            {/* §2 — structured quantity + unit (commodity/bulk/scrap lots). */}
+            {lot.quantity != null && lot.quantity !== '' && (
+              <Fact
+                label="Quantity"
+                value={`${lot.quantity}${lot.quantityUnitCode ? ` ${lot.quantityUnitCode}` : ''}`}
+              />
+            )}
+            {/* §11 — the seller's declared trade term (Incoterm). */}
+            {lot.incoterm && (
+              <Fact
+                label="Delivery term"
+                value={
+                  incotermName(lot.incoterm)
+                    ? `${lot.incoterm} — ${incotermName(lot.incoterm)}`
+                    : lot.incoterm
+                }
+              />
+            )}
           </dl>
 
           {(lot.fullDescription || lot.shortDescription) && (

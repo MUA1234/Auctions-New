@@ -23,7 +23,7 @@ import {
   type CategoryFieldSchema,
   type SaleMethodDef,
 } from '../../../lib/evolution-api';
-import { CURRENCIES } from '../../../lib/format';
+import { CURRENCIES, INCOTERM_OPTIONS } from '../../../lib/format';
 import { getAccessToken } from '../../../lib/auth';
 import { createClient } from '../../../utils/supabase/client';
 import { friendlyMessage } from '../../../components/evolution/evo-api-error';
@@ -233,8 +233,19 @@ interface Draft {
     buyNowPrice: string;
     closesAt: string;
   };
+  // §2 — structured commercial quantity + unit-pricing (backed by the listing quantity engine,
+  // not just a free category attribute). All strings so empty = "not declared".
+  quantity: {
+    available: string;
+    unit: string;
+    minOrder: string;
+    unitPrice: string;
+    pricingBasis: string;
+  };
+  // §11 — seller-declared logistics terms surfaced on the card + catalogue facets.
+  logistics: { incoterm: string; pickupAvailable: boolean; deliveryAvailable: boolean };
   inspection: { location: string; contact: string; byAppointment: boolean; notes: string };
-  collection: { location: string; deliveryAvailable: boolean; deadline: string };
+  collection: { location: string; deadline: string };
   fees: { buyerPremiumPct: string; termsAccepted: boolean };
   social: { promotion: string; channels: string[]; publishing: string };
   aiKeywords: string[];
@@ -270,8 +281,10 @@ const EMPTY_DRAFT: Draft = {
     buyNowPrice: '',
     closesAt: '',
   },
+  quantity: { available: '', unit: '', minOrder: '', unitPrice: '', pricingBasis: '' },
+  logistics: { incoterm: '', pickupAvailable: false, deliveryAvailable: false },
   inspection: { location: '', contact: '', byAppointment: true, notes: '' },
-  collection: { location: '', deliveryAvailable: false, deadline: '' },
+  collection: { location: '', deadline: '' },
   fees: { buyerPremiumPct: '10', termsAccepted: false },
   social: { promotion: 'None', channels: [], publishing: 'Manual approval' },
   aiKeywords: [],
@@ -549,11 +562,27 @@ export default function ListingStudio() {
       const collectionSummary =
         [
           draft.collection.location,
-          draft.collection.deliveryAvailable ? 'Delivery available' : '',
+          draft.logistics.pickupAvailable ? 'Pickup available' : '',
+          draft.logistics.deliveryAvailable ? 'Delivery available' : '',
+          draft.logistics.incoterm ? `Term: ${draft.logistics.incoterm}` : '',
           draft.collection.deadline ? `Collect within ${draft.collection.deadline}` : '',
         ]
           .filter(Boolean)
           .join(' · ') || undefined;
+
+      // §2 — structured quantity + unit pricing for the listing quantity engine. For a divisible
+      // commodity/bulk/scrap lot the seller can enter it explicitly on Sale settings; if left blank
+      // we fall back to the quantity/unit captured as category attributes in Specifications, so the
+      // card still shows "40 MT" without asking the seller for it twice.
+      const attrQty = typeof attributes.quantity === 'number' ? attributes.quantity : undefined;
+      const attrUnit = typeof attributes.unit === 'string' ? attributes.unit : undefined;
+      const qtyAvailable =
+        draft.quantity.available.trim() !== '' ? Number(draft.quantity.available) : attrQty;
+      const qtyUnit = draft.quantity.unit.trim() !== '' ? draft.quantity.unit.trim() : attrUnit;
+      const minOrder =
+        draft.quantity.minOrder.trim() !== '' ? Number(draft.quantity.minOrder) : undefined;
+      const unitPriceMinor = toMinor(draft.quantity.unitPrice, exp);
+
       await apiPatch(
         `/listings/${listing.id}/content`,
         {
@@ -566,6 +595,18 @@ export default function ListingStudio() {
           guidePriceMinor: guideMinor,
           showGuidePrice: guideMinor != null,
           closesAt: draft.sale.closesAt ? new Date(draft.sale.closesAt).toISOString() : undefined,
+          // §2 — structured quantity + unit pricing (omitted when not declared/derivable).
+          ...(qtyAvailable != null && !Number.isNaN(qtyAvailable)
+            ? { quantityAvailable: qtyAvailable }
+            : {}),
+          ...(qtyUnit ? { quantityUnitCode: qtyUnit } : {}),
+          ...(minOrder != null && !Number.isNaN(minOrder) ? { minOrderQuantity: minOrder } : {}),
+          ...(unitPriceMinor != null ? { unitPriceMinor } : {}),
+          ...(draft.quantity.pricingBasis ? { pricingBasis: draft.quantity.pricingBasis } : {}),
+          // §11 — seller-declared logistics terms.
+          ...(draft.logistics.incoterm ? { defaultIncoterm: draft.logistics.incoterm } : {}),
+          ...(draft.logistics.pickupAvailable ? { pickupAvailable: true } : {}),
+          ...(draft.logistics.deliveryAvailable ? { deliveryAvailable: true } : {}),
         },
         token,
       ).catch(() =>
@@ -1225,6 +1266,70 @@ export default function ListingStudio() {
                 />
               </Field>
             </div>
+
+            {/* §2 — structured quantity + unit pricing (feeds the listing quantity engine and the
+                catalogue quantity/unit facets). Optional — most single-asset lots leave it blank;
+                commodity/bulk/scrap lots declare how much is on offer and how it's priced. */}
+            <div className="mt-1 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <p className="mb-2 text-sm font-semibold text-bone-300">Quantity &amp; units</p>
+              <p className="mb-3 text-xs text-bone-600">
+                For divisible lots (produce, scrap, bulk). Leave blank for a single indivisible
+                asset — the commodity/quantity you entered in Specifications is used as a fallback.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Quantity available">
+                  <input
+                    type="number"
+                    min="0"
+                    className="field"
+                    placeholder="e.g. 40"
+                    value={draft.quantity.available}
+                    onChange={(e) =>
+                      set('quantity', { ...draft.quantity, available: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Unit">
+                  <input
+                    className="field"
+                    placeholder="e.g. MT, kg, unit"
+                    value={draft.quantity.unit}
+                    onChange={(e) => set('quantity', { ...draft.quantity, unit: e.target.value })}
+                  />
+                </Field>
+                <Field label="Minimum order">
+                  <input
+                    type="number"
+                    min="0"
+                    className="field"
+                    placeholder="Optional"
+                    value={draft.quantity.minOrder}
+                    onChange={(e) =>
+                      set('quantity', { ...draft.quantity, minOrder: e.target.value })
+                    }
+                  />
+                </Field>
+                <Money
+                  label="Unit price"
+                  currency={draft.currency}
+                  v={draft.quantity.unitPrice}
+                  on={(v) => set('quantity', { ...draft.quantity, unitPrice: v })}
+                />
+                <Field label="Pricing basis">
+                  <select
+                    className="field"
+                    value={draft.quantity.pricingBasis}
+                    onChange={(e) =>
+                      set('quantity', { ...draft.quantity, pricingBasis: e.target.value })
+                    }
+                  >
+                    <option value="">—</option>
+                    <option value="per_unit">Per unit</option>
+                    <option value="per_lot">Per lot (whole)</option>
+                  </select>
+                </Field>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1267,10 +1372,35 @@ export default function ListingStudio() {
                 }
               />
             </Field>
+            {/* §11 — structured trade term (Incoterm) the buyer sees on the card/lot. */}
+            <Field
+              label="Delivery term (Incoterm)"
+              hint="Who bears freight & risk. Feeds the buyer's logistics view; leave blank if not applicable."
+            >
+              <select
+                className="field"
+                value={draft.logistics.incoterm}
+                onChange={(e) => set('logistics', { ...draft.logistics, incoterm: e.target.value })}
+              >
+                <option value="">Not specified</option>
+                {INCOTERM_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {/* §11 — structured availability declarations that drive the catalogue pickup/delivery
+                facets (OR-combined server-side with any structured pickup/destination location). */}
+            <Check
+              label="Available for buyer pickup / collection"
+              checked={draft.logistics.pickupAvailable}
+              onChange={(v) => set('logistics', { ...draft.logistics, pickupAvailable: v })}
+            />
             <Check
               label="Delivery available"
-              checked={draft.collection.deliveryAvailable}
-              onChange={(v) => set('collection', { ...draft.collection, deliveryAvailable: v })}
+              checked={draft.logistics.deliveryAvailable}
+              onChange={(v) => set('logistics', { ...draft.logistics, deliveryAvailable: v })}
             />
             <Field label="Collection deadline (after settlement)">
               <input
@@ -1385,6 +1515,31 @@ export default function ListingStudio() {
               v={[draft.city, draft.region].filter(Boolean).join(', ') || '—'}
             />
             <Summary k="Specifications" v={JSON.stringify(attributes)} />
+            {(draft.quantity.available || attributes.quantity != null) && (
+              <Summary
+                k="Quantity"
+                v={`${draft.quantity.available || String(attributes.quantity ?? '')} ${
+                  draft.quantity.unit ||
+                  (typeof attributes.unit === 'string' ? attributes.unit : '')
+                }`.trim()}
+              />
+            )}
+            {(draft.logistics.incoterm ||
+              draft.logistics.pickupAvailable ||
+              draft.logistics.deliveryAvailable) && (
+              <Summary
+                k="Delivery terms"
+                v={
+                  [
+                    draft.logistics.incoterm,
+                    draft.logistics.pickupAvailable ? 'Pickup' : '',
+                    draft.logistics.deliveryAvailable ? 'Delivery' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || '—'
+                }
+              />
+            )}
             <Summary
               k="Photos"
               v={`${draft.photos.length} (cover: ${draft.photos.find((p) => p.cover)?.name ?? 'none'})`}
