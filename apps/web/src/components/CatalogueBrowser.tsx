@@ -65,6 +65,8 @@ export function CatalogueBrowser({
   const [query, setQuery] = useState(initialSearch);
   const [debounced, setDebounced] = useState(initialSearch);
   const [category, setCategory] = useState<string>(initialCategory);
+  // §3 — subcategory filter within the selected category (server-side facet-driven).
+  const [subcategory, setSubcategory] = useState<string>('');
   const [saleMethod, setSaleMethod] = useState<string>(initialSaleMethod);
   // CX3 (pack doc 04 "Explore"): Location is a free-text server-side filter (matches
   // listing city/region, case-insensitive) and Ending soon restricts to listings closing
@@ -108,6 +110,7 @@ export function CatalogueBrowser({
     fetchCatalogueV2({
       search: debounced,
       category,
+      subcategory: subcategory || undefined,
       saleMethod,
       location: debouncedLocation,
       // Never send `endingSoon=false` — omit it instead (see CatalogueQueryParams).
@@ -132,6 +135,7 @@ export function CatalogueBrowser({
   }, [
     debounced,
     category,
+    subcategory,
     saleMethod,
     debouncedLocation,
     endingSoon,
@@ -141,6 +145,9 @@ export function CatalogueBrowser({
     limit,
     reloadKey,
   ]);
+
+  // §3 — a subcategory only makes sense within a category; clear it when the category changes.
+  useEffect(() => setSubcategory(''), [category]);
 
   // Reset to page 1 whenever filters change.
   useEffect(
@@ -284,6 +291,30 @@ export function CatalogueBrowser({
               })}
             </ScrollX>
           </div>
+
+          {/* §3 — subcategory rail: appears only within a selected category that has matching
+              subcategories (server-side facet). */}
+          {category && (data?.facets.subcategory?.length ?? 0) > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <FilterLabel>Type</FilterLabel>
+              <ScrollX className="flex min-w-0 flex-1 items-center gap-2">
+                <FilterChip active={subcategory === ''} onClick={() => setSubcategory('')} small>
+                  All
+                </FilterChip>
+                {(data?.facets.subcategory ?? []).map((f) => (
+                  <FilterChip
+                    key={f.value}
+                    active={subcategory === f.value}
+                    onClick={() => setSubcategory(f.value)}
+                    count={f.count}
+                    small
+                  >
+                    {f.label ?? f.value}
+                  </FilterChip>
+                ))}
+              </ScrollX>
+            </div>
+          )}
 
           {/* Row 3 — sale-method rail. */}
           <div className="mt-2 flex items-center gap-2">

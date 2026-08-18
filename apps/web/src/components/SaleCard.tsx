@@ -47,6 +47,10 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
   const category = categoryMeta(lot.category);
   const SaleMethodIcon = saleMethodIcon(lot.saleMethod);
   const locationText = lot.location ? formatLocation(lot.location) : '';
+  // §3 — humanised subcategory slug for a subtle "type" caption (e.g. suv_4x4 → "Suv 4x4").
+  const subcatLabel = lot.subcategory
+    ? lot.subcategory.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : '';
   const hasQuantity = lot.quantity != null && lot.quantity !== '';
 
   return (
@@ -127,7 +131,9 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
             <span aria-hidden className="shrink-0" style={{ color: `rgba(${category.rgb},0.75)` }}>
               <category.Icon className="h-3.5 w-3.5" strokeWidth={1.6} />
             </span>
-            <span className="truncate">{locationText || category.label}</span>
+            <span className="truncate">
+              {[locationText || category.label, subcatLabel].filter(Boolean).join(' · ')}
+            </span>
           </p>
 
           {/* Price / offer-state (+ availability/close in its `meta`) — one line per

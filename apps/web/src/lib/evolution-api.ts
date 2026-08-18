@@ -72,6 +72,8 @@ export interface CategoryFieldSchema {
   version: number;
   label: string;
   fields: CategoryFieldDescriptor[];
+  /** §3 — the category's customer-facing subcategories (served alongside the fields). */
+  subcategories?: CategoryFieldOption[];
 }
 /** Ungated: the authoritative category field descriptors the seller Studio renders (directive §2/§3). */
 export const fetchCategorySchemas = () =>

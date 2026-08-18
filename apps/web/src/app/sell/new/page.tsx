@@ -212,6 +212,7 @@ interface Draft {
   ownershipConfirmed: boolean;
   saleMethod: string;
   category: string;
+  subcategory: string;
   currency: string;
   title: string;
   publicRef: string;
@@ -248,6 +249,7 @@ const EMPTY_DRAFT: Draft = {
   ownershipConfirmed: false,
   saleMethod: 'TIMED_AUCTION',
   category: 'vehicles',
+  subcategory: '',
   currency: 'LKR',
   title: '',
   publicRef: '',
@@ -514,7 +516,11 @@ export default function ListingStudio() {
     try {
       const asset = await apiPost<{ id: string }>(
         '/assets',
-        { category: draft.category, attributes },
+        {
+          category: draft.category,
+          ...(draft.subcategory ? { subcategory: draft.subcategory } : {}),
+          attributes,
+        },
         token,
       );
       const listing = await apiPost<{ id: string }>(
@@ -829,19 +835,40 @@ export default function ListingStudio() {
         )}
 
         {stage === 2 && (
-          <Field label="Category">
-            <select
-              className="field"
-              value={draft.category}
-              onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value, attrs: {} }))}
-            >
-              {categorySchemas.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <div className="flex flex-col gap-4">
+            <Field label="Category">
+              <select
+                className="field"
+                value={draft.category}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, category: e.target.value, subcategory: '', attrs: {} }))
+                }
+              >
+                {categorySchemas.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {/* §3 — config-driven subcategory selector; renders only when the category has one. */}
+            {(currentSchema?.subcategories?.length ?? 0) > 0 && (
+              <Field label="Subcategory">
+                <select
+                  className="field"
+                  value={draft.subcategory}
+                  onChange={(e) => set('subcategory', e.target.value)}
+                >
+                  <option value="">Select a subcategory…</option>
+                  {currentSchema!.subcategories!.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+          </div>
         )}
 
         {stage === 3 && (
@@ -1341,6 +1368,15 @@ export default function ListingStudio() {
               v={saleMethods.find((m) => m.code === draft.saleMethod)?.label ?? draft.saleMethod}
             />
             <Summary k="Category" v={currentSchema?.label ?? draft.category} />
+            {draft.subcategory && (
+              <Summary
+                k="Subcategory"
+                v={
+                  currentSchema?.subcategories?.find((s) => s.value === draft.subcategory)?.label ??
+                  draft.subcategory
+                }
+              />
+            )}
             <Summary k="Currency" v={draft.currency} />
             <Summary k="Title" v={draft.title || '—'} />
             <Summary k="Reference" v={draft.publicRef || '—'} />

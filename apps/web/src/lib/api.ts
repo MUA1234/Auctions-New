@@ -289,6 +289,8 @@ export interface LotDetail extends CatalogueLot {
   seller?: { verified: boolean };
   /** §20 — customer-safe inspection/certification evidence (public rows only). */
   evidence?: InspectionEvidence[];
+  /** §3 — customer-facing subcategory slug. */
+  subcategory?: string;
   shortDescription?: string;
   fullDescription?: string;
   location?: { city: string | null; region: string | null };
@@ -425,6 +427,8 @@ export interface CatalogueCardV2 {
   title: string;
   shortDescription?: string;
   category: string;
+  /** §3 — customer-facing subcategory slug (config-driven taxonomy); undefined when not set. */
+  subcategory?: string;
   location?: { city: string | null; region: string | null };
   saleMethod: string;
   status: string;
@@ -482,7 +486,13 @@ export interface CatalogueResponse {
   limit: number;
   total: number;
   totalPages: number;
-  facets: { category: Facet[]; saleMethod: Facet[]; status: Facet[] };
+  facets: {
+    category: Facet[];
+    /** §3 — subcategories of the selected category (with display labels); empty otherwise. */
+    subcategory: (Facet & { label?: string })[];
+    saleMethod: Facet[];
+    status: Facet[];
+  };
 }
 
 export interface WatchedLot {
@@ -508,6 +518,8 @@ export interface WatchedLot {
  */
 export interface CatalogueQueryParams {
   category?: string;
+  /** §3 — filter to a subcategory within the selected category. */
+  subcategory?: string;
   saleMethod?: string;
   status?: string;
   search?: string;

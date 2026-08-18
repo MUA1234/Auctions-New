@@ -115,8 +115,9 @@ export const CATEGORY_META: CategoryMeta[] = [
   { slug: 'gems', label: 'Gems & Jewellery', rgb: '158,120,240', Icon: GemIcon },
   { slug: 'property', label: 'Property', rgb: '72,132,214', Icon: BuildingIcon },
   { slug: 'business', label: 'Business Assets', rgb: '48,178,158', Icon: BriefcaseIcon },
-  { slug: 'bulk', label: 'Stock & Bulk', rgb: '128,150,180', Icon: BoxIcon },
-  { slug: 'agriculture', label: 'Agriculture', rgb: '150,182,72', Icon: SproutIcon },
+  { slug: 'bulk', label: 'Produce & Bulk', rgb: '150,182,72', Icon: SproutIcon },
+  { slug: 'scrap', label: 'Scrap & Materials', rgb: '150,120,90', Icon: BoxIcon },
+  { slug: 'agriculture', label: 'Agriculture', rgb: '120,160,70', Icon: SproutIcon },
   { slug: 'general', label: 'General Assets', rgb: '201,162,75', Icon: GridIcon },
 ];
 
