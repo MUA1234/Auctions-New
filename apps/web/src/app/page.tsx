@@ -48,16 +48,16 @@ const PULSE_FALLBACK = [
 
 const TRUST = [
   {
-    title: 'Server-authoritative bidding',
-    text: 'The auction engine is the single source of truth. Every bid is validated, sequenced and recorded — the screen is never the record.',
+    title: 'Your bid always counts',
+    text: 'Every bid is checked and recorded the instant you place it — no lost bids, no last-second surprises. What you see is exactly what stands.',
   },
   {
-    title: 'Append-only evidence trail',
-    text: 'Bids, payments and settlement are immutable ledgers. Nothing in the financial history can be quietly edited or deleted.',
+    title: 'A price that stays put',
+    text: 'Once made, bids, payments and settlement are locked — so the price you win at is the price that holds. Nothing is quietly changed after the fact.',
   },
   {
-    title: 'Verified sellers & inspection',
-    text: 'Banks, corporates and government sellers with documented ownership, condition and viewing arrangements before you commit.',
+    title: 'Know who you’re buying from',
+    text: 'Sellers — banks, corporates and government bodies — come with documented ownership, condition and viewing arrangements, so you can commit with confidence.',
   },
 ];
 
@@ -152,7 +152,7 @@ export default async function HomePage() {
                 <HomeSearchIntent />
                 <div className="mt-10 h-px w-full max-w-md rule-fade" />
                 <p className="mt-5 text-sm text-bone-500">
-                  Institutional transparency · Verified sellers · Server-authoritative records
+                  Clear terms · Verified sellers · Every bid on the record
                 </p>
               </div>
               {/* Right — auto-scrolling 3D reel: featured lots mixed with Market Pulse news */}
@@ -216,8 +216,8 @@ export default async function HomePage() {
                     Featured live auction
                   </h2>
                   <p className="mt-3 max-w-lg leading-relaxed text-bone-400">
-                    Multi-camera broadcast with online, floor and phone bidding reconciled into one
-                    unified, auditable ledger.
+                    Multi-camera broadcast where online, floor and phone bids all land together —
+                    one live price everyone can trust, wherever you’re bidding from.
                   </p>
                 </div>
                 <Link href="/live">

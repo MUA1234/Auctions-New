@@ -25,7 +25,7 @@ const METHODS: Array<{ title: string; blurb: string; href: string; cta: string }
   },
   {
     title: 'Timed Auction',
-    blurb: 'Compete over a set window; the auction engine is the single source of truth.',
+    blurb: 'Compete over a set window — every bid counted in order, the moment it lands.',
     href: '/catalogue',
     cta: 'See live lots',
   },
