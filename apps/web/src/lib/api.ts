@@ -179,10 +179,12 @@ export async function createUploadUrl(
   assetId: string,
   filename: string,
   token?: string,
+  kind: 'image' | 'video' | 'document' = 'image',
+  meta?: { contentType?: string; sizeBytes?: number },
 ): Promise<UploadGrant> {
   return apiPost<UploadGrant>(
     `/assets/${assetId}/media/upload-url`,
-    { filename, kind: 'image' },
+    { filename, kind, ...(meta ?? {}) },
     token,
   );
 }

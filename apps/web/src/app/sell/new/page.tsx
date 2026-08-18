@@ -36,12 +36,21 @@ const DRAFT_KEY = 'singha_listing_draft_v1';
 const MEDIA_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_MEDIA_BUCKET ?? 'singha-media';
 
 /**
- * Upload a photo through the real pipeline (pack doc 08): API issues a signed
- * direct-to-Supabase grant, the browser uploads the immutable original to object
- * storage, and the returned storage path becomes the media's storageKey.
+ * Upload a file through the real pipeline (pack doc 08 / RW3): API issues a signed
+ * direct-to-Supabase grant (per-kind MIME + size policy enforced server-side), the
+ * browser uploads the immutable original to object storage, and the returned storage
+ * path becomes the media's storageKey. Documents/video are then scanned before ready.
  */
-async function uploadPhoto(assetId: string, file: File, token?: string): Promise<string> {
-  const grant = await createUploadUrl(assetId, file.name, token);
+async function uploadMedia(
+  assetId: string,
+  file: File,
+  kind: 'image' | 'video' | 'document',
+  token?: string,
+): Promise<string> {
+  const grant = await createUploadUrl(assetId, file.name, token, kind, {
+    contentType: file.type || undefined,
+    sizeBytes: file.size,
+  });
   const { error } = await createClient()
     .storage.from(MEDIA_BUCKET)
     .uploadToSignedUrl(grant.path, grant.token, file);
@@ -213,6 +222,7 @@ interface Draft {
   attrs: Record<string, string>;
   photos: PhotoDraft[];
   videoUrl: string;
+  videoFile: { id: string; name: string } | null;
   documents: DocDraft[];
   sale: {
     openingBid: string;
@@ -248,6 +258,7 @@ const EMPTY_DRAFT: Draft = {
   attrs: {},
   photos: [],
   videoUrl: '',
+  videoFile: null,
   documents: [],
   sale: {
     openingBid: '',
@@ -442,10 +453,21 @@ export default function ListingStudio() {
 
   function onPickDocs(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    set('documents', [
-      ...draft.documents,
-      ...files.map((f) => ({ id: rid(), name: f.name, docType: 'ownership' })),
-    ]);
+    const added = files.map((f) => {
+      const id = rid();
+      filesRef.current.set(id, f); // keep the File so submit uploads it through the secure pipeline
+      return { id, name: f.name, docType: 'ownership' };
+    });
+    set('documents', [...draft.documents, ...added]);
+    e.target.value = '';
+  }
+
+  function onPickVideo(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const id = `video:${rid()}`;
+    filesRef.current.set(id, f);
+    set('videoFile', { id, name: f.name });
     e.target.value = '';
   }
 
@@ -574,7 +596,7 @@ export default function ListingStudio() {
           continue;
         }
         try {
-          const storageKey = await uploadPhoto(asset.id, file, token);
+          const storageKey = await uploadMedia(asset.id, file, 'image', token);
           await apiPost(
             `/assets/${asset.id}/media`,
             { kind: 'image', storageKey, isCover: firstUpload },
@@ -591,12 +613,49 @@ export default function ListingStudio() {
           'No photos were uploaded. Contact Singha support to add photos before this listing goes live.',
         );
 
-      // Documents/video require the real signed-upload pipeline before they can be
-      // registered (pack FIX-06/07). We do NOT register them by name/URL here.
+      // Documents (§15): upload each through the SAME signed pipeline as photos — the backend
+      // enforces the document MIME/size policy and screens the file for malware before it is
+      // marked ready. We register the REAL storage key, never a filename.
+      for (const d of draft.documents) {
+        const file = filesRef.current.get(d.id);
+        if (!file) {
+          notes.push(`Document "${d.name}" needs re-attaching before publishing.`);
+          continue;
+        }
+        try {
+          const storageKey = await uploadMedia(asset.id, file, 'document', token);
+          await apiPost(
+            `/assets/${asset.id}/media`,
+            { kind: 'document', storageKey, visibility: 'private', caption: d.docType },
+            token,
+          );
+        } catch {
+          notes.push(
+            `Document "${d.name}" was rejected on upload (type/size or scan) — check and retry.`,
+          );
+        }
+      }
       if (draft.documents.length > 0)
-        notes.push('Documents pending secure upload — attach files through the upload pipeline.');
-      if (draft.videoUrl)
-        notes.push('Video pending secure upload — direct video upload is required.');
+        notes.push('Documents uploaded — they are scanned before becoming available.');
+
+      // Video (§15): a real file upload through the pipeline (poster/preview generated server-side).
+      // A pasted URL is only kept as an optional external reference, never a substitute for the file.
+      const videoFile = draft.videoFile ? filesRef.current.get(draft.videoFile.id) : undefined;
+      if (videoFile) {
+        try {
+          const storageKey = await uploadMedia(asset.id, videoFile, 'video', token);
+          await apiPost(`/assets/${asset.id}/media`, { kind: 'video', storageKey }, token);
+          notes.push('Video uploaded — a preview + poster are generated after processing.');
+        } catch {
+          notes.push(
+            `Video "${draft.videoFile?.name}" was rejected on upload (type/size) — check and retry.`,
+          );
+        }
+      } else if (draft.videoUrl) {
+        notes.push(
+          'External video link recorded. For playback on the listing, upload the video file.',
+        );
+      }
 
       // Opening bid / increment / reserve configure the AUCTION, which staff set
       // when they schedule it (POST /auctions) after approval — not at draft time.
@@ -961,23 +1020,42 @@ export default function ListingStudio() {
         {stage === 6 && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-bone-500">
-              Provide a video URL or upload; production transcodes to a playback rendition + poster
-              (UPLOADING → PROCESSING → READY). Catalogue never streams the raw original.
+              Upload a walkaround video through the secure pipeline; production transcodes it to a
+              playback rendition + poster (UPLOADING → PROCESSING → READY). Catalogue never streams
+              the raw original.
             </p>
-            <Field label="Video URL (optional)">
+            <FilePick label="Upload video" accept="video/*" onChange={onPickVideo} />
+            {draft.videoFile && (
+              <div className="flex items-center gap-2 text-sm">
+                <Chip>Ready to upload</Chip>
+                <span className="text-bone-300">{draft.videoFile.name}</span>
+                <button
+                  type="button"
+                  className="text-xs text-outbid hover:underline"
+                  onClick={() => set('videoFile', null)}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+            <Field label="Or link an external video (optional)">
               <input
                 className="field"
-                placeholder="https://…"
+                placeholder="https://… (reference only — upload the file for on-listing playback)"
                 value={draft.videoUrl}
                 onChange={(e) => set('videoUrl', e.target.value)}
               />
             </Field>
-            {draft.videoUrl && <Chip>Pending secure upload</Chip>}
           </div>
         )}
 
         {stage === 7 && (
           <div className="flex flex-col gap-3">
+            <p className="text-xs text-bone-500">
+              Ownership, valuation and inspection documents upload through the secure pipeline and
+              are scanned before they become available. They stay private unless you and Singha
+              agree to publish specific evidence.
+            </p>
             <FilePick
               label="Add documents"
               accept=".pdf,.jpg,.png,.doc,.docx"
