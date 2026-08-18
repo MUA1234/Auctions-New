@@ -394,10 +394,9 @@ export default function ListingStudio() {
     if (!aiResult) return;
     setDraft((d) => ({
       ...d,
-      title: aiResult.title ?? d.title,
-      shortDescription: aiResult.shortDescription ?? d.shortDescription,
-      fullDescription: aiResult.fullDescription ?? d.fullDescription,
-      aiKeywords: aiResult.keywords ?? d.aiKeywords,
+      title: aiResult.title || d.title,
+      fullDescription: aiResult.description || d.fullDescription,
+      aiKeywords: aiResult.highlights?.length ? aiResult.highlights : d.aiKeywords,
       aiApplied: true,
     }));
   }
@@ -927,16 +926,13 @@ export default function ListingStudio() {
                     <span className="text-bone-500">Title:</span> {aiResult.title}
                   </p>
                 )}
-                {aiResult.shortDescription && (
+                {aiResult.description && (
                   <p>
-                    <span className="text-bone-500">Short:</span> {aiResult.shortDescription}
+                    <span className="text-bone-500">Description:</span> {aiResult.description}
                   </p>
                 )}
-                {aiResult.keywords && aiResult.keywords.length > 0 && (
-                  <p className="text-bone-400">Keywords: {aiResult.keywords.join(', ')}</p>
-                )}
-                {aiResult.missing && aiResult.missing.length > 0 && (
-                  <p className="text-outbid">Missing: {aiResult.missing.join(', ')}</p>
+                {aiResult.highlights && aiResult.highlights.length > 0 && (
+                  <p className="text-bone-400">Highlights: {aiResult.highlights.join(', ')}</p>
                 )}
                 <Button variant="gold" onClick={applyAi}>
                   Apply to listing

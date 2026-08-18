@@ -66,24 +66,32 @@ export async function createUploadUrl(
   );
 }
 
-/** AI Listing Assistant draft (pack doc 08/10). Derived content — never facts. */
+/**
+ * AI Listing Assistant draft (pack doc 08/10). Derived content — never facts. Shape mirrors the
+ * backend `POST /ai/listing-draft` response `draft` object exactly (title/description/highlights/
+ * confidence) — the previous mismatch made every real call a 400.
+ */
 export interface AiListingDraft {
-  title?: string;
-  shortDescription?: string;
-  fullDescription?: string;
-  keywords?: string[];
-  missing?: string[];
-  socialCopy?: string;
+  title: string;
+  description: string;
+  highlights: string[];
+  confidence: number;
 }
 
-/** Best-effort AI draft. Resolves null when no AI provider is configured. */
+/**
+ * Best-effort AI draft from the seller's in-progress facts. Resolves null when the draft could not
+ * be produced (no provider / not authorised), but — unlike before — the failure is LOGGED, never
+ * silently swallowed (directive §11), so a contract break is diagnosable instead of invisible.
+ */
 export async function requestAiListingDraft(
   body: { category: string; attributes: Record<string, unknown>; notes?: string },
   token?: string,
 ): Promise<AiListingDraft | null> {
   try {
-    return await apiPost<AiListingDraft>('/ai/listing-draft', body, token);
-  } catch {
+    const res = await apiPost<{ draft: AiListingDraft }>('/ai/listing-draft', body, token);
+    return res.draft;
+  } catch (err) {
+    console.error('[ai/listing-draft] request failed:', err);
     return null;
   }
 }
