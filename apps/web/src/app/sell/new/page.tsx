@@ -582,10 +582,10 @@ export default function ListingStudio() {
   }
 
   // Auto-run the quality check when the seller reaches the Preview stage (and after edits there).
+  // Keyed on entering Preview + the fields the check reads; `runQualityCheck` closes over the draft
+  // and is intentionally omitted from the deps (it would re-run on every render).
   useEffect(() => {
     if (stage === STAGES.length - 1 && loaded) void runQualityCheck();
-    // Intentionally keyed on entering Preview + the fields the check reads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, draft.title, draft.photos.length, draft.category, draft.saleMethod, loaded]);
 
   async function submit() {
