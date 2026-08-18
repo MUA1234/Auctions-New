@@ -59,10 +59,35 @@ export function SaleCard({ lot, compact = false }: { lot: CatalogueCardV2; compa
           <LotImage src={coverUrl(lot.media.cover)} alt={lot.title} aspect="aspect-[4/3]" />
           {/* Bottom scrim so the watch/video markers stay legible over any photo. */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-coal-950/85 via-coal-950/20 to-transparent" />
-          {(lot.featured || lot.watchers > 0) && (
-            <div className="absolute inset-x-0 top-0 flex items-center justify-end gap-2 p-2 text-[11px] font-medium text-bone-200">
-              {lot.featured && <span className="text-gold-300">★</span>}
-              {lot.watchers > 0 && <span className="text-bone-300">♥ {lot.watchers}</span>}
+          {(lot.featured || lot.watchers > 0 || lot.seller?.verified) && (
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-2 p-2 text-[11px] font-medium text-bone-200">
+              {/* §19 — customer-safe verified-seller trust marker (identity-verified seller). */}
+              <span>
+                {lot.seller?.verified && (
+                  <span
+                    title="Identity-verified seller"
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-coal-950 backdrop-blur"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                      className="h-2.5 w-2.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Verified
+                  </span>
+                )}
+              </span>
+              <span className="flex items-center gap-2">
+                {lot.featured && <span className="text-gold-300">★</span>}
+                {lot.watchers > 0 && <span className="text-bone-300">♥ {lot.watchers}</span>}
+              </span>
             </div>
           )}
           {lot.media.videoAvailable && (

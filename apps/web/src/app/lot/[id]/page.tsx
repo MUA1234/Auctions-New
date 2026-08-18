@@ -57,6 +57,12 @@ export default async function LotPage({ params }: { params: { id: string } }) {
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
             <Chip>{method}</Chip>
             <StatusChip status={lot.status} />
+            {/* §19 — customer-safe verified-seller trust chip (identity-verified seller). */}
+            {lot.seller?.verified && (
+              <Chip tone="win" title="Identity-verified seller">
+                ✓ Verified seller
+              </Chip>
+            )}
             <span className="text-xs text-bone-500">{lot.reference}</span>
           </div>
           <h1 className="mt-3 font-serif text-3xl font-bold leading-tight text-bone">

@@ -269,6 +269,8 @@ export interface AuctionState {
 export interface LotDetail extends CatalogueLot {
   attributes: Record<string, unknown> | null;
   auction: AuctionState | null;
+  /** §19 — customer-safe verified-seller signal, same lone boolean the v2 card carries. */
+  seller?: { verified: boolean };
   shortDescription?: string;
   fullDescription?: string;
   location?: { city: string | null; region: string | null };
@@ -410,6 +412,12 @@ export interface CatalogueCardV2 {
   status: string;
   featured: boolean;
   watchers: number;
+  /**
+   * §19 — customer-safe seller trust signal. `verified` is true when the seller behind the lot
+   * has completed identity verification (backend derives it from the owner's KYC state and never
+   * exposes the KYC value or the seller's identity). A lone boolean; optional + forward-compatible.
+   */
+  seller?: { verified: boolean };
   media: { cover?: PublicMedia; videoAvailable: boolean };
   commercial: CardCommercial;
   /**
@@ -504,6 +512,9 @@ export interface CatalogueQueryParams {
    *  the backend's `z.coerce.boolean()` treats the STRING "false" as truthy). */
   pickup?: boolean;
   delivery?: boolean;
+  /** §19 — restrict to lots whose seller is identity-verified. Send `true` to filter; omit
+   *  otherwise (same `z.coerce.boolean()` "false"-is-truthy caveat as the flags above). */
+  verifiedOnly?: boolean;
   sort?: string;
   page?: number;
   limit?: number;

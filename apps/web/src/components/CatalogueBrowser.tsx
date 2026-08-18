@@ -74,6 +74,9 @@ export function CatalogueBrowser({
   const [locationQuery, setLocationQuery] = useState('');
   const [debouncedLocation, setDebouncedLocation] = useState('');
   const [endingSoon, setEndingSoon] = useState(false);
+  // §19 — customer-safe verified-seller filter (server-side `verifiedOnly` on
+  // `/api/v2/catalogue`); an instant toggle like Ending soon.
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sort, setSort] = useState('ending');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<CatalogueResponse | null>(null);
@@ -109,6 +112,8 @@ export function CatalogueBrowser({
       location: debouncedLocation,
       // Never send `endingSoon=false` — omit it instead (see CatalogueQueryParams).
       endingSoon: endingSoon || undefined,
+      // Same omit-when-false rule (server coerces the string "false" as truthy).
+      verifiedOnly: verifiedOnly || undefined,
       sort,
       page,
       limit,
@@ -130,6 +135,7 @@ export function CatalogueBrowser({
     saleMethod,
     debouncedLocation,
     endingSoon,
+    verifiedOnly,
     sort,
     page,
     limit,
@@ -139,7 +145,7 @@ export function CatalogueBrowser({
   // Reset to page 1 whenever filters change.
   useEffect(
     () => setPage(1),
-    [debounced, category, saleMethod, debouncedLocation, endingSoon, sort],
+    [debounced, category, saleMethod, debouncedLocation, endingSoon, verifiedOnly, sort],
   );
 
   // Flow bands are driven by the category facet (all categories), each loading
@@ -197,6 +203,29 @@ export function CatalogueBrowser({
               small
             >
               Ending soon
+            </FilterChip>
+            {/* §19 — server-side verified-seller filter. */}
+            <FilterChip
+              active={verifiedOnly}
+              onClick={() => setVerifiedOnly((v) => !v)}
+              icon={
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 3 5 6v6c0 4 3 6.5 7 9 4-2.5 7-5 7-9V6z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              }
+              small
+            >
+              Verified sellers
             </FilterChip>
             <select
               value={sort}
@@ -288,12 +317,13 @@ export function CatalogueBrowser({
         </div>
       </div>
 
-      {/* CX3: future backend filters — price range, display currency, quantity/unit
-          range, shipping/delivery and verification are NOT server-side filters on
-          `/api/v2/catalogue` today (see `catalogueQuerySchema` in `@singha/contracts`),
-          so they are intentionally not offered as controls here. Adding them client-side
-          would mean downloading and filtering the whole result set in the browser, which
-          this catalogue never does (server-side filter + paginate only). */}
+      {/* CX3: seller VERIFICATION is now a real server-side filter (§19 `verifiedOnly` on
+          `/api/v2/catalogue`), surfaced as the "Verified sellers" chip above. Price range,
+          display currency and quantity/unit range remain future server-side filters (see
+          `catalogueQuerySchema` in `@singha/contracts`) and are intentionally not offered as
+          controls until then — adding them client-side would mean downloading and filtering the
+          whole result set in the browser, which this catalogue never does (server-side filter +
+          paginate only). */}
 
       <p className="mt-4 text-xs text-bone-500">
         {loading && !data
@@ -338,6 +368,7 @@ export function CatalogueBrowser({
             saleMethod={saleMethod}
             location={debouncedLocation}
             endingSoon={endingSoon}
+            verifiedOnly={verifiedOnly}
             sort={sort}
           />
         )
@@ -375,6 +406,7 @@ function FlowBands({
   saleMethod,
   location,
   endingSoon,
+  verifiedOnly,
   sort,
 }: {
   categories: string[];
@@ -383,6 +415,7 @@ function FlowBands({
   saleMethod: string;
   location: string;
   endingSoon: boolean;
+  verifiedOnly: boolean;
   sort: string;
 }) {
   return (
@@ -400,6 +433,7 @@ function FlowBands({
             saleMethod={saleMethod}
             location={location}
             endingSoon={endingSoon}
+            verifiedOnly={verifiedOnly}
             sort={sort}
           />
         ))}
@@ -426,6 +460,7 @@ function CategoryBand({
   saleMethod,
   location,
   endingSoon,
+  verifiedOnly,
   sort,
 }: {
   category: string;
@@ -434,6 +469,7 @@ function CategoryBand({
   saleMethod: string;
   location: string;
   endingSoon: boolean;
+  verifiedOnly: boolean;
   sort: string;
 }) {
   const [items, setItems] = useState<CatalogueCardV2[]>(seedItems);
@@ -453,10 +489,11 @@ function CategoryBand({
       location,
       // Never send `endingSoon=false` — omit it instead (see CatalogueQueryParams).
       endingSoon: endingSoon || undefined,
+      verifiedOnly: verifiedOnly || undefined,
       sort,
       limit: 12,
     }),
-    [category, search, saleMethod, location, endingSoon, sort],
+    [category, search, saleMethod, location, endingSoon, verifiedOnly, sort],
   );
 
   /** Merge a slice into the row, de-duping by stable listing id (§6). */

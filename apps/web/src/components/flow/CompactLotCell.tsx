@@ -95,11 +95,23 @@ export function CompactLotCell({ lot }: { lot: CatalogueCardV2 }) {
           ) : (
             <span />
           )}
-          {lot.watchers > 0 && (
-            <span className="rounded-md bg-coal-950/75 px-1.5 py-0.5 text-[10px] font-medium leading-none text-bone-200 backdrop-blur-sm">
-              ♥ {lot.watchers}
-            </span>
-          )}
+          <span className="flex items-center gap-1">
+            {/* §19 — tiny customer-safe verified-seller marker (kept minimal for the mini-cell). */}
+            {lot.seller?.verified && (
+              <span
+                title="Verified seller"
+                aria-label="Verified seller"
+                className="inline-flex items-center rounded-md bg-emerald-500/90 px-1 py-0.5 text-[9px] font-bold leading-none text-coal-950 backdrop-blur-sm"
+              >
+                ✓
+              </span>
+            )}
+            {lot.watchers > 0 && (
+              <span className="rounded-md bg-coal-950/75 px-1.5 py-0.5 text-[10px] font-medium leading-none text-bone-200 backdrop-blur-sm">
+                ♥ {lot.watchers}
+              </span>
+            )}
+          </span>
         </div>
         {/* Tiny sale-method marker sits on the image so the price line stays free. */}
         {mark && (
