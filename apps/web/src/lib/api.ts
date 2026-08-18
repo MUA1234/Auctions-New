@@ -45,6 +45,75 @@ export async function apiPatch<T>(path: string, body: unknown, token?: string): 
   return res.json() as Promise<T>;
 }
 
+/** Like apiPost but for PUT; the thrown Error carries `.status` so callers can branch on 409. */
+export async function apiPut<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const res = await fetch(`${apiBase}${path}`, {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const err = new Error(detail?.message ?? `PUT ${path} -> ${res.status}`) as Error & {
+      status?: number;
+    };
+    err.status = res.status;
+    throw err;
+  }
+  return res.json() as Promise<T>;
+}
+
+// --- Seller Studio: server-resumable drafts + auction preferences (§25/§7) ---
+export interface SellerDraftSummary {
+  id: string;
+  title: string | null;
+  status: string;
+  version: number;
+  schemaVersion: number;
+  updatedAt: string;
+}
+export interface SellerDraft extends SellerDraftSummary {
+  payload: Record<string, unknown>;
+  mediaState?: Record<string, unknown> | null;
+  aiProvenance?: Record<string, unknown> | null;
+}
+type SellerDraftBody = {
+  title?: string;
+  payload: Record<string, unknown>;
+  mediaState?: Record<string, unknown>;
+  aiProvenance?: Record<string, unknown>;
+  schemaVersion?: number;
+  expectedVersion?: number;
+};
+export const listSellerDrafts = (token: string) =>
+  apiGetAuthed<{ drafts: SellerDraftSummary[] }>('/seller/drafts', token);
+export const getSellerDraft = (id: string, token: string) =>
+  apiGetAuthed<SellerDraft>(`/seller/drafts/${id}`, token);
+export const createSellerDraft = (body: SellerDraftBody, token: string) =>
+  apiPost<SellerDraft>('/seller/drafts', body, token);
+export const saveSellerDraft = (id: string, body: SellerDraftBody, token: string) =>
+  apiPut<SellerDraft>(`/seller/drafts/${id}`, body, token);
+export const archiveSellerDraft = (id: string, token: string) =>
+  apiDelete<{ id: string; status: string }>(`/seller/drafts/${id}`, token);
+
+export type SellerAuctionPreferenceBody = {
+  openingBidMinor?: number;
+  reserveMinor?: number;
+  incrementMinor?: number;
+  currency?: string;
+  preferredOpenAt?: string;
+  preferredCloseAt?: string;
+  notes?: string;
+};
+export const setAuctionPreference = (
+  listingId: string,
+  body: SellerAuctionPreferenceBody,
+  token: string,
+) => apiPut(`/listings/${listingId}/auction-preference`, body, token);
+
 /** Direct-to-storage upload grant (pack doc 08 upload pipeline). */
 export interface UploadGrant {
   path: string;

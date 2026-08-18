@@ -6,8 +6,14 @@ import { Button, Card, Chip } from '@singha/ui';
 import {
   apiPatch,
   apiPost,
+  archiveSellerDraft,
+  createSellerDraft,
   createUploadUrl,
+  getSellerDraft,
+  listSellerDrafts,
   requestAiListingDraft,
+  saveSellerDraft,
+  setAuctionPreference,
   type AiListingDraft,
 } from '../../../lib/api';
 import {
@@ -305,6 +311,12 @@ export default function ListingStudio() {
   const [categorySchemas, setCategorySchemas] =
     useState<CategoryFieldSchema[]>(FALLBACK_CATEGORY_SCHEMAS);
   const [saleMethods, setSaleMethods] = useState<SaleMethodDef[]>(FALLBACK_SALE_METHODS);
+  // Server-resumable draft (§25): follows the seller across devices; localStorage is the offline
+  // cache. `serverDraftRef` holds the authoritative id + version for optimistic-concurrency saves.
+  const serverDraftRef = useRef<{ id: string; version: number } | null>(null);
+  const [draftSync, setDraftSync] = useState<'local' | 'saving' | 'saved' | 'conflict' | 'offline'>(
+    'local',
+  );
 
   // Load a saved draft once on mount.
   useEffect(() => {
@@ -328,12 +340,61 @@ export default function ListingStudio() {
       .catch(() => {});
   }, []);
 
-  // Persist the draft at every change (doc 08 "Save draft at every stage").
+  // Adopt the seller's server draft on mount (server is authoritative, §25) — resume across
+  // devices. Degrades silently to the localStorage draft when signed out / offline.
+  useEffect(() => {
+    void (async () => {
+      const token = (await getAccessToken()) ?? undefined;
+      if (!token) return;
+      try {
+        const { drafts } = await listSellerDrafts(token);
+        if (!drafts.length) return;
+        const latest = await getSellerDraft(drafts[0]!.id, token);
+        serverDraftRef.current = { id: latest.id, version: latest.version };
+        setDraft((d) => ({ ...d, ...(latest.payload as Partial<Draft>), photos: d.photos }));
+        setDraftSync('saved');
+      } catch {
+        /* offline → the localStorage draft stands */
+      }
+    })();
+  }, []);
+
+  // Persist the draft at every change (doc 08 "Save draft at every stage"): localStorage always,
+  // plus a debounced server save when signed in (§25). Server save carries the last-seen version
+  // so a concurrent edit from another device surfaces as a conflict rather than silently clobbering.
   useEffect(() => {
     if (!loaded) return;
     const persistable = { ...draft, photos: draft.photos.map(({ url: _url, ...p }) => p) };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(persistable));
     setSavedAt(new Date().toLocaleTimeString());
+
+    const timer = setTimeout(async () => {
+      const token = (await getAccessToken()) ?? undefined;
+      if (!token) return; // signed out → localStorage only
+      const body = {
+        title: draft.title || undefined,
+        payload: persistable as Record<string, unknown>,
+        schemaVersion: 1,
+      };
+      try {
+        setDraftSync('saving');
+        if (!serverDraftRef.current) {
+          const d = await createSellerDraft(body, token);
+          serverDraftRef.current = { id: d.id, version: d.version };
+        } else {
+          const d = await saveSellerDraft(
+            serverDraftRef.current.id,
+            { ...body, expectedVersion: serverDraftRef.current.version },
+            token,
+          );
+          serverDraftRef.current = { id: d.id, version: d.version };
+        }
+        setDraftSync('saved');
+      } catch (e) {
+        setDraftSync((e as { status?: number })?.status === 409 ? 'conflict' : 'offline');
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [draft, loaded]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
@@ -517,10 +578,26 @@ export default function ListingStudio() {
         notes.push('Video pending secure upload — direct video upload is required.');
 
       // Opening bid / increment / reserve configure the AUCTION, which staff set
-      // when they schedule it (POST /auctions) after approval — not at draft
-      // time. We record the seller's requested values in the note trail.
-      if (toMinor(draft.sale.openingBid, exp) != null || toMinor(draft.sale.reserve, exp) != null)
-        notes.push('Requested auction opening/reserve recorded for staff scheduling.');
+      // when they schedule it (POST /auctions) after approval — not at draft time.
+      // We persist the seller's requested values STRUCTURALLY (§7) as a staff-approvable
+      // preference on the listing, not merely a note.
+      const openingBidMinor = toMinor(draft.sale.openingBid, exp);
+      const reserveMinor = toMinor(draft.sale.reserve, exp);
+      const incrementMinor = toMinor(draft.sale.increment, exp);
+      if (token && (openingBidMinor != null || reserveMinor != null || incrementMinor != null)) {
+        await setAuctionPreference(
+          listing.id,
+          {
+            ...(openingBidMinor != null ? { openingBidMinor } : {}),
+            ...(reserveMinor != null ? { reserveMinor } : {}),
+            ...(incrementMinor != null ? { incrementMinor } : {}),
+            currency: draft.currency,
+          },
+          token,
+        )
+          .then(() => notes.push('Requested auction settings saved for staff review.'))
+          .catch(() => notes.push('Requested auction settings recorded locally (will sync).'));
+      }
 
       if (draft.social.promotion !== 'None')
         await apiPost(
@@ -536,7 +613,13 @@ export default function ListingStudio() {
 
       await apiPost(`/listings/${listing.id}/submit`, {}, token);
 
+      // Submitted → clear the local cache and archive the server draft so it drops off the
+      // seller's resume list (the listing itself is now the authoritative record).
       localStorage.removeItem(DRAFT_KEY);
+      if (token && serverDraftRef.current) {
+        await archiveSellerDraft(serverDraftRef.current.id, token).catch(() => {});
+        serverDraftRef.current = null;
+      }
       setDone({ ref: draft.publicRef, notes });
     } catch (err) {
       setError(friendlyMessage(err, 'Could not submit this listing. Please try again.'));
@@ -587,8 +670,15 @@ export default function ListingStudio() {
         <Link href="/sell" className="text-sm text-bone-400 hover:text-bone">
           ← Seller area
         </Link>
-        <span className="text-xs text-bone-600">
-          {savedAt ? `Draft saved ${savedAt}` : 'Draft autosaves'}
+        <span
+          className={`text-xs ${draftSync === 'conflict' ? 'text-outbid' : 'text-bone-600'}`}
+          title="Your draft saves to your Singha account and resumes on any device"
+        >
+          {draftSync === 'saving' && 'Saving to your account…'}
+          {draftSync === 'saved' && `Saved to your account · ${savedAt ?? ''}`}
+          {draftSync === 'conflict' && 'Edited on another device — reload to continue'}
+          {draftSync === 'offline' && `Saved on this device ${savedAt ?? ''} (will sync)`}
+          {draftSync === 'local' && (savedAt ? `Draft saved ${savedAt}` : 'Draft autosaves')}
         </span>
       </div>
       <h1 className="mt-4 font-serif text-4xl font-bold text-bone">Listing Studio</h1>
