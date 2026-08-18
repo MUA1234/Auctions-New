@@ -536,16 +536,19 @@ export default function ListingStudio() {
         },
         token,
       );
-      const listing = await apiPost<{ id: string }>(
+      // §5 — send a publicRef only if the seller supplied one; otherwise the server assigns a
+      // unique branded Singha reference and returns it (surfaced on the confirmation screen).
+      const listing = await apiPost<{ id: string; publicRef?: string }>(
         '/listings',
         {
           assetId: asset.id,
           saleMethod: draft.saleMethod,
           title: draft.title || undefined,
-          publicRef: draft.publicRef,
+          ...(draft.publicRef ? { publicRef: draft.publicRef } : {}),
         },
         token,
       );
+      const assignedRef = listing.publicRef ?? draft.publicRef;
 
       // Best-effort enrichment — never blocks listing creation. Field names
       // match the backend PATCH /listings/:id/content contract (flat location +
@@ -747,7 +750,7 @@ export default function ListingStudio() {
         await archiveSellerDraft(serverDraftRef.current.id, token).catch(() => {});
         serverDraftRef.current = null;
       }
-      setDone({ ref: draft.publicRef, notes });
+      setDone({ ref: assignedRef, notes });
     } catch (err) {
       setError(friendlyMessage(err, 'Could not submit this listing. Please try again.'));
     } finally {
@@ -921,10 +924,13 @@ export default function ListingStudio() {
                 onChange={(e) => set('title', e.target.value)}
               />
             </Field>
-            <Field label="Public reference (unique)">
+            <Field
+              label="Public reference (optional)"
+              hint="Leave blank — Singha assigns a unique reference (e.g. SNG-2026-XXXXXXXX) automatically. Enter your own only to match an existing internal code."
+            >
               <input
                 className="field"
-                placeholder="e.g. VH-2043"
+                placeholder="Auto-assigned if left blank"
                 value={draft.publicRef}
                 onChange={(e) => set('publicRef', e.target.value)}
               />
@@ -1509,7 +1515,7 @@ export default function ListingStudio() {
             )}
             <Summary k="Currency" v={draft.currency} />
             <Summary k="Title" v={draft.title || '—'} />
-            <Summary k="Reference" v={draft.publicRef || '—'} />
+            <Summary k="Reference" v={draft.publicRef || 'Auto-assigned by Singha'} />
             <Summary
               k="Location"
               v={[draft.city, draft.region].filter(Boolean).join(', ') || '—'}
@@ -1556,9 +1562,6 @@ export default function ListingStudio() {
             {!draft.ownershipConfirmed && (
               <p className="text-sm text-outbid">Confirm ownership authority (stage 1).</p>
             )}
-            {draft.publicRef.length < 3 && (
-              <p className="text-sm text-outbid">Add a public reference (stage 4).</p>
-            )}
             {error && <p className="text-sm text-outbid">{error}</p>}
           </div>
         )}
@@ -1581,11 +1584,7 @@ export default function ListingStudio() {
             Continue
           </Button>
         ) : (
-          <Button
-            variant="gold"
-            onClick={submit}
-            disabled={busy || !draft.ownershipConfirmed || draft.publicRef.length < 3}
-          >
+          <Button variant="gold" onClick={submit} disabled={busy || !draft.ownershipConfirmed}>
             {busy ? 'Submitting…' : 'Create & submit'}
           </Button>
         )}
