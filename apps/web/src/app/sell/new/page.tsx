@@ -12,6 +12,7 @@ import {
   createUploadUrl,
   getSellerDraft,
   listSellerDrafts,
+  recordAiFeedback,
   requestAiListingDraft,
   saveSellerDraft,
   setAuctionPreference,
@@ -344,8 +345,12 @@ export default function ListingStudio() {
   // §6/§7 — advisory pre-publish quality assessment shown on the Preview stage.
   const [qc, setQc] = useState<ListingQualityAssessment | null>(null);
   const [qcBusy, setQcBusy] = useState(false);
-  const [aiResult, setAiResult] = useState<AiListingDraft | null>(null);
+  const [aiResult, setAiResult] = useState<(AiListingDraft & { aiRunId?: string }) | null>(null);
   const [aiUnavailable, setAiUnavailable] = useState(false);
+  // §8 — the seller's recorded verdict on the current AI draft (closes the correction loop).
+  const [aiFeedbackDone, setAiFeedbackDone] = useState<
+    'accepted' | 'corrected' | 'rejected' | null
+  >(null);
   // In-session File handles keyed by photo id (blobs can't live in localStorage).
   const filesRef = useRef<Map<string, File>>(new Map());
   // Config-driven taxonomy (directive §2/§3/§5): the backend is authoritative; the fallbacks are
@@ -521,6 +526,7 @@ export default function ListingStudio() {
     );
     if (!res) setAiUnavailable(true);
     setAiResult(res);
+    setAiFeedbackDone(null); // a fresh draft — reset any prior verdict.
     setAiBusy(false);
   }
 
@@ -533,6 +539,15 @@ export default function ListingStudio() {
       aiKeywords: aiResult.highlights?.length ? aiResult.highlights : d.aiKeywords,
       aiApplied: true,
     }));
+  }
+
+  // §8 — record the seller's verdict on the AI draft, closing the correction/evaluation loop. The
+  // AI output is never mutated server-side; this is append-only, best-effort feedback.
+  async function sendAiFeedback(outcome: 'accepted' | 'corrected' | 'rejected') {
+    if (!aiResult?.aiRunId) return;
+    setAiFeedbackDone(outcome);
+    const token = (await getAccessToken()) ?? undefined;
+    await recordAiFeedback(aiResult.aiRunId, outcome, token);
   }
 
   // Accept/edit an AI Vision field suggestion (§12): the value flows into the category attributes
@@ -1285,6 +1300,39 @@ export default function ListingStudio() {
                 <Button variant="gold" onClick={applyAi}>
                   Apply to listing
                 </Button>
+                {/* §8 — the seller's verdict feeds the AI correction/evaluation loop (advisory,
+                    append-only; the AI output is never overwritten). */}
+                {aiResult.aiRunId &&
+                  (aiFeedbackDone ? (
+                    <p className="text-xs text-bone-500">
+                      Thanks — your feedback helps improve Singha AI.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2">
+                      <span className="text-xs text-bone-500">Was this draft accurate?</span>
+                      <button
+                        type="button"
+                        onClick={() => sendAiFeedback('accepted')}
+                        className="rounded border border-white/10 px-2 py-0.5 text-xs text-bone-300 hover:bg-white/[0.05]"
+                      >
+                        Accurate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendAiFeedback('corrected')}
+                        className="rounded border border-white/10 px-2 py-0.5 text-xs text-bone-300 hover:bg-white/[0.05]"
+                      >
+                        I edited it
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => sendAiFeedback('rejected')}
+                        className="rounded border border-white/10 px-2 py-0.5 text-xs text-bone-300 hover:bg-white/[0.05]"
+                      >
+                        Not useful
+                      </button>
+                    </div>
+                  ))}
               </div>
             )}
             {draft.aiApplied && <Chip tone="gold">AI draft applied (editable)</Chip>}

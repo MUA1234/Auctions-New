@@ -209,13 +209,37 @@ export interface AiListingDraft {
 export async function requestAiListingDraft(
   body: { category: string; attributes: Record<string, unknown>; notes?: string },
   token?: string,
-): Promise<AiListingDraft | null> {
+): Promise<(AiListingDraft & { aiRunId?: string }) | null> {
   try {
-    const res = await apiPost<{ draft: AiListingDraft }>('/ai/listing-draft', body, token);
-    return res.draft;
+    const res = await apiPost<{ draft: AiListingDraft; aiRunId?: string }>(
+      '/ai/listing-draft',
+      body,
+      token,
+    );
+    // Carry the aiRunId alongside the draft so the seller's verdict can close the §8 loop.
+    return { ...res.draft, aiRunId: res.aiRunId };
   } catch (err) {
     console.error('[ai/listing-draft] request failed:', err);
     return null;
+  }
+}
+
+/**
+ * §8 — record the seller's verdict on an AI run (accepted / corrected / rejected). Append-only and
+ * best-effort: a failure never blocks the seller, it just means that one data point isn't captured.
+ */
+export async function recordAiFeedback(
+  aiRunId: string,
+  outcome: 'accepted' | 'corrected' | 'rejected',
+  token?: string,
+  note?: string,
+): Promise<boolean> {
+  try {
+    await apiPost(`/ai/runs/${aiRunId}/feedback`, { outcome, ...(note ? { note } : {}) }, token);
+    return true;
+  } catch (err) {
+    console.error('[ai/feedback] request failed:', err);
+    return false;
   }
 }
 
