@@ -219,6 +219,38 @@ export async function requestAiListingDraft(
   }
 }
 
+/** §6/§7 — pre-publish quality-control assessment (advisory; never blocks submit). */
+export interface QualityCheck {
+  key: string;
+  severity: 'info' | 'warn' | 'critical';
+  label: string;
+  detail: string;
+}
+export interface ListingQualityAssessment {
+  score: number;
+  status: 'ready' | 'needs_attention' | 'incomplete';
+  checks: QualityCheck[];
+  summary: string;
+  advisory: boolean;
+}
+
+/**
+ * Score the seller's in-progress draft for pre-publish readiness. Stateless + advisory — the server
+ * derives the authoritative required-field set from the category. Resolves null on failure so the
+ * wizard degrades gracefully (the check is a helper, never a gate).
+ */
+export async function checkListingQuality(
+  body: Record<string, unknown>,
+  token?: string,
+): Promise<ListingQualityAssessment | null> {
+  try {
+    return await apiPost<ListingQualityAssessment>('/listings/quality-check', body, token);
+  } catch (err) {
+    console.error('[listings/quality-check] request failed:', err);
+    return null;
+  }
+}
+
 export async function apiPost<T>(path: string, body: unknown, token?: string): Promise<T> {
   const res = await fetch(`${apiBase}${path}`, {
     method: 'POST',

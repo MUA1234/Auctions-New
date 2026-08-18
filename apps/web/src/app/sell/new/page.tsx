@@ -7,6 +7,7 @@ import {
   apiPatch,
   apiPost,
   archiveSellerDraft,
+  checkListingQuality,
   createSellerDraft,
   createUploadUrl,
   getSellerDraft,
@@ -15,6 +16,7 @@ import {
   saveSellerDraft,
   setAuctionPreference,
   type AiListingDraft,
+  type ListingQualityAssessment,
 } from '../../../lib/api';
 import {
   fetchCategorySchemas,
@@ -339,6 +341,9 @@ export default function ListingStudio() {
   const [aiBusy, setAiBusy] = useState(false);
   // §4 — whether the live camera capture panel is open on the Photos stage.
   const [showCamera, setShowCamera] = useState(false);
+  // §6/§7 — advisory pre-publish quality assessment shown on the Preview stage.
+  const [qc, setQc] = useState<ListingQualityAssessment | null>(null);
+  const [qcBusy, setQcBusy] = useState(false);
   const [aiResult, setAiResult] = useState<AiListingDraft | null>(null);
   const [aiUnavailable, setAiUnavailable] = useState(false);
   // In-session File handles keyed by photo id (blobs can't live in localStorage).
@@ -539,6 +544,49 @@ export default function ListingStudio() {
       visionProvenance: { ...d.visionProvenance, [field]: { ...provenance, value } },
     }));
   }
+
+  // §6/§7 — run the advisory pre-publish quality check against the current draft facts. The server
+  // derives the required-field set from the category; the quantity/unit fall back to the category
+  // attributes (mirrors submit()) so the check sees what the listing will actually carry.
+  async function runQualityCheck() {
+    setQcBusy(true);
+    const token = (await getAccessToken()) ?? undefined;
+    const exp = currencyExp(draft.currency);
+    const attrQty = typeof attributes.quantity === 'number' ? attributes.quantity : undefined;
+    const attrUnit = typeof attributes.unit === 'string' ? attributes.unit : undefined;
+    const result = await checkListingQuality(
+      {
+        saleMethod: draft.saleMethod,
+        category: draft.category,
+        title: draft.title || undefined,
+        shortDescription: draft.shortDescription || undefined,
+        fullDescription: draft.fullDescription || undefined,
+        presentAttributeKeys: Object.keys(attributes),
+        photoCount: draft.photos.length,
+        hasCover: draft.photos.some((p) => p.cover),
+        videoAvailable: Boolean(draft.videoFile || draft.videoUrl),
+        guidePriceMinor: toMinor(draft.sale.guidePrice, exp) ?? null,
+        buyNowPriceMinor: toMinor(draft.sale.buyNowPrice, exp) ?? null,
+        quantityAvailable:
+          draft.quantity.available.trim() !== ''
+            ? Number(draft.quantity.available)
+            : (attrQty ?? null),
+        quantityUnitCode:
+          draft.quantity.unit.trim() !== '' ? draft.quantity.unit.trim() : (attrUnit ?? null),
+        hasLocation: Boolean(draft.city || draft.region),
+      },
+      token,
+    );
+    setQc(result);
+    setQcBusy(false);
+  }
+
+  // Auto-run the quality check when the seller reaches the Preview stage (and after edits there).
+  useEffect(() => {
+    if (stage === STAGES.length - 1 && loaded) void runQualityCheck();
+    // Intentionally keyed on entering Preview + the fields the check reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, draft.title, draft.photos.length, draft.category, draft.saleMethod, loaded]);
 
   async function submit() {
     setBusy(true);
@@ -1527,6 +1575,8 @@ export default function ListingStudio() {
 
         {stage === 14 && (
           <div className="flex flex-col gap-3 text-sm">
+            {/* §6/§7 — advisory pre-publish quality check. Never blocks submit. */}
+            <QualityPanel qc={qc} busy={qcBusy} onRecheck={runQualityCheck} />
             <Summary k="Source" v={draft.source} />
             <Summary
               k="Sale method"
@@ -1714,6 +1764,99 @@ function Summary({ k, v }: { k: string; v: string }) {
     <div className="flex justify-between gap-4 border-b border-white/8 pb-2">
       <span className="text-bone-500">{k}</span>
       <span className="max-w-[60%] truncate text-right text-bone-200">{v}</span>
+    </div>
+  );
+}
+
+/**
+ * §6/§7 — advisory pre-publish quality panel. Shows a readiness score and the concrete issues the
+ * server found, grouped by severity. It is a HELP, never a gate: the seller can always submit (the
+ * server records the same assessment for staff at review). Critical items are highlighted so the
+ * seller can fix them, but nothing here disables the submit button.
+ */
+function QualityPanel({
+  qc,
+  busy,
+  onRecheck,
+}: {
+  qc: ListingQualityAssessment | null;
+  busy: boolean;
+  onRecheck: () => void;
+}) {
+  const tone =
+    qc?.status === 'incomplete'
+      ? { ring: 'border-outbid/40', bar: 'bg-outbid', text: 'text-outbid' }
+      : qc?.status === 'needs_attention'
+        ? { ring: 'border-amber-400/40', bar: 'bg-amber-400', text: 'text-amber-300' }
+        : { ring: 'border-emerald-400/40', bar: 'bg-emerald-400', text: 'text-emerald-300' };
+  const label =
+    qc?.status === 'incomplete'
+      ? 'Needs fixing'
+      : qc?.status === 'needs_attention'
+        ? 'Almost ready'
+        : 'Ready to publish';
+  const sevDot: Record<string, string> = {
+    critical: 'bg-outbid',
+    warn: 'bg-amber-400',
+    info: 'bg-emerald-400/70',
+  };
+  // Show criticals + warnings first; collapse the "all good" info rows.
+  const issues = (qc?.checks ?? []).filter((c) => c.severity !== 'info');
+
+  return (
+    <div className={`rounded-xl border ${tone.ring} bg-white/[0.02] p-4`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="font-display text-lg font-semibold text-bone">Pre-publish check</span>
+          {qc && (
+            <span className={`text-xs font-semibold uppercase tracking-wide ${tone.text}`}>
+              {label}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onRecheck}
+          disabled={busy}
+          className="rounded-md border border-white/10 px-2.5 py-1 text-xs text-bone-300 hover:bg-white/[0.05] disabled:opacity-50"
+        >
+          {busy ? 'Checking…' : 'Re-check'}
+        </button>
+      </div>
+
+      {qc ? (
+        <>
+          <div className="mt-3 flex items-center gap-3">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className={`h-full ${tone.bar}`} style={{ width: `${qc.score}%` }} />
+            </div>
+            <span className="tabular text-sm font-semibold text-bone-200">{qc.score}/100</span>
+          </div>
+          <p className="mt-2 text-xs text-bone-400">{qc.summary}</p>
+          {issues.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-2">
+              {issues.map((c) => (
+                <li key={c.key} className="flex items-start gap-2 text-xs">
+                  <span
+                    className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${sevDot[c.severity]}`}
+                  />
+                  <span className="text-bone-300">
+                    <span className="font-medium text-bone-200">{c.label}: </span>
+                    {c.detail}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-[11px] text-bone-600">
+            Advisory only — you can still submit. Staff see this same check at review.
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-xs text-bone-500">
+          {busy ? 'Running the quality check…' : 'Sign in to run the pre-publish quality check.'}
+        </p>
+      )}
     </div>
   );
 }
