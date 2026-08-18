@@ -27,7 +27,8 @@ try {
   const r = await fetch(`${API}/api/v2/catalogue?limit=24`, { cache: 'no-store' });
   const j = await r.json();
   const items = j.items ?? j.data ?? j.rows ?? [];
-  const withCover = items.find((it) => it.cover || it.coverMedia || (it.media && it.media[0])) ?? items[0];
+  const withCover =
+    items.find((it) => it.cover || it.coverMedia || (it.media && it.media[0])) ?? items[0];
   lotId = withCover && (withCover.id ?? withCover.publicRef ?? withCover.ref ?? withCover.slug);
   console.log(`discovered lotId=${lotId} (of ${items.length} items)`);
 } catch (e) {
@@ -60,7 +61,10 @@ const browser = await chromium.launch({
 const results = [];
 for (const t of targets) {
   for (const vp of widths) {
-    const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, deviceScaleFactor: 1 });
+    const ctx = await browser.newContext({
+      viewport: { width: vp.w, height: vp.h },
+      deviceScaleFactor: 1,
+    });
     const page = await ctx.newPage();
     const errors = [];
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text().slice(0, 120)));
