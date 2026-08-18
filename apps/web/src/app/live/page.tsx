@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button, Card, Chip } from '@singha/ui';
-import { fetchCatalogueV2, type CatalogueCardV2 } from '../../lib/api';
+import {
+  fetchCatalogueV2,
+  fetchEvents,
+  type CatalogueCardV2,
+  type EventSummary,
+} from '../../lib/api';
 import { SaleCard } from '../../components/SaleCard';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +31,11 @@ export default async function LivePage() {
 
   const liveNow = lots.filter((l) => l.status.toLowerCase() === 'live');
   const upcoming = lots.filter((l) => l.status.toLowerCase() !== 'live');
+
+  // §21/§22 (RW6) — live auction EVENTS, each opening into its own live-floor room.
+  const events = await fetchEvents()
+    .then((es) => es.filter((e) => e.liveEnabled))
+    .catch(() => [] as EventSummary[]);
 
   return (
     <>
@@ -54,6 +64,32 @@ export default async function LivePage() {
       </section>
 
       <div className="container-page py-14">
+        {/* Live auction events — each opens its own live-floor room (RW6). */}
+        {events.length > 0 && (
+          <section className="mb-14">
+            <h2 className="font-serif text-2xl font-semibold text-bone">Live auction events</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {events.map((e) => (
+                <Link key={e.id} href={`/live/${e.publicRef}`} className="group block">
+                  <Card className="flex h-full flex-col gap-2 p-5 transition-colors group-hover:border-white/20">
+                    <div className="flex items-center justify-between gap-2">
+                      <Chip tone={e.status.toLowerCase() === 'live' ? 'live' : 'neutral'}>
+                        {e.status.toLowerCase() === 'live' ? 'Live now' : e.status}
+                      </Chip>
+                      <span className="text-xs text-bone-500">{e.lotCount} lots</span>
+                    </div>
+                    <p className="font-serif text-lg font-semibold text-bone group-hover:text-white">
+                      {e.title}
+                    </p>
+                    {e.locationCity && <p className="text-sm text-bone-500">{e.locationCity}</p>}
+                    <span className="mt-auto pt-2 text-sm text-red-400">Enter the live room →</span>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Live now */}
         {liveNow.length > 0 && (
           <section className="mb-14">

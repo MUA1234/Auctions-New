@@ -783,6 +783,40 @@ export async function fetchEvent(idOrRef: string): Promise<EventDetail> {
   return apiGet<EventDetail>(`/events/${idOrRef}`);
 }
 
+/**
+ * §21/§22 (RW6) — the Singha Live floor projection: the auctioneer-driven per-lot state + a
+ * current-lot pointer, and the on-block lot's AUTHORITATIVE bid from the auction engine (rule 12 —
+ * the screen never invents a price). Gated on the `liveV3` phase flag server-side (404 when off).
+ */
+export type LiveLotState =
+  'pending' | 'on_block' | 'going_once' | 'going_twice' | 'sold' | 'passed' | 'withdrawn';
+
+export interface FloorLot {
+  lotId: string;
+  sequence: number;
+  listingId: string;
+  title: string;
+  liveState: LiveLotState;
+}
+
+export interface AuctionEventFloor {
+  eventId: string;
+  title: string;
+  status: string;
+  currentLotId: string | null;
+  current: (FloorLot & { bid: AuctionState | null; seq: number }) | null;
+  lots: FloorLot[];
+}
+
+/** Fetch the live floor state. Returns null when the live phase flag is off (404) or unreachable. */
+export async function fetchAuctionEventFloor(eventId: string): Promise<AuctionEventFloor | null> {
+  const res = await fetch(`${apiBase}/events/${eventId}/floor`, { cache: 'no-store' }).catch(
+    () => null,
+  );
+  if (!res || !res.ok) return null;
+  return res.json() as Promise<AuctionEventFloor>;
+}
+
 // --- Singha Discover + Buyer Twin (docs 06/11) ------------------------------
 
 export interface DiscoverFeedItem {
