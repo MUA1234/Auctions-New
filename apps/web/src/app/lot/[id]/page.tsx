@@ -102,6 +102,48 @@ export default async function LotPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
+          {/* §20 — customer-safe inspection / certification evidence. Only PUBLIC evidence reaches
+              here; the linked certificate opens through the same authorized media URL as documents.
+              Advisory trust context — never a claim that the sale is guaranteed. */}
+          {(lot.evidence?.length ?? 0) > 0 && (
+            <div className="mt-7">
+              <h2 className="font-display text-sm font-semibold text-bone">
+                Certification &amp; inspection evidence
+              </h2>
+              <ul className="mt-3 flex flex-col gap-3">
+                {lot.evidence!.map((e) => {
+                  const href = e.document ? mediaUrl(e.document.storageKey) : null;
+                  return (
+                    <li key={e.id} className="rounded-xl bg-white/[0.02] p-4 text-sm text-bone-300">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium capitalize text-bone-100">
+                          {humanize(e.kind)}
+                        </span>
+                        <Chip tone={e.status === 'completed' ? 'win' : 'neutral'}>
+                          {humanize(e.status)}
+                        </Chip>
+                      </div>
+                      <p className="mt-1.5 text-bone-400">
+                        {e.provider}
+                        {e.certificateRef ? ` · Ref ${e.certificateRef}` : ''}
+                        {e.inspectedAt ? ` · ${new Date(e.inspectedAt).toLocaleDateString()}` : ''}
+                      </p>
+                      {e.summary && <p className="mt-1.5 text-bone-300">{e.summary}</p>}
+                      {href && (
+                        <a
+                          href={href}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded text-xs text-bone-200 underline decoration-white/20 underline-offset-4 transition-colors hover:text-gold-300 hover:decoration-gold-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/60"
+                        >
+                          View certificate
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
           {Object.keys(attrs).length > 0 && (
             <div className="mt-7">
               <h2 className="font-display text-sm font-semibold text-bone">Specifications</h2>

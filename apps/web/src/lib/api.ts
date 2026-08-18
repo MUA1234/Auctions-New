@@ -266,11 +266,29 @@ export interface AuctionState {
   reserveMet?: boolean;
 }
 
+/**
+ * §20 — one customer-safe inspection / certification evidence record on the lot detail. The
+ * backend projects only PUBLIC evidence and strips visibility / internal ids; `document` appears
+ * only when the linked certificate is itself public + ready in the secure media pipeline.
+ */
+export interface InspectionEvidence {
+  id: string;
+  kind: string;
+  provider: string;
+  status: string;
+  certificateRef?: string;
+  summary?: string;
+  inspectedAt?: string | null;
+  document?: { id: string; storageKey: string; kind: string };
+}
+
 export interface LotDetail extends CatalogueLot {
   attributes: Record<string, unknown> | null;
   auction: AuctionState | null;
   /** §19 — customer-safe verified-seller signal, same lone boolean the v2 card carries. */
   seller?: { verified: boolean };
+  /** §20 — customer-safe inspection/certification evidence (public rows only). */
+  evidence?: InspectionEvidence[];
   shortDescription?: string;
   fullDescription?: string;
   location?: { city: string | null; region: string | null };
