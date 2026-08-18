@@ -10,6 +10,8 @@ import { CategoryCards } from '../components/CategoryCards';
 import { HomeSearchIntent } from '../components/home/HomeSearchIntent';
 import { HomeWaysToTransact } from '../components/home/HomeWaysToTransact';
 import { HomeWanted } from '../components/home/HomeWanted';
+import { HomeAttentionRail } from '../components/home/HomeAttentionRail';
+import { HomeLocalOpportunities } from '../components/home/HomeLocalOpportunities';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,6 +167,10 @@ export default async function HomePage() {
             and over the fixed living scene, so every section below reads solid exactly as
             before while the hero reveals the cinematic environment. */}
         <div className="relative bg-[#070709]">
+          {/* §23 — signed-in attention rail. Renders nothing for signed-out or all-quiet viewers,
+              so the homepage stays editorial + lightweight (rule 13). */}
+          <HomeAttentionRail />
+
           {/* Featured items — real media, sale-aware cards. First full peak after the hero
               (CX10: varied py-16/20/24 rhythm instead of identical py-20 blocks, per the CX
               audit's "reads as a homogeneous scroll" finding). */}
@@ -306,6 +312,10 @@ export default async function HomePage() {
               </>
             )}
           </section>
+
+          {/* §23 — local opportunities: a lightweight, config-driven editorial strip into the
+              catalogue's real location filter (never a full catalogue on the home, rule 13). */}
+          <HomeLocalOpportunities />
 
           {/* Trust & transparency — connective, tightened a notch (CX10 rhythm pass). */}
           <section className="border-t border-white/10 bg-coal-950/40">
