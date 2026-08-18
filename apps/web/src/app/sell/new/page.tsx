@@ -31,6 +31,7 @@ import {
   VisionIntakePanel,
   type VisionFieldProvenance,
 } from '../../../components/sell/VisionIntakePanel';
+import { CameraCapture } from '../../../components/sell/CameraCapture';
 
 const DRAFT_KEY = 'singha_listing_draft_v1';
 const MEDIA_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_MEDIA_BUCKET ?? 'singha-media';
@@ -336,6 +337,8 @@ export default function ListingStudio() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ ref: string; notes: string[] } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  // §4 — whether the live camera capture panel is open on the Photos stage.
+  const [showCamera, setShowCamera] = useState(false);
   const [aiResult, setAiResult] = useState<AiListingDraft | null>(null);
   const [aiUnavailable, setAiUnavailable] = useState(false);
   // In-session File handles keyed by photo id (blobs can't live in localStorage).
@@ -464,6 +467,23 @@ export default function ListingStudio() {
     });
     set('photos', [...draft.photos, ...added]);
     e.target.value = '';
+  }
+
+  // §4 — a photo captured live from the device camera enters the SAME pipeline as a picked file:
+  // the immutable original File is kept in `filesRef` and uploaded through the signed grant on submit.
+  function addCapturedPhoto(file: File) {
+    const id = rid();
+    filesRef.current.set(id, file);
+    set('photos', [
+      ...draft.photos,
+      {
+        id,
+        name: file.name,
+        url: URL.createObjectURL(file),
+        caption: '',
+        cover: draft.photos.length === 0,
+      },
+    ]);
   }
 
   function onPickDocs(e: ChangeEvent<HTMLInputElement>) {
@@ -1020,7 +1040,16 @@ export default function ListingStudio() {
               Original photos are immutable; the first cover is used on catalogue cards. Upload
               connects to signed object storage in production (pack doc 08).
             </p>
-            <FilePick label="Add photos" accept="image/*" multiple onChange={onPickPhotos} />
+            {/* §4 — pick a file OR capture live from the device camera (great on a phone at the asset). */}
+            <div className="flex flex-wrap items-center gap-2">
+              <FilePick label="Add photos" accept="image/*" multiple onChange={onPickPhotos} />
+              <Button variant="outline" onClick={() => setShowCamera((v) => !v)}>
+                {showCamera ? 'Hide camera' : 'Take photo'}
+              </Button>
+            </div>
+            {showCamera && (
+              <CameraCapture onCapture={addCapturedPhoto} onClose={() => setShowCamera(false)} />
+            )}
             <div className="grid grid-cols-3 gap-3">
               {draft.photos.map((p) => (
                 <div key={p.id} className="flex flex-col gap-1">
