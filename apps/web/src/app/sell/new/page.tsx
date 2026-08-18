@@ -10,6 +10,14 @@ import {
   requestAiListingDraft,
   type AiListingDraft,
 } from '../../../lib/api';
+import {
+  fetchCategorySchemas,
+  fetchSaleMethods,
+  type CategoryFieldDescriptor,
+  type CategoryFieldSchema,
+  type SaleMethodDef,
+} from '../../../lib/evolution-api';
+import { CURRENCIES } from '../../../lib/format';
 import { getAccessToken } from '../../../lib/auth';
 import { createClient } from '../../../utils/supabase/client';
 import { friendlyMessage } from '../../../components/evolution/evo-api-error';
@@ -31,41 +39,123 @@ async function uploadPhoto(assetId: string, file: File, token?: string): Promise
   return grant.path;
 }
 
-// Category specification fields mirror the backend versioned schemas (pack
-// doc 06). Numbers are coerced before submit; the server re-validates.
-const CATEGORY_FIELDS: Record<string, { key: string; label: string; type: 'text' | 'number' }[]> = {
-  vehicles: [
-    { key: 'make', label: 'Make', type: 'text' },
-    { key: 'model', label: 'Model', type: 'text' },
-    { key: 'year', label: 'Year', type: 'number' },
-    { key: 'mileageKm', label: 'Mileage (km)', type: 'number' },
-  ],
-  property: [
-    { key: 'propertyType', label: 'Property type (land/residential/commercial)', type: 'text' },
-    { key: 'extentPerches', label: 'Extent (perches)', type: 'number' },
-    { key: 'district', label: 'District', type: 'text' },
-  ],
-  gems: [
-    { key: 'type', label: 'Type', type: 'text' },
-    { key: 'caratWeight', label: 'Carat weight', type: 'number' },
-    { key: 'colour', label: 'Colour', type: 'text' },
-  ],
-  machinery: [
-    { key: 'make', label: 'Make', type: 'text' },
-    { key: 'model', label: 'Model', type: 'text' },
-    { key: 'year', label: 'Year', type: 'number' },
-  ],
-  general: [{ key: 'description', label: 'Short description', type: 'text' }],
-};
-const CATEGORIES = Object.keys(CATEGORY_FIELDS);
+// The AUTHORITATIVE category field schemas + sale methods come from the backend
+// (`GET /platform/category-schemas`, `GET /platform/sale-methods`) so the seller form is
+// config-driven — new categories/methods appear with no frontend change (directive §2/§3/§5).
+// These fallbacks are a thin offline safety net (used only if the API is unreachable); they are
+// NOT the source of truth. They mirror the backend required fields so submit still validates.
+const req = (
+  key: string,
+  label: string,
+  type: CategoryFieldDescriptor['type'] = 'text',
+): CategoryFieldDescriptor => ({ key, label, type, required: true });
+const optf = (
+  key: string,
+  label: string,
+  type: CategoryFieldDescriptor['type'] = 'text',
+): CategoryFieldDescriptor => ({ key, label, type, required: false });
 
-const SALE_METHODS = [
-  { id: 'TIMED_AUCTION', label: 'Timed Auction' },
-  { id: 'EXPRESSION_OF_INTEREST', label: 'Expression of Interest' },
-  { id: 'BUY_NOW', label: 'Buy Now' },
-  { id: 'MAKE_OFFER', label: 'Make Offer' },
-  { id: 'SEALED_TENDER', label: 'Sealed Tender' },
-  { id: 'LIVE_HYBRID', label: 'Live / Hybrid' },
+const FALLBACK_CATEGORY_SCHEMAS: CategoryFieldSchema[] = [
+  {
+    key: 'vehicles',
+    version: 1,
+    label: 'Vehicles',
+    fields: [
+      req('make', 'Make'),
+      req('model', 'Model'),
+      req('year', 'Year', 'number'),
+      optf('mileageKm', 'Mileage', 'number'),
+    ],
+  },
+  {
+    key: 'machinery',
+    version: 1,
+    label: 'Machinery & equipment',
+    fields: [req('make', 'Make'), req('model', 'Model'), optf('year', 'Year', 'number')],
+  },
+  {
+    key: 'gems',
+    version: 1,
+    label: 'Gems & jewellery',
+    fields: [
+      req('type', 'Gem type'),
+      req('caratWeight', 'Weight', 'number'),
+      optf('colour', 'Colour'),
+    ],
+  },
+  {
+    key: 'property',
+    version: 1,
+    label: 'Property & land',
+    fields: [req('propertyType', 'Property type'), optf('district', 'District')],
+  },
+  {
+    key: 'bulk',
+    version: 1,
+    label: 'Produce & bulk commodities',
+    fields: [
+      req('itemType', 'Commodity / item type'),
+      req('quantity', 'Quantity', 'number'),
+      req('unit', 'Unit'),
+    ],
+  },
+  {
+    key: 'general',
+    version: 1,
+    label: 'General assets',
+    fields: [optf('description', 'Description')],
+  },
+];
+
+const FALLBACK_SALE_METHODS: SaleMethodDef[] = [
+  {
+    code: 'TIMED_AUCTION',
+    label: 'Timed Auction',
+    family: 'auction',
+    isAuction: true,
+    bindsAutomatically: true,
+    requiresEligibility: false,
+  },
+  {
+    code: 'EXPRESSION_OF_INTEREST',
+    label: 'Expression of Interest',
+    family: 'eoi',
+    isAuction: false,
+    bindsAutomatically: false,
+    requiresEligibility: false,
+  },
+  {
+    code: 'BUY_NOW',
+    label: 'Buy Now',
+    family: 'fixed',
+    isAuction: false,
+    bindsAutomatically: true,
+    requiresEligibility: false,
+  },
+  {
+    code: 'MAKE_OFFER',
+    label: 'Make Offer',
+    family: 'offer',
+    isAuction: false,
+    bindsAutomatically: false,
+    requiresEligibility: false,
+  },
+  {
+    code: 'SEALED_TENDER',
+    label: 'Sealed Tender',
+    family: 'procurement',
+    isAuction: false,
+    bindsAutomatically: false,
+    requiresEligibility: false,
+  },
+  {
+    code: 'LIVE_HYBRID',
+    label: 'Live / Hybrid',
+    family: 'auction',
+    isAuction: true,
+    bindsAutomatically: true,
+    requiresEligibility: false,
+  },
 ];
 
 const SOURCES = [
@@ -103,6 +193,7 @@ interface Draft {
   ownershipConfirmed: boolean;
   saleMethod: string;
   category: string;
+  currency: string;
   title: string;
   publicRef: string;
   shortDescription: string;
@@ -134,6 +225,7 @@ const EMPTY_DRAFT: Draft = {
   ownershipConfirmed: false,
   saleMethod: 'TIMED_AUCTION',
   category: 'vehicles',
+  currency: 'LKR',
   title: '',
   publicRef: '',
   shortDescription: '',
@@ -178,9 +270,12 @@ const STAGES = [
   'Preview',
 ];
 
-const toMinor = (v: string): number | undefined => {
+// Minor units respect the currency's own exponent — never assume ×100 (directive §6; e.g. JPY is
+// ×1). The server re-validates against the listing's transaction currency.
+const currencyExp = (code: string): number => CURRENCIES.find((c) => c.code === code)?.exp ?? 2;
+const toMinor = (v: string, exp: number): number | undefined => {
   const n = Number(v);
-  return v.trim() === '' || Number.isNaN(n) ? undefined : Math.round(n * 100);
+  return v.trim() === '' || Number.isNaN(n) ? undefined : Math.round(n * 10 ** exp);
 };
 const rid = () => Math.random().toString(36).slice(2, 10);
 
@@ -205,6 +300,11 @@ export default function ListingStudio() {
   const [aiUnavailable, setAiUnavailable] = useState(false);
   // In-session File handles keyed by photo id (blobs can't live in localStorage).
   const filesRef = useRef<Map<string, File>>(new Map());
+  // Config-driven taxonomy (directive §2/§3/§5): the backend is authoritative; the fallbacks are
+  // only used if the endpoints are unreachable.
+  const [categorySchemas, setCategorySchemas] =
+    useState<CategoryFieldSchema[]>(FALLBACK_CATEGORY_SCHEMAS);
+  const [saleMethods, setSaleMethods] = useState<SaleMethodDef[]>(FALLBACK_SALE_METHODS);
 
   // Load a saved draft once on mount.
   useEffect(() => {
@@ -215,6 +315,17 @@ export default function ListingStudio() {
       /* ignore malformed draft */
     }
     setLoaded(true);
+  }, []);
+
+  // Pull the authoritative category field schemas + active sale methods. Falls back silently to the
+  // offline set on error (e.g. saleMethodConfig flag OFF → /platform/sale-methods 404s).
+  useEffect(() => {
+    fetchCategorySchemas()
+      .then((c) => c.length && setCategorySchemas(c))
+      .catch(() => {});
+    fetchSaleMethods()
+      .then((m) => m.length && setSaleMethods(m))
+      .catch(() => {});
   }, []);
 
   // Persist the draft at every change (doc 08 "Save draft at every stage").
@@ -228,13 +339,14 @@ export default function ListingStudio() {
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
-  const fields = CATEGORY_FIELDS[draft.category] ?? [];
+  const currentSchema = categorySchemas.find((c) => c.key === draft.category) ?? categorySchemas[0];
+  const fields = currentSchema?.fields ?? [];
   const attributes = useMemo(() => {
     const out: Record<string, unknown> = {};
     for (const f of fields) {
       const v = draft.attrs[f.key];
       if (v == null || v === '') continue;
-      out[f.key] = f.type === 'number' ? Number(v) : v;
+      out[f.key] = f.type === 'number' ? Number(v) : f.type === 'boolean' ? v === 'true' : v;
     }
     return out;
   }, [draft.attrs, fields]);
@@ -295,6 +407,7 @@ export default function ListingStudio() {
     setError(null);
     const notes: string[] = [];
     const token = (await getAccessToken()) ?? undefined;
+    const exp = currencyExp(draft.currency);
     try {
       const asset = await apiPost<{ id: string }>(
         '/assets',
@@ -315,7 +428,7 @@ export default function ListingStudio() {
       // Best-effort enrichment — never blocks listing creation. Field names
       // match the backend PATCH /listings/:id/content contract (flat location +
       // guide-price + close time + inspection/collection summaries).
-      const guideMinor = toMinor(draft.sale.guidePrice);
+      const guideMinor = toMinor(draft.sale.guidePrice, exp);
       const inspectionSummary =
         [
           draft.inspection.location,
@@ -353,11 +466,11 @@ export default function ListingStudio() {
       );
 
       // Buy-now price has its own authoritative endpoint.
-      const buyNowMinor = toMinor(draft.sale.buyNowPrice);
+      const buyNowMinor = toMinor(draft.sale.buyNowPrice, exp);
       if (buyNowMinor != null)
         await apiPost(
           `/listings/${listing.id}/buy-now-price`,
-          { amountMinor: buyNowMinor, currency: 'LKR' },
+          { amountMinor: buyNowMinor, currency: draft.currency },
           token,
         ).catch(() =>
           notes.push(
@@ -407,7 +520,7 @@ export default function ListingStudio() {
       // Opening bid / increment / reserve configure the AUCTION, which staff set
       // when they schedule it (POST /auctions) after approval — not at draft
       // time. We record the seller's requested values in the note trail.
-      if (toMinor(draft.sale.openingBid) != null || toMinor(draft.sale.reserve) != null)
+      if (toMinor(draft.sale.openingBid, exp) != null || toMinor(draft.sale.reserve, exp) != null)
         notes.push('Requested auction opening/reserve recorded for staff scheduling.');
 
       if (draft.social.promotion !== 'None')
@@ -529,13 +642,13 @@ export default function ListingStudio() {
 
         {stage === 1 && (
           <div className="grid grid-cols-2 gap-3">
-            {SALE_METHODS.map((m) => (
+            {saleMethods.map((m) => (
               <button
-                key={m.id}
+                key={m.code}
                 type="button"
-                onClick={() => set('saleMethod', m.id)}
+                onClick={() => set('saleMethod', m.code)}
                 className={`rounded-lg border p-4 text-left text-sm transition-colors ${
-                  draft.saleMethod === m.id
+                  draft.saleMethod === m.code
                     ? 'border-gold-500/60 bg-gold-500/10 text-bone'
                     : 'border-white/10 text-bone-300 hover:border-white/25'
                 }`}
@@ -549,13 +662,13 @@ export default function ListingStudio() {
         {stage === 2 && (
           <Field label="Category">
             <select
-              className="field capitalize"
+              className="field"
               value={draft.category}
               onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value, attrs: {} }))}
             >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {categorySchemas.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
                 </option>
               ))}
             </select>
@@ -617,16 +730,44 @@ export default function ListingStudio() {
             {fields.length === 0 && (
               <p className="text-sm text-bone-500">No extra specifications for this category.</p>
             )}
-            {fields.map((f) => (
-              <Field key={f.key} label={f.label}>
-                <input
-                  className="field"
-                  type={f.type}
-                  value={draft.attrs[f.key] ?? ''}
-                  onChange={(e) => set('attrs', { ...draft.attrs, [f.key]: e.target.value })}
-                />
-              </Field>
-            ))}
+            {fields.map((f) => {
+              const label = `${f.label}${f.required ? ' *' : ''}${f.unit ? ` (${f.unit})` : ''}`;
+              const val = draft.attrs[f.key] ?? '';
+              const setVal = (v: string) => set('attrs', { ...draft.attrs, [f.key]: v });
+              if (f.type === 'boolean') {
+                return (
+                  <Check
+                    key={f.key}
+                    label={f.help ? `${f.label} — ${f.help}` : f.label}
+                    checked={val === 'true'}
+                    onChange={(v) => setVal(v ? 'true' : 'false')}
+                  />
+                );
+              }
+              return (
+                <Field key={f.key} label={label} hint={f.help}>
+                  {f.type === 'select' ? (
+                    <select className="field" value={val} onChange={(e) => setVal(e.target.value)}>
+                      <option value="">Select…</option>
+                      {(f.options ?? []).map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="field"
+                      type={f.type === 'number' ? 'number' : 'text'}
+                      min={f.min}
+                      max={f.max}
+                      value={val}
+                      onChange={(e) => setVal(e.target.value)}
+                    />
+                  )}
+                </Field>
+              );
+            })}
           </div>
         )}
 
@@ -807,40 +948,63 @@ export default function ListingStudio() {
         )}
 
         {stage === 9 && (
-          <div className="grid grid-cols-2 gap-3">
-            <Money
-              label="Opening bid"
-              v={draft.sale.openingBid}
-              on={(v) => set('sale', { ...draft.sale, openingBid: v })}
-            />
-            <Money
-              label="Bid increment"
-              v={draft.sale.increment}
-              on={(v) => set('sale', { ...draft.sale, increment: v })}
-            />
-            <Money
-              label="Reserve (private)"
-              v={draft.sale.reserve}
-              on={(v) => set('sale', { ...draft.sale, reserve: v })}
-            />
-            <Money
-              label="Guide price"
-              v={draft.sale.guidePrice}
-              on={(v) => set('sale', { ...draft.sale, guidePrice: v })}
-            />
-            <Money
-              label="Buy-now price"
-              v={draft.sale.buyNowPrice}
-              on={(v) => set('sale', { ...draft.sale, buyNowPrice: v })}
-            />
-            <Field label="Closes at">
-              <input
-                type="datetime-local"
+          <div className="flex flex-col gap-4">
+            <Field
+              label="Transaction currency"
+              hint="The binding contract currency — never silently converted. Buyers may see an informational display conversion only."
+            >
+              <select
                 className="field"
-                value={draft.sale.closesAt}
-                onChange={(e) => set('sale', { ...draft.sale, closesAt: e.target.value })}
-              />
+                value={draft.currency}
+                onChange={(e) => set('currency', e.target.value)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Money
+                label="Opening bid"
+                currency={draft.currency}
+                v={draft.sale.openingBid}
+                on={(v) => set('sale', { ...draft.sale, openingBid: v })}
+              />
+              <Money
+                label="Bid increment"
+                currency={draft.currency}
+                v={draft.sale.increment}
+                on={(v) => set('sale', { ...draft.sale, increment: v })}
+              />
+              <Money
+                label="Reserve (private)"
+                currency={draft.currency}
+                v={draft.sale.reserve}
+                on={(v) => set('sale', { ...draft.sale, reserve: v })}
+              />
+              <Money
+                label="Guide price"
+                currency={draft.currency}
+                v={draft.sale.guidePrice}
+                on={(v) => set('sale', { ...draft.sale, guidePrice: v })}
+              />
+              <Money
+                label="Buy-now price"
+                currency={draft.currency}
+                v={draft.sale.buyNowPrice}
+                on={(v) => set('sale', { ...draft.sale, buyNowPrice: v })}
+              />
+              <Field label="Closes at">
+                <input
+                  type="datetime-local"
+                  className="field"
+                  value={draft.sale.closesAt}
+                  onChange={(e) => set('sale', { ...draft.sale, closesAt: e.target.value })}
+                />
+              </Field>
+            </div>
           </div>
         )}
 
@@ -981,9 +1145,10 @@ export default function ListingStudio() {
             <Summary k="Source" v={draft.source} />
             <Summary
               k="Sale method"
-              v={SALE_METHODS.find((m) => m.id === draft.saleMethod)?.label ?? draft.saleMethod}
+              v={saleMethods.find((m) => m.code === draft.saleMethod)?.label ?? draft.saleMethod}
             />
-            <Summary k="Category" v={draft.category} />
+            <Summary k="Category" v={currentSchema?.label ?? draft.category} />
+            <Summary k="Currency" v={draft.currency} />
             <Summary k="Title" v={draft.title || '—'} />
             <Summary k="Reference" v={draft.publicRef || '—'} />
             <Summary
@@ -1045,18 +1210,37 @@ export default function ListingStudio() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm text-bone-400">{label}</span>
       {children}
+      {hint && <span className="text-xs text-bone-600">{hint}</span>}
     </label>
   );
 }
 
-function Money({ label, v, on }: { label: string; v: string; on: (v: string) => void }) {
+function Money({
+  label,
+  currency,
+  v,
+  on,
+}: {
+  label: string;
+  currency: string;
+  v: string;
+  on: (v: string) => void;
+}) {
   return (
-    <Field label={`${label} (LKR)`}>
+    <Field label={`${label} (${currency})`}>
       <input type="number" className="field" value={v} onChange={(e) => on(e.target.value)} />
     </Field>
   );

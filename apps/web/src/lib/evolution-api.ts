@@ -49,6 +49,48 @@ export const fetchCurrencies = () =>
 export const fxConvert = (base: string, quote: string, amountMinor: number) =>
   apiGet<FxConversion>(`/fx/convert${qs({ base, quote, amountMinor })}`);
 
+/* --------------------- Platform config (categories + sale methods) --------------------- */
+
+export type CategoryFieldType = 'text' | 'number' | 'select' | 'boolean';
+export interface CategoryFieldOption {
+  value: string;
+  label: string;
+}
+export interface CategoryFieldDescriptor {
+  key: string;
+  label: string;
+  type: CategoryFieldType;
+  required: boolean;
+  unit?: string;
+  options?: CategoryFieldOption[];
+  min?: number;
+  max?: number;
+  help?: string;
+}
+export interface CategoryFieldSchema {
+  key: string;
+  version: number;
+  label: string;
+  fields: CategoryFieldDescriptor[];
+}
+/** Ungated: the authoritative category field descriptors the seller Studio renders (directive §2/§3). */
+export const fetchCategorySchemas = () =>
+  apiGet<{ categories: CategoryFieldSchema[] }>('/platform/category-schemas').then(
+    (r) => r.categories,
+  );
+
+export interface SaleMethodDef {
+  code: string;
+  label: string;
+  family: string;
+  isAuction: boolean;
+  bindsAutomatically: boolean;
+  requiresEligibility: boolean;
+}
+/** Flag-gated (`saleMethodConfig`): active sale methods; 404 when OFF → caller falls back. */
+export const fetchSaleMethods = () =>
+  apiGet<{ saleMethods: SaleMethodDef[] }>('/platform/sale-methods').then((r) => r.saleMethods);
+
 /* ------------------------------ E4 · Commercial Offers ------------------------------ */
 
 export interface OfferProposalInput {
