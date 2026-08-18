@@ -114,6 +114,58 @@ export const setAuctionPreference = (
   token: string,
 ) => apiPut(`/listings/${listingId}/auction-preference`, body, token);
 
+// --- Photo-first AI Vision intake (§10/§12) — advisory, per-field provenance ---
+export interface VisionFieldSuggestion {
+  field: string;
+  value: string | number | boolean | null;
+  confidence: number;
+  source: string;
+  state: string;
+}
+export interface VisionCaptureRequirement {
+  view: string;
+  label: string;
+  required: boolean;
+  present: boolean;
+  guidance?: string;
+}
+export interface VisionIssue {
+  kind: string;
+  imageRef?: string;
+  message: string;
+}
+export interface VisionValuation {
+  currency: string;
+  lowMinor: number;
+  expectedMinor: number;
+  highMinor: number;
+  confidence: number;
+  comparableRefs: string[];
+  factors: string[];
+  assessedAt: string;
+}
+export interface VisionIntakeResult {
+  runId: string;
+  category?: { value: string; confidence: number; source: string };
+  fields: VisionFieldSuggestion[];
+  capture: VisionCaptureRequirement[];
+  issues: VisionIssue[];
+  valuation?: VisionValuation;
+  advisory: boolean;
+  model: string;
+  provider: string;
+  version: string;
+  createdAt: string;
+}
+export type VisionIntakeBody = {
+  category?: string;
+  images: { storageKey?: string; url?: string; view?: string }[];
+  attributes?: Record<string, unknown>;
+  notes?: string;
+};
+export const requestVisionIntake = (body: VisionIntakeBody, token?: string) =>
+  apiPost<VisionIntakeResult>('/ai/vision/intake', body, token);
+
 /** Direct-to-storage upload grant (pack doc 08 upload pipeline). */
 export interface UploadGrant {
   path: string;

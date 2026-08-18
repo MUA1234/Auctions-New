@@ -27,6 +27,10 @@ import { CURRENCIES } from '../../../lib/format';
 import { getAccessToken } from '../../../lib/auth';
 import { createClient } from '../../../utils/supabase/client';
 import { friendlyMessage } from '../../../components/evolution/evo-api-error';
+import {
+  VisionIntakePanel,
+  type VisionFieldProvenance,
+} from '../../../components/sell/VisionIntakePanel';
 
 const DRAFT_KEY = 'singha_listing_draft_v1';
 const MEDIA_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_MEDIA_BUCKET ?? 'singha-media';
@@ -224,6 +228,9 @@ interface Draft {
   social: { promotion: string; channels: string[]; publishing: string };
   aiKeywords: string[];
   aiApplied: boolean;
+  // Per-field AI Vision provenance (§12): what the seller accepted/edited, with the model's
+  // confidence/evidence/state. Persisted with the draft and sent as the AI provenance record.
+  visionProvenance: Record<string, VisionFieldProvenance & { value: string }>;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -256,6 +263,7 @@ const EMPTY_DRAFT: Draft = {
   social: { promotion: 'None', channels: [], publishing: 'Manual approval' },
   aiKeywords: [],
   aiApplied: false,
+  visionProvenance: {},
 };
 
 const STAGES = [
@@ -374,6 +382,9 @@ export default function ListingStudio() {
       const body = {
         title: draft.title || undefined,
         payload: persistable as Record<string, unknown>,
+        ...(Object.keys(draft.visionProvenance).length
+          ? { aiProvenance: draft.visionProvenance as Record<string, unknown> }
+          : {}),
         schemaVersion: 1,
       };
       try {
@@ -459,6 +470,16 @@ export default function ListingStudio() {
       fullDescription: aiResult.description || d.fullDescription,
       aiKeywords: aiResult.highlights?.length ? aiResult.highlights : d.aiKeywords,
       aiApplied: true,
+    }));
+  }
+
+  // Accept/edit an AI Vision field suggestion (§12): the value flows into the category attributes
+  // and its provenance (confidence/evidence/state/model) is recorded — never a silent overwrite.
+  function applyVisionField(field: string, value: string, provenance: VisionFieldProvenance) {
+    setDraft((d) => ({
+      ...d,
+      attrs: { ...d.attrs, [field]: value },
+      visionProvenance: { ...d.visionProvenance, [field]: { ...provenance, value } },
     }));
   }
 
@@ -926,6 +947,14 @@ export default function ListingStudio() {
                 </div>
               ))}
             </div>
+            <VisionIntakePanel
+              photos={draft.photos}
+              categoryHint={draft.category}
+              attributesHint={attributes}
+              notes={draft.shortDescription || undefined}
+              onApplyCategory={(c) => set('category', c)}
+              onApplyField={applyVisionField}
+            />
           </div>
         )}
 
