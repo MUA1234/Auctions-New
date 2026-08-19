@@ -78,10 +78,19 @@ export interface StaffPerformance {
   generatedAt: string;
 }
 
+/** A linked messaging-channel identity (WhatsApp/FB/etc.) — never replaces customer_id. */
+export interface ChannelIdentity {
+  channel: string;
+  externalId: string;
+  verifiedAt: string | null;
+}
+
 export interface Member360 {
   clientReference: string | null;
   customerId: string;
   legalName: string | null;
+  // Folded in by the CRM completion pass (§3) — staff-only, masked in search, full here.
+  contact: { email: string | null; phone: string | null };
   kycStatus: string;
   roles: Array<'buyer' | 'seller'>;
   organization: { reference: string | null; legalName: string } | null;
@@ -98,6 +107,12 @@ export interface Member360 {
   security: StaffSecurity[];
   flags: StaffFlag[];
   performance: StaffPerformance[];
+  // CRM strip (§3/§19) — channel identities + open tasks + recent internal notes. Staff-only.
+  channels: ChannelIdentity[];
+  crm: {
+    openTasks: import('./crm').CrmTask[];
+    recentNotes: import('./crm').CrmNote[];
+  };
 }
 
 /** Staff Member 360 — GET /api/v1/members/:id/360 (requires member:read). */

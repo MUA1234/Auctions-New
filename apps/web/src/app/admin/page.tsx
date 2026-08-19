@@ -5,6 +5,7 @@ import { Button, Card, Chip } from '@singha/ui';
 import { apiGetAuthed, apiPost, type SellerListing } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { MfaGate } from '../../components/MfaGate';
+import { StaffNav } from '../../components/StaffNav';
 
 /**
  * Staff approvals queue (docs/05/06, Phase 5): listings awaiting review/publish.
@@ -60,7 +61,8 @@ function AdminApprovals() {
 
   return (
     <div className="container-page py-14">
-      <h1 className="font-serif text-4xl font-bold text-bone">Approvals</h1>
+      <StaffNav active="/admin" />
+      <h1 className="mt-6 font-serif text-4xl font-bold text-bone">Approvals</h1>
       <p className="mt-2 text-bone-400">Review and publish submitted listings.</p>
 
       {error && <p className="mt-4 text-sm text-outbid">{error}</p>}

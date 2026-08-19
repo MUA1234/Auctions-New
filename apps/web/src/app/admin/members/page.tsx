@@ -10,12 +10,21 @@ import {
   type Member360,
   type MemberSearchResult,
 } from '../../../lib/member';
+import {
+  addCustomerNote,
+  createTask,
+  fetchCustomerTimeline,
+  updateTask,
+  type CrmTask,
+  type TimelineEntry,
+} from '../../../lib/crm';
 import { useAuth } from '../../../lib/auth';
 import { formatMoney } from '../../../lib/format';
 import { previewCapacityMinor } from '../../../lib/credit-policy';
 import { useCreditPolicy } from '../../../lib/use-credit-policy';
+import { StaffNav } from '../../../components/StaffNav';
 
-type Tab = 'security' | 'performance' | 'flags' | 'temporary';
+type Tab = 'activity' | 'tasks' | 'notes' | 'security' | 'performance' | 'flags' | 'temporary';
 
 const INPUT =
   'w-full rounded-md border border-white/10 bg-coal-900/60 px-3 py-2 text-sm text-bone placeholder:text-bone-600 focus:border-red-500/40 focus:outline-none';
@@ -35,7 +44,7 @@ export default function AdminMembersPage() {
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [member, setMember] = useState<Member360 | null>(null);
-  const [tab, setTab] = useState<Tab>('security');
+  const [tab, setTab] = useState<Tab>('activity');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,7 +109,8 @@ export default function AdminMembersPage() {
 
   return (
     <div className="container-page py-14">
-      <h1 className="font-serif text-4xl font-bold text-bone">Members</h1>
+      <StaffNav active="/admin/members" />
+      <h1 className="mt-6 font-serif text-4xl font-bold text-bone">Members</h1>
       <p className="mt-2 text-bone-400">
         Search an existing member by Client ID, mobile, email, name or company — or register a
         walk-in at the auction desk.
@@ -195,6 +205,11 @@ function Member360Cockpit({
             {member.clientReference ?? '—'}
           </p>
           <p className="text-bone-200">{member.legalName ?? 'Member'}</p>
+          {/* Contact + linked channels (CRM 360 fold, §3) — staff-only. */}
+          <p className="mt-0.5 text-xs text-bone-500">
+            {[member.contact?.email, member.contact?.phone].filter(Boolean).join(' · ') ||
+              'No contact on file'}
+          </p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {member.roles.map((r) => (
               <Chip key={r}>{r}</Chip>
@@ -208,6 +223,12 @@ function Member360Cockpit({
               KYC {member.kycStatus}
             </Chip>
             {member.organization ? <Chip>{member.organization.reference}</Chip> : null}
+            {member.channels?.map((ch) => (
+              <Chip key={`${ch.channel}:${ch.externalId}`} tone={ch.verifiedAt ? 'win' : 'neutral'}>
+                {ch.channel}
+                {ch.verifiedAt ? ' ✓' : ''}
+              </Chip>
+            ))}
           </div>
         </div>
         <button
@@ -239,8 +260,10 @@ function Member360Cockpit({
       </div>
 
       {/* Tabs */}
-      <div className="mt-6 flex gap-1 border-b border-white/10">
-        {(['security', 'performance', 'flags', 'temporary'] as Tab[]).map((t) => (
+      <div className="mt-6 flex flex-wrap gap-1 border-b border-white/10">
+        {(
+          ['activity', 'tasks', 'notes', 'security', 'performance', 'flags', 'temporary'] as Tab[]
+        ).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -251,12 +274,21 @@ function Member360Cockpit({
             }`}
           >
             {t}
+            {t === 'tasks' && member.crm.openTasks.length
+              ? ` (${member.crm.openTasks.length})`
+              : ''}
           </button>
         ))}
       </div>
 
       <div className="mt-4">
-        {tab === 'security' ? (
+        {tab === 'activity' ? (
+          <ActivityTab customerId={member.customerId} />
+        ) : tab === 'tasks' ? (
+          <TasksTab member={member} onChange={onReload} />
+        ) : tab === 'notes' ? (
+          <NotesTab member={member} onChange={onReload} />
+        ) : tab === 'security' ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {member.security.length === 0 ? (
               <p className="text-sm text-bone-500">No security instruments.</p>
@@ -544,6 +576,222 @@ function OnsiteRegistration({
         ) : null}
       </div>
     </Card>
+  );
+}
+
+/** Unified CRM timeline (§18) — lazy-fetched chronological activity across every domain. */
+function ActivityTab({ customerId }: { customerId: string }) {
+  const { token } = useAuth();
+  const [entries, setEntries] = useState<TimelineEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    fetchCustomerTimeline(token, customerId)
+      .then((t) => alive && setEntries(t.entries))
+      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)));
+    return () => {
+      alive = false;
+    };
+  }, [token, customerId]);
+
+  if (error) return <p className="text-sm text-red-300">{error}</p>;
+  if (!entries) return <p className="text-sm text-bone-500">Loading activity…</p>;
+  if (entries.length === 0) return <p className="text-sm text-bone-500">No activity yet.</p>;
+
+  return (
+    <ol className="relative ml-2 border-l border-white/10">
+      {entries.map((e, i) => (
+        <li key={`${e.refType}:${e.refId}:${i}`} className="mb-4 ml-4">
+          <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-amber-300/40 bg-coal-900" />
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm text-bone-200">
+              <span className="text-[11px] uppercase tracking-wider text-bone-500">{e.kind}</span>{' '}
+              {e.title}
+              {e.amountMinor != null ? (
+                <span className="text-amber-100">
+                  {' '}
+                  · {formatMoney(e.amountMinor, e.currency ?? 'LKR')}
+                </span>
+              ) : null}
+            </p>
+            <p className="text-xs text-bone-600">{new Date(e.at).toLocaleString()}</p>
+          </div>
+          {e.listing ? (
+            <p className="text-xs text-bone-500">
+              {e.listing.reference} · {e.listing.title}
+            </p>
+          ) : null}
+          {e.status ? <p className="text-xs text-bone-600 capitalize">{e.status}</p> : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** CRM follow-ups (§5). Create + advance tasks; a sensitive task must be closed by a human. */
+function TasksTab({ member, onChange }: { member: Member360; onChange: () => void }) {
+  const { token } = useAuth();
+  const [title, setTitle] = useState('');
+  const [priority, setPriority] = useState<CrmTask['priority']>('normal');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const tasks = member.crm.openTasks;
+
+  async function add() {
+    if (!token || !title.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createTask(token, { title: title.trim(), priority, customerId: member.customerId });
+      setTitle('');
+      onChange();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function advance(t: CrmTask, status: CrmTask['status']) {
+    if (!token) return;
+    setError(null);
+    try {
+      await updateTask(token, t.id, { status });
+      onChange();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <label className="block flex-1">
+          <span className="mb-1 block text-xs text-bone-400">New follow-up</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Call before next sale"
+            className={`min-w-[16rem] ${INPUT}`}
+          />
+        </label>
+        <select
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as CrmTask['priority'])}
+          className={`w-32 ${INPUT}`}
+        >
+          <option value="low">Low</option>
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <Button onClick={add} disabled={busy || !title.trim()}>
+          {busy ? 'Adding…' : 'Add task'}
+        </Button>
+      </div>
+      {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+      {tasks.length === 0 ? (
+        <p className="text-sm text-bone-500">No open tasks.</p>
+      ) : (
+        <div className="grid gap-2">
+          {tasks.map((t) => (
+            <div
+              key={t.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-bone-200">{t.title}</p>
+                <p className="text-xs text-bone-500 capitalize">
+                  {t.type.replace(/_/g, ' ')} · {t.priority}
+                  {t.dueAt ? ` · due ${new Date(t.dueAt).toLocaleDateString()}` : ''}
+                  {t.sensitive ? ' · sensitive' : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Chip tone={t.priority === 'urgent' || t.priority === 'high' ? 'gold' : 'neutral'}>
+                  {t.status.replace(/_/g, ' ')}
+                </Chip>
+                {t.status !== 'in_progress' ? (
+                  <button
+                    onClick={() => advance(t, 'in_progress')}
+                    className="rounded-md border border-white/10 px-2 py-1 text-xs text-bone-300 hover:border-white/20"
+                  >
+                    Start
+                  </button>
+                ) : null}
+                <button
+                  onClick={() => advance(t, 'done')}
+                  className="rounded-md border border-white/10 px-2 py-1 text-xs text-bone-300 hover:border-amber-300/30"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Internal notes (§17/§19) — append-only, staff-only, never shown to the customer. */
+function NotesTab({ member, onChange }: { member: Member360; onChange: () => void }) {
+  const { token } = useAuth();
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const notes = member.crm.recentNotes;
+
+  async function add() {
+    if (!token || !body.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await addCustomerNote(token, member.customerId, body.trim());
+      setBody('');
+      onChange();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs text-bone-500">
+        Internal notes are append-only and never visible to the customer.
+      </p>
+      <div className="mb-4 flex items-end gap-2">
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={2}
+          placeholder="Add an internal note…"
+          className={`flex-1 ${INPUT}`}
+        />
+        <Button onClick={add} disabled={busy || !body.trim()}>
+          {busy ? 'Saving…' : 'Add note'}
+        </Button>
+      </div>
+      {error ? <p className="mb-3 text-sm text-red-300">{error}</p> : null}
+      {notes.length === 0 ? (
+        <p className="text-sm text-bone-500">No notes yet.</p>
+      ) : (
+        <div className="grid gap-2">
+          {notes.map((n) => (
+            <div key={n.id} className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3">
+              <p className="text-sm text-bone-200">{n.body}</p>
+              <p className="mt-1 text-xs text-bone-600">
+                {n.authorId ?? 'staff'} · {new Date(n.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
