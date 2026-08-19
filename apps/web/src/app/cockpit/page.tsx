@@ -6,29 +6,35 @@ import { Button, Card, Chip } from '@singha/ui';
 import {
   askCockpit,
   fetchCockpit,
+  formatAmount,
+  formatBuckets,
   type AuctionLot,
   type Cockpit,
   type CockpitAnswer,
   type Lot,
+  type TimelineEntry,
 } from '../../lib/cockpit';
 import { useAuth } from '../../lib/auth';
-import { formatMoney } from '../../lib/format';
 
 /**
- * The Singha Cockpit — ONE adaptive, signed-in home for every Singha Client (unified-identity pass).
- * A single Client may simultaneously buy, bid, sell, supply, post RFQs and use services; this is the
- * one place they see all of it, ordered by what they actually do (emphasis). There is NO Buyer/Seller
- * mode switch. Every figure is read live from the authoritative `/api/v2/me/cockpit` read-model — the
- * page holds no financial state of its own.
+ * The Singha Cockpit — ONE adaptive, signed-in home for every Singha Client (unified-identity +
+ * multi-currency correction pass). A single Client may simultaneously buy, bid, sell, supply, post
+ * RFQs and use services; this is the one place they see all of it, ordered by what they actually do
+ * (emphasis). There is NO Buyer/Seller mode switch. The one human keeps ONE Client ID but may act
+ * for an authorised Organisation via the context selector; personal and org state are never mixed.
+ * Every figure is read live from the authoritative `/api/v2/me/cockpit` read-model — the page holds
+ * no financial state of its own. Money is always per-currency; minor units are never summed across
+ * currencies.
  */
 export default function CockpitPage() {
   const { token, loading } = useAuth();
   const [data, setData] = useState<Cockpit | null>(null);
+  const [org, setOrg] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (t: string) => {
+  const load = useCallback(async (t: string, orgId?: string) => {
     try {
-      setData(await fetchCockpit(t));
+      setData(await fetchCockpit(t, orgId));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -36,8 +42,8 @@ export default function CockpitPage() {
   }, []);
 
   useEffect(() => {
-    if (token) void load(token);
-  }, [token, load]);
+    if (token) void load(token, org);
+  }, [token, org, load]);
 
   if (loading) return null;
   if (!token)
@@ -61,20 +67,21 @@ export default function CockpitPage() {
   if (!data)
     return <div className="container-page py-14 text-sm text-bone-500">Loading your cockpit…</div>;
 
-  const { identity, accountHealth: h, needsAttention } = data;
-  const sellerFirst = identity.emphasis === 'seller';
-  const hasSelling = identity.roles.includes('seller');
+  const { identity, accountHealth: h, needsAttention, context } = data;
+  const inOrg = context.kind === 'organization';
+  const sellerFirst = inOrg || identity.emphasis === 'seller';
+  const hasSelling = inOrg || identity.roles.includes('seller');
 
-  const Buying = <BuyingSection data={data} />;
+  const Buying = inOrg ? null : <BuyingSection data={data} />;
   const Selling = hasSelling ? <SellingSection data={data} /> : null;
 
   return (
     <div className="container-page space-y-8 py-14">
-      {/* Header — one identity, all capabilities. */}
+      {/* Header — one identity, all capabilities, one Client ID across every context. */}
       <header>
         <p className="text-xs uppercase tracking-widest text-bone-500">Singha Cockpit</p>
         <h1 className="mt-1 font-serif text-4xl font-bold text-bone">
-          {identity.legalName ?? 'Your account'}
+          {inOrg ? context.organizationName : (identity.legalName ?? 'Your account')}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <Chip tone="gold">{identity.clientReference ?? '—'}</Chip>
@@ -86,13 +93,22 @@ export default function CockpitPage() {
           </Chip>
           <span className="text-xs text-bone-600">
             One Singha ID ·{' '}
-            {identity.emphasis === 'both' ? 'buying & selling' : `mostly ${identity.emphasis}`}
+            {inOrg
+              ? 'acting for an organisation'
+              : identity.emphasis === 'both'
+                ? 'buying & selling'
+                : `mostly ${identity.emphasis}`}
           </span>
         </div>
+        <ContextSelector
+          organizations={data.organizations}
+          current={org}
+          onChange={(next) => setOrg(next)}
+        />
       </header>
 
       <AccountHealthCard health={h} />
-      <AskSingha token={token} />
+      {!inOrg ? <AskSingha token={token} /> : null}
 
       {needsAttention.length > 0 ? (
         <Section title="Needs your attention" count={needsAttention.length}>
@@ -123,14 +139,52 @@ export default function CockpitPage() {
         </>
       )}
 
+      <TimelineSection entries={data.timeline.entries} />
       <OtherSections data={data} />
     </div>
   );
 }
 
-// ── Account Health (deterministic facts) ──────────────────────────────────────
+// ── Context selector — one human, personal + each authorised organisation ─────
+function ContextSelector({
+  organizations,
+  current,
+  onChange,
+}: {
+  organizations: Cockpit['organizations'];
+  current: string | undefined;
+  onChange: (org: string | undefined) => void;
+}) {
+  if (!organizations.length) return null;
+  const Btn = ({ id, label }: { id: string | undefined; label: string }) => {
+    const active = current === id;
+    return (
+      <button
+        onClick={() => onChange(id)}
+        className={`rounded-full border px-3 py-1 text-xs transition ${
+          active
+            ? 'border-amber-300/40 bg-amber-300/10 text-amber-100'
+            : 'border-white/10 text-bone-400 hover:border-amber-300/30 hover:text-bone-200'
+        }`}
+      >
+        {label}
+      </button>
+    );
+  };
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] uppercase tracking-wider text-bone-600">Acting as</span>
+      <Btn id={undefined} label="Personal" />
+      {organizations.map((o) => (
+        <Btn key={o.organizationId} id={o.organizationId} label={o.legalName} />
+      ))}
+    </div>
+  );
+}
+
+// ── Account Health (deterministic facts, per-currency, never cross-summed) ────
 function AccountHealthCard({ health: h }: { health: Cockpit['accountHealth'] }) {
-  const cur = h.currency;
+  const cap = h.bidCapacity;
   return (
     <Card className={h.status === 'attention' ? 'border-outbid/30' : ''}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -143,48 +197,66 @@ function AccountHealthCard({ health: h }: { health: Cockpit['accountHealth'] }) 
         <Metric
           label="Available to bid"
           value={
-            h.bidCapacity.hasFacility
-              ? formatMoney(h.bidCapacity.availableMinor, cur)
+            cap?.hasFacility
+              ? formatAmount({
+                  currency: cap.currency,
+                  exponent: cap.exponent,
+                  minor: cap.availableMinor,
+                })
               : 'No facility'
           }
           accent
           hint={
-            h.bidCapacity.hasFacility
-              ? `${formatMoney(h.bidCapacity.committedMinor, cur)} committed`
+            cap?.hasFacility
+              ? `${formatAmount({ currency: cap.currency, exponent: cap.exponent, minor: cap.committedMinor })} committed`
               : 'Add a deposit to unlock'
           }
         />
         <Metric
           label="Amounts to pay"
-          value={formatMoney(h.amountsToPay.totalMinor, cur)}
-          muted={h.amountsToPay.totalMinor === 0}
+          value={formatBuckets(h.amountsToPay.byCurrency, 'total')}
+          muted={h.amountsToPay.count === 0}
           hint={
             h.amountsToPay.overdueCount
-              ? `${formatMoney(h.amountsToPay.overdueMinor, cur)} overdue`
+              ? `${formatBuckets(h.amountsToPay.byCurrency, 'overdue')} overdue`
               : undefined
           }
           danger={h.amountsToPay.overdueCount > 0}
         />
         <Metric
           label="Seller proceeds"
-          value={formatMoney(h.sellerProceeds.settledMinor, cur)}
+          value={formatBuckets(h.sellerProceeds.byCurrency, 'settled')}
           hint={
             h.sellerProceeds.pendingCount
-              ? `${formatMoney(h.sellerProceeds.pendingMinor, cur)} pending`
+              ? `${formatBuckets(h.sellerProceeds.byCurrency, 'pending')} pending`
               : 'settled'
           }
         />
         <Metric
           label="Deposits / security"
-          value={formatMoney(h.security.verifiedMinor, cur)}
+          value={formatBuckets(h.security.byCurrency, 'verified')}
           hint={`${h.security.count} instrument${h.security.count === 1 ? '' : 's'}`}
         />
       </div>
+      {h.display ? (
+        <p className="mt-3 border-t border-white/10 pt-3 text-[11px] text-bone-600">
+          ≈{' '}
+          {formatAmount({
+            currency: h.display.currency,
+            exponent: h.display.exponent,
+            minor: h.display.amountsToPayMinor,
+          })}{' '}
+          to pay in {h.display.currency} · informational only, not binding
+          {h.display.stale ? ' (rate stale)' : ''}. Original transaction-currency amounts are
+          authoritative.
+        </p>
+      ) : null}
       {h.overdueActions.length > 0 ? (
         <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">
           {h.overdueActions.map((a) => (
             <li key={a.ref} className="text-xs text-outbid">
               • {a.label}
+              {a.amount ? ` · ${formatAmount(a.amount)}` : ''}
             </li>
           ))}
         </ul>
@@ -264,7 +336,6 @@ function AskSingha({ token }: { token: string }) {
 // ── Buying ────────────────────────────────────────────────────────────────────
 function BuyingSection({ data }: { data: Cockpit }) {
   const b = data.buying;
-  const cur = data.accountHealth.currency;
   const empty =
     b.summary.activeBids +
       b.summary.watched +
@@ -290,18 +361,18 @@ function BuyingSection({ data }: { data: Cockpit }) {
           <LotList
             title="Live bids"
             lots={b.activeBids}
-            render={(l) => auctionLine(l as AuctionLot, cur)}
+            render={(l) => auctionLine(l as AuctionLot)}
           />
           <LotList
             title="Payment due"
             lots={b.invoices.filter((i) => i.status === 'issued')}
-            render={(i) => `${i.reference} · ${formatMoney(i.amountDueMinor, cur)}`}
+            render={(i) => `${i.reference} · ${formatAmount(i.amountDue)}`}
           />
           <LotList title="Watching" lots={b.watched} render={(l) => l.reference} />
           <LotList
             title="Purchases"
             lots={b.purchases}
-            render={(p) => `${p.reference} · ${formatMoney(p.amountMinor, cur)}`}
+            render={(p) => `${p.reference} · ${formatAmount(p.amount)}`}
           />
         </div>
       )}
@@ -312,7 +383,6 @@ function BuyingSection({ data }: { data: Cockpit }) {
 // ── Selling ───────────────────────────────────────────────────────────────────
 function SellingSection({ data }: { data: Cockpit }) {
   const s = data.selling;
-  const cur = data.accountHealth.currency;
   return (
     <Section title="Selling" href="/sell/new" hrefLabel="List an item">
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -322,7 +392,7 @@ function SellingSection({ data }: { data: Cockpit }) {
         <StatTile label="Sales" value={s.summary.sales} />
         <StatTile
           label="Proceeds pending"
-          value={formatMoney(s.summary.pendingProceedsMinor, cur)}
+          value={formatBuckets(s.summary.pendingProceeds, 'pending')}
           wide
         />
       </div>
@@ -344,22 +414,57 @@ function SellingSection({ data }: { data: Cockpit }) {
           <LotList
             title="Offers received"
             lots={s.offersReceived}
-            render={(o) => `${o.reference} · ${formatMoney(o.amountMinor, cur)} · ${o.status}`}
+            render={(o) => `${o.reference} · ${formatAmount(o.amount)} · ${o.status}`}
           />
           <LotList
             title="Sales"
             lots={s.sales}
             render={(sale) =>
-              `${sale.reference} · ${formatMoney(sale.amountMinor, cur)}${sale.settled ? '' : ' · unsettled'}`
+              `${sale.reference} · ${formatAmount(sale.amount)}${sale.settled ? '' : ' · unsettled'}`
             }
           />
           <LotList
             title="Settlements (proceeds)"
             lots={s.settlements}
-            render={(x) => `${x.reference} · net ${formatMoney(x.netMinor, cur)}`}
+            render={(x) => `${x.reference} · net ${formatAmount(x.net)}`}
           />
         </div>
       )}
+    </Section>
+  );
+}
+
+// ── Unified Activity Timeline (projection over authoritative events) ──────────
+const GROUP_TONE: Record<string, 'win' | 'outbid' | 'gold' | 'neutral'> = {
+  buying: 'neutral',
+  selling: 'win',
+  bidding: 'gold',
+  payment: 'outbid',
+};
+function TimelineSection({ entries }: { entries: TimelineEntry[] }) {
+  if (!entries.length) return null;
+  return (
+    <Section title="Activity" count={entries.length}>
+      <ol className="relative space-y-2 border-l border-white/10 pl-4">
+        {entries.slice(0, 20).map((e, i) => (
+          <li key={`${e.refType}:${e.refId}:${i}`} className="relative">
+            <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-amber-300/50" />
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm text-bone-200">
+                  {e.title}
+                  {e.listing ? ` · ${e.listing.reference}` : ''}
+                </p>
+                <p className="text-[11px] text-bone-600">
+                  {formatWhen(e.at)}
+                  {e.amount ? ` · ${formatAmount(e.amount)}` : ''}
+                </p>
+              </div>
+              <Chip tone={GROUP_TONE[e.group] ?? 'neutral'}>{e.group}</Chip>
+            </div>
+          </li>
+        ))}
+      </ol>
     </Section>
   );
 }
@@ -533,6 +638,22 @@ function Metric({
   );
 }
 
-function auctionLine(l: AuctionLot, cur: string): string {
-  return `${l.reference} · ${formatMoney(l.currentBidMinor, cur)} (your max ${formatMoney(l.myMaxMinor, cur)})`;
+function auctionLine(l: AuctionLot): string {
+  const bid = formatAmount({
+    currency: l.currency,
+    exponent: l.exponent,
+    minor: String(l.currentBidMinor),
+  });
+  const myMax = formatAmount({
+    currency: l.currency,
+    exponent: l.exponent,
+    minor: String(l.myMaxMinor),
+  });
+  return `${l.reference} · ${bid} (your max ${myMax})`;
+}
+
+function formatWhen(at: string | null | undefined): string {
+  if (!at) return '';
+  const d = new Date(at);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
