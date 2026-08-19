@@ -1683,8 +1683,9 @@ export default function ListingStudio() {
               v={`${draft.social.promotion}${draft.social.channels.length ? ` · ${draft.social.channels.join(', ')}` : ''}`}
             />
             <p className="mt-2 text-xs text-bone-600">
-              Submitting creates the asset + listing and sends it to staff for review. Requires a
-              seller account (listing:create).
+              Submitting creates the asset + listing and sends it to staff for review. Selling is a
+              capability on your one Singha ID — no separate account (needs the sell capability /
+              listing:create).
             </p>
             {!draft.ownershipConfirmed && (
               <p className="text-sm text-outbid">Confirm ownership authority (stage 1).</p>

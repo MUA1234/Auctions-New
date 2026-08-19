@@ -44,10 +44,10 @@ const ITEMS: DockItem[] = [
     match: (p) => p.startsWith('/sell'),
   },
   {
-    href: '/account/activity',
-    label: 'Activity',
+    href: '/cockpit',
+    label: 'Cockpit',
     icon: I('M3 12h4l2 6 4-14 2 8h6'),
-    match: (p) => p === '/account/activity' || p === '/dashboard',
+    match: (p) => p === '/cockpit' || p === '/account/activity' || p === '/dashboard',
   },
   {
     href: '/account',

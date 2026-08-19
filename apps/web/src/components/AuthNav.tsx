@@ -32,9 +32,9 @@ export function AuthNav() {
   return (
     <div className="hidden items-center gap-4 lg:flex">
       <Link
-        href="/dashboard"
+        href="/cockpit"
         className="max-w-[8rem] truncate text-sm text-bone-300 hover:text-bone xl:max-w-[12rem]"
-        title="My account"
+        title="Your Singha Cockpit"
       >
         {user?.name ?? user?.email ?? 'My account'}
       </Link>

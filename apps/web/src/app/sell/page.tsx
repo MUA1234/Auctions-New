@@ -57,7 +57,7 @@ export default function SellerDashboard() {
       {!token ? (
         <SignInPrompt
           title="Sell with Singha"
-          description="Sign in with a seller account to manage your consignments from listing to settlement."
+          description="Sign in to your one Singha account — selling is a capability on the same identity you buy with, from listing to settlement."
           next="/sell"
           cta="Sign in to sell"
         />
