@@ -31,7 +31,7 @@ describe('MobileNav (V3-1 shell — mobile navigation drawer)', () => {
     const dialog = await screen.findByRole('dialog', { name: /main menu/i });
     expect(dialog).toBeTruthy();
     // Every primary nav item is reachable on mobile.
-    for (const label of ['Catalogue', 'Events', 'Dashboard', 'Live', 'How it works']) {
+    for (const label of ['Catalogue', 'Events', 'Cockpit', 'Live', 'How it works']) {
       expect(screen.getByRole('link', { name: label })).toBeTruthy();
     }
     expect(screen.getByRole('link', { name: /sell with singha/i })).toBeTruthy();
