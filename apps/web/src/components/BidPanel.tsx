@@ -7,7 +7,7 @@ import { apiBase, apiGet, placeBid, type AuctionState, type PlaceBidResult } fro
 import { useAuth } from '../lib/auth';
 import { useFlags } from '../lib/use-flags';
 import { newIntentId } from '../lib/gesture';
-import { formatMoney, humanize, timeLeft } from '../lib/format';
+import { currencyExponent, formatMoney, humanize, timeLeft } from '../lib/format';
 import { GestureBidControl } from './GestureBidControl';
 import { Price } from './evolution/Price';
 import { friendlyMessage } from './evolution/evo-api-error';
@@ -70,6 +70,10 @@ export function BidPanel({
   const current = state.currentBidMinor ?? state.openingBidMinor;
   const minNext =
     state.currentBidMinor == null ? state.openingBidMinor : current + state.incrementMinor;
+  // Minor units per major unit for THIS auction's currency (JPY = 1, LKR/USD = 100). The input
+  // is denominated in major units, the engine binds on minor units — a hardcoded 100 would ask a
+  // JPY bidder for ¥50.00 and submit 100× their intended bid.
+  const minorPerMajor = 10 ** currencyExponent(state.currency);
 
   const errText = (err: unknown) =>
     friendlyMessage(err, 'Your bid was not accepted. Please try again.');
@@ -91,7 +95,7 @@ export function BidPanel({
       const r = await placeBid(
         auctionId,
         {
-          maxAmountMinor: Math.round(Number(amount) * 100),
+          maxAmountMinor: Math.round(Number(amount) * minorPerMajor),
           idempotencyKey: newIntentId(),
           source: 'online',
         },
@@ -167,9 +171,9 @@ export function BidPanel({
               className="field tabular"
               type="number"
               required
-              min={minNext / 100}
-              step={state.incrementMinor / 100}
-              placeholder={String(minNext / 100)}
+              min={minNext / minorPerMajor}
+              step={state.incrementMinor / minorPerMajor}
+              placeholder={String(minNext / minorPerMajor)}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />

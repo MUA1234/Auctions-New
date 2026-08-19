@@ -28,10 +28,21 @@ export const CURRENCIES: ReadonlyArray<{ code: string; label: string; exp: numbe
 
 const CURRENCY_EXP = new Map(CURRENCIES.map((c) => [c.code, c.exp]));
 
+/**
+ * Minor-unit exponent for a currency code (JPY = 0, most others = 2; unknown codes default to
+ * 2). Any conversion between the major units a customer types and the integer minor units the
+ * auction engine binds on must go through this rather than a hardcoded 100 — a ¥5,000 bid is
+ * 5000 minor units, not 500000.
+ */
+export function currencyExponent(currency: string | null | undefined): number {
+  if (!currency) return 2;
+  return CURRENCY_EXP.get(currency) ?? 2;
+}
+
 /** Format integer minor units honoring the currency's exponent (JPY = 0 decimals). */
 export function formatMoneyExp(minor: number | null | undefined, currency = 'LKR'): string {
   if (minor == null) return '—';
-  const exp = CURRENCY_EXP.get(currency) ?? 2;
+  const exp = currencyExponent(currency);
   const major = minor / 10 ** exp;
   return `${currency} ${major.toLocaleString('en-LK', { maximumFractionDigits: exp })}`;
 }
