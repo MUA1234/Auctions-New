@@ -65,7 +65,9 @@ export function CommercialOfferForm({ listingId }: { listingId: string }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
-    const totalPriceMinor = parseMoneyToMinor(amount);
+    // Parse against the selected BINDING currency: a JPY offer of 5,000 is 5000 minor units,
+    // not 500000 — the exponent, never a hardcoded 100, decides.
+    const totalPriceMinor = parseMoneyToMinor(amount, currency);
     if (totalPriceMinor == null) {
       setAmountInvalid(true);
       setError('Enter a valid offer amount.');

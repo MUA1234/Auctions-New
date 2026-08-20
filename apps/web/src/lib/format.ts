@@ -4,11 +4,17 @@ export function formatMoney(minor: number | null | undefined, currency = 'LKR'):
   return `${currency} ${(minor / 100).toLocaleString('en-LK', { maximumFractionDigits: 0 })}`;
 }
 
-/** Parse a user-entered major-unit amount (e.g. "200000" or "200,000") to integer minor units. */
-export function parseMoneyToMinor(major: string | number): number | null {
+/**
+ * Parse a user-entered major-unit amount (e.g. "200000" or "200,000") to integer minor units.
+ *
+ * Pass the BINDING currency of the amount so the conversion honours its minor-unit exponent
+ * (`currencyExponent`): ¥5,000 is 5000 minor units, not 500000. Omitting `currency` keeps the
+ * historical two-decimal behaviour for callers that have no currency in hand.
+ */
+export function parseMoneyToMinor(major: string | number, currency?: string | null): number | null {
   const n = typeof major === 'number' ? major : Number(String(major).replace(/[,\s]/g, ''));
   if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.round(n * 100);
+  return Math.round(n * 10 ** currencyExponent(currency));
 }
 
 /** Supported display currencies (mirrors the backend E5 currency catalog). `exp` = minor-unit
